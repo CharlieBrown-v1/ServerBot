@@ -289,10 +289,10 @@ class FetchEnv(robot_env.RobotEnv):
     def _is_success(self, achieved_goal, desired_goal):
         if not (self.removal_mode or self.combine_mode):
             d = goal_distance(achieved_goal, desired_goal)
-            return (d < self.distance_threshold).astype(np.float32)
+            return d < self.distance_threshold
         else:
             r = removal_reward(achieved_goal, desired_goal)
-            return (r > self.max_reward_dist).astype(np.float32)
+            return r > self.max_reward_dist
 
     def _env_setup(self, initial_qpos):
         for name, value in initial_qpos.items():
