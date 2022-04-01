@@ -7,9 +7,12 @@ def goal_distance(goal_a, goal_b):
     assert goal_a.shape == goal_b.shape
     return np.linalg.norm(goal_a - goal_b, axis=-1)
 
-
+# DIY
 def removal_reward(obstacle_coordinate, target_coordinate):
-    reward = goal_distance(obstacle_coordinate, target_coordinate)
+    if len(obstacle_coordinate.shape) > 1:
+        reward = goal_distance(obstacle_coordinate[:, :2], target_coordinate[:, :2])
+    else:
+        reward = goal_distance(obstacle_coordinate[:2], target_coordinate[:2])
     return reward
 
 
@@ -98,7 +101,13 @@ class FetchEnv(robot_env.RobotEnv):
                     ...
                 )
             '''
-            return removal_reward(achieved_goal, goal)
+            grip_pos = self.sim.data.get_site_xpos("robot0:grip")
+            reward = removal_reward(achieved_goal, goal)
+            if reward < self.max_reward_dist:
+                return reward
+            else:
+                return -goal_distance(grip_pos, goal)
+
 
     # RobotEnv methods
     # ----------------------------
@@ -292,7 +301,9 @@ class FetchEnv(robot_env.RobotEnv):
             return d < self.distance_threshold
         else:
             r = removal_reward(achieved_goal, desired_goal)
-            return r > self.max_reward_dist
+            grip_pos = self.sim.data.get_site_xpos("robot0:grip")
+            d = goal_distance(grip_pos, desired_goal)
+            return (r > self.max_reward_dist) and (d < self.distance_threshold)
 
     def _env_setup(self, initial_qpos):
         for name, value in initial_qpos.items():
