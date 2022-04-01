@@ -103,10 +103,8 @@ class FetchEnv(robot_env.RobotEnv):
             '''
             grip_pos = self.sim.data.get_site_xpos("robot0:grip")
             reward = removal_reward(achieved_goal, goal)
-            if reward < self.max_reward_dist:
-                return reward
-            else:
-                return -goal_distance(grip_pos, goal)
+            reward = np.where(reward < self.max_reward_dist, reward, goal_distance(np.broadcast_to(grip_pos, goal.shape), goal))
+            return reward
 
 
     # RobotEnv methods
