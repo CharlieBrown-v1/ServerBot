@@ -8,16 +8,8 @@ def goal_distance(goal_a, goal_b):
     return np.linalg.norm(goal_a - goal_b, axis=-1)
 
 
-def removal_reward(obstacle_coordinate_arr, target_coordinate):
-    max_reward_dist = 0.25
-    length = 3
-    assert obstacle_coordinate_arr.size % length == 0
-    idx_end = obstacle_coordinate_arr.size // length
-    reward = 0
-    for idx in range(idx_end):
-        dist = goal_distance(obstacle_coordinate_arr[idx: idx + length], target_coordinate)
-        if dist <= max_reward_dist:
-            reward += dist
+def removal_reward(obstacle_coordinate, target_coordinate):
+    reward = goal_distance(obstacle_coordinate, target_coordinate)
     return reward
 
 
@@ -41,6 +33,7 @@ class FetchEnv(robot_env.RobotEnv):
             grasp_mode=False,
             removal_mode=False,
             combine_mode=False,
+            max_reward_dist=0.25,
     ):
         """Initializes a new Fetch environment.
 
@@ -73,7 +66,9 @@ class FetchEnv(robot_env.RobotEnv):
         self.grasp_mode = grasp_mode
         self.removal_mode = removal_mode
         self.combine_mode = combine_mode
-        self.obstacle_name_list = ['obstacle_' + str(i) for i in range(1)]
+        len_const = 4
+        self.obstacle_name_list = ['obstacle_' + str(i) for i in range(len(initial_qpos) - len_const)]
+        self.max_reward_dist = max_reward_dist
 
         super(FetchEnv, self).__init__(
             model_path=model_path,
@@ -177,20 +172,22 @@ class FetchEnv(robot_env.RobotEnv):
         gripper_vel = (
                 robot_qvel[-2:] * dt
         )  # change to a scalar if the gripper is made symmetric
-
+        # TODO
         if not self.has_object:
             achieved_goal = grip_pos.copy()
+        elif self.removal_mode or self.combine_mode:
+            achieved_goal = np.concatenate(object_pos.copy())
         else:
             achieved_goal = np.squeeze(object_pos.copy())
         obs = np.concatenate(
             [
                 grip_pos,
-                np.squeeze(object_pos).ravel(),
-                np.squeeze(object_rel_pos).ravel(),
+                np.concatenate(object_pos).ravel(),
+                np.concatenate(object_rel_pos).ravel(),
                 gripper_state,
-                np.squeeze(object_rot).ravel(),
-                np.squeeze(object_velp).ravel(),
-                np.squeeze(object_velr).ravel(),
+                np.concatenate(object_rot).ravel(),
+                np.concatenate(object_velp).ravel(),
+                np.concatenate(object_velr).ravel(),
                 grip_velp,
                 gripper_vel,
             ]
@@ -272,9 +269,14 @@ class FetchEnv(robot_env.RobotEnv):
             )
         return goal.copy()
 
+    # TODO
     def _is_success(self, achieved_goal, desired_goal):
-        d = goal_distance(achieved_goal, desired_goal)
-        return (d < self.distance_threshold).astype(np.float32)
+        if not (self.removal_mode or self.combine_mode):
+            d = goal_distance(achieved_goal, desired_goal)
+            return (d < self.distance_threshold).astype(np.float32)
+        else:
+            r = removal_reward(achieved_goal, desired_goal)
+            return (r > self.max_reward_dist).astype(np.float32)
 
     def _env_setup(self, initial_qpos):
         for name, value in initial_qpos.items():
