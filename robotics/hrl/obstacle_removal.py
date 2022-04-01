@@ -3,7 +3,6 @@ from gym import utils
 from gym.envs.robotics import fetch_env
 
 
-# Ensure we get the path separator correct on windows
 MODEL_XML_PATH = os.path.join("hrl", "obstacle_removal.xml")
 
 
