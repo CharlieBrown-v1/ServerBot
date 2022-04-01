@@ -182,12 +182,12 @@ class FetchEnv(robot_env.RobotEnv):
         obs = np.concatenate(
             [
                 grip_pos,
-                np.concatenate(object_pos).ravel(),
-                np.concatenate(object_rel_pos).ravel(),
+                np.squeeze(object_pos).ravel(),
+                np.squeeze(object_rel_pos).ravel(),
                 gripper_state,
-                np.concatenate(object_rot).ravel(),
-                np.concatenate(object_velp).ravel(),
-                np.concatenate(object_velr).ravel(),
+                np.squeeze(object_rot).ravel(),
+                np.squeeze(object_velp).ravel(),
+                np.squeeze(object_velr).ravel(),
                 grip_velp,
                 gripper_vel,
             ]
