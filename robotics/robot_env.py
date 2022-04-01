@@ -44,7 +44,7 @@ class RobotEnv(gym.GoalEnv):
         self.goal = self._sample_goal()
         obs = self._get_obs()
         self.action_space = spaces.Box(-1.0, 1.0, shape=(n_actions,), dtype="float32")
-        # TODO
+        # DIY
         self.observation_space = spaces.Dict(
             dict(
                 desired_goal=spaces.Box(

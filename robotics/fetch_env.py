@@ -62,7 +62,7 @@ class FetchEnv(robot_env.RobotEnv):
         self.distance_threshold = distance_threshold
         self.reward_type = reward_type
 
-        # TODO
+        # DIY
         self.grasp_mode = grasp_mode
         self.removal_mode = removal_mode
         self.combine_mode = combine_mode
@@ -83,7 +83,7 @@ class FetchEnv(robot_env.RobotEnv):
 
     def compute_reward(self, achieved_goal, goal, info):
         # Compute distance between goal and the achieved goal.
-        # TODO
+        # DIY
         if not (self.removal_mode or self.combine_mode):
             d = goal_distance(achieved_goal, goal)
             if self.reward_type == "sparse":
@@ -140,7 +140,7 @@ class FetchEnv(robot_env.RobotEnv):
         grip_velp = self.sim.data.get_site_xvelp("robot0:grip") * dt
         robot_qpos, robot_qvel = utils.robot_get_obs(self.sim)
         if self.has_object:
-            # TODO
+            # DIY
             if not(self.removal_mode or self.combine_mode):
                 object_pos = self.sim.data.get_site_xpos("object0")
                 # rotations
@@ -172,26 +172,42 @@ class FetchEnv(robot_env.RobotEnv):
         gripper_vel = (
                 robot_qvel[-2:] * dt
         )  # change to a scalar if the gripper is made symmetric
-        # TODO
+        # DIY
         if not self.has_object:
             achieved_goal = grip_pos.copy()
         elif self.removal_mode or self.combine_mode:
             achieved_goal = np.concatenate(object_pos.copy())
         else:
             achieved_goal = np.squeeze(object_pos.copy())
-        obs = np.concatenate(
-            [
-                grip_pos,
-                np.squeeze(object_pos).ravel(),
-                np.squeeze(object_rel_pos).ravel(),
-                gripper_state,
-                np.squeeze(object_rot).ravel(),
-                np.squeeze(object_velp).ravel(),
-                np.squeeze(object_velr).ravel(),
-                grip_velp,
-                gripper_vel,
-            ]
-        )
+        # DIY
+        if self.removal_mode or self.combine_mode:
+            obs = np.concatenate(
+                [
+                    grip_pos,
+                    np.concatenate(object_pos).ravel(),
+                    np.concatenate(object_rel_pos).ravel(),
+                    gripper_state,
+                    np.concatenate(object_rot).ravel(),
+                    np.concatenate(object_velp).ravel(),
+                    np.concatenate(object_velr).ravel(),
+                    grip_velp,
+                    gripper_vel,
+                ]
+            )
+        else:
+            obs = np.concatenate(
+                [
+                    grip_pos,
+                    np.squeeze(object_pos).ravel(),
+                    np.squeeze(object_rel_pos).ravel(),
+                    gripper_state,
+                    np.squeeze(object_rot).ravel(),
+                    np.squeeze(object_velp).ravel(),
+                    np.squeeze(object_velr).ravel(),
+                    grip_velp,
+                    gripper_vel,
+                ]
+            )
 
         return {
             "observation": obs.copy(),
@@ -221,7 +237,7 @@ class FetchEnv(robot_env.RobotEnv):
         # Randomize start position of object.
         if self.has_object:
             object_xpos = self.initial_gripper_xpos[:2]
-            # TODO
+            # DIY
             if not (self.grasp_mode or self.removal_mode or self.combine_mode):
                 while np.linalg.norm(object_xpos - self.initial_gripper_xpos[:2]) < 0.1:
                     object_xpos = self.initial_gripper_xpos[:2] + self.np_random.uniform(
@@ -250,10 +266,10 @@ class FetchEnv(robot_env.RobotEnv):
                 -self.target_range, self.target_range, size=3
             )
             goal += self.target_offset
-            # TODO
+            # DIY
             if not(self.removal_mode or self.combine_mode):
                 goal[2] = self.height_offset
-            # TODO
+            # DIY
             delta = np.zeros(3)
             if self.target_in_the_air and self.np_random.uniform() < 0.5:
                 goal[2] += self.np_random.uniform(0, 0.45)
@@ -269,7 +285,7 @@ class FetchEnv(robot_env.RobotEnv):
             )
         return goal.copy()
 
-    # TODO
+    # DIY
     def _is_success(self, achieved_goal, desired_goal):
         if not (self.removal_mode or self.combine_mode):
             d = goal_distance(achieved_goal, desired_goal)
@@ -296,7 +312,7 @@ class FetchEnv(robot_env.RobotEnv):
 
         # Extract information for sampling goals.
         self.initial_gripper_xpos = self.sim.data.get_site_xpos("robot0:grip").copy()
-        # TODO
+        # DIY
         if self.has_object and not (self.removal_mode or self.combine_mode):
             self.height_offset = self.sim.data.get_site_xpos("object0")[2]
 
