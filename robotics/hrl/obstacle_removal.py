@@ -15,9 +15,9 @@ class ObstacleRemovalEnv(fetch_env.FetchEnv, utils.EzPickle):
             "target_object:joint": [1.45, 0.74, 0.4, 1.0, 0.0, 0.0, 0.0],
             "obstacle_0:joint": [1.395, 0.74, 0.4, 1.0, 0.0, 0.0, 0.0],
             # "obstacle_1:joint": [1.505, 0.74, 0.4, 1.0, 0.0, 0.0, 0.0],
-            # "obstacle_2:joint": [1.25, 0.47, 0.4, 1.0, 0.0, 0.0, 0.0],
-            # "obstacle_3:joint": [1.25, 0.59, 0.4, 1.0, 0.0, 0.0, 0.0],
-            # "obstacle_4:joint": [1.25, 0.53, 0.45, 1.0, 0.0, 0.0, 0.0],
+            # "obstacle_2:joint": [1.45, 0.795, 0.4, 1.0, 0.0, 0.0, 0.0],
+            # "obstacle_3:joint": [1.45, 0.685, 0.4, 1.0, 0.0, 0.0, 0.0],
+            # "obstacle_4:joint": [1.45, 0.74, 0.45, 1.0, 0.0, 0.0, 0.0],
         }
         fetch_env.FetchEnv.__init__(
             self,
@@ -30,7 +30,7 @@ class ObstacleRemovalEnv(fetch_env.FetchEnv, utils.EzPickle):
             target_offset=0.0,
             obj_range=0, # 0.15,
             target_range=0, # 0.15,
-            distance_threshold=0.03,
+            distance_threshold=0.05,
             initial_qpos=initial_qpos,
             reward_type=reward_type,
             removal_mode=True,
