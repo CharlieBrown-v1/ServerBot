@@ -10,9 +10,9 @@ def goal_distance(goal_a, goal_b):
 # DIY
 def removal_reward(obstacle_coordinate, target_coordinate):
     if len(obstacle_coordinate.shape) > 1:
-        reward = goal_distance(obstacle_coordinate[:, :2], target_coordinate[:, :2])
+        reward = goal_distance(obstacle_coordinate, target_coordinate)
     else:
-        reward = goal_distance(obstacle_coordinate[:2], target_coordinate[:2])
+        reward = goal_distance(obstacle_coordinate, target_coordinate)
     return reward
 
 
@@ -37,6 +37,7 @@ class FetchEnv(robot_env.RobotEnv):
             removal_mode=False,
             combine_mode=False,
             max_reward_dist=0.25,
+            initial_target_xpos=None,
     ):
         """Initializes a new Fetch environment.
 
@@ -103,9 +104,13 @@ class FetchEnv(robot_env.RobotEnv):
             '''
             # DIY
             grip_pos = self.sim.data.get_site_xpos("robot0:grip")
-            reward = removal_reward(achieved_goal, goal) - goal_distance(np.broadcast_to(grip_pos, goal.shape), goal)
-            # reward = np.where(reward < self.max_reward_dist, reward, -goal_distance(np.broadcast_to(grip_pos, goal.shape), goal))
-            return reward
+            if self.reward_type == "sparse":
+                return -(1 - self._is_success(achieved_goal, goal))
+            else:
+                reward = removal_reward(achieved_goal, goal)
+                reward = np.where(reward < self.max_reward_dist, reward, self.max_reward_dist)\
+                         - goal_distance(np.broadcast_to(self.initial_target_xpos, goal.shape), goal)
+                return reward
 
 
     # RobotEnv methods
@@ -300,9 +305,9 @@ class FetchEnv(robot_env.RobotEnv):
             return d < self.distance_threshold
         else:
             r = removal_reward(achieved_goal, desired_goal)
-            grip_pos = self.sim.data.get_site_xpos("robot0:grip")
-            d = goal_distance(grip_pos, desired_goal)
-            return (r > self.max_reward_dist) and (d < self.distance_threshold)
+            # grip_pos = self.sim.data.get_site_xpos("robot0:grip")
+            # d = goal_distance(np.broadcast_to(grip_pos, desired_goal.shape), desired_goal)
+            return r > self.max_reward_dist
 
     def _env_setup(self, initial_qpos):
         for name, value in initial_qpos.items():
@@ -325,6 +330,9 @@ class FetchEnv(robot_env.RobotEnv):
         # DIY
         if self.has_object and not (self.removal_mode or self.combine_mode):
             self.height_offset = self.sim.data.get_site_xpos("object0")[2]
+        if self.removal_mode:
+            length = 3
+            self.initial_target_xpos = self.sim.data.get_joint_qpos("target_object:joint")[:length].copy()
 
     def render(self, mode="human", width=500, height=500):
         return super(FetchEnv, self).render(mode, width, height)
