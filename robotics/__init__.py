@@ -15,3 +15,4 @@ from gym.envs.robotics.hand.manipulate_touch_sensors import HandPenTouchSensorsE
 
 from gym.envs.robotics.hrl.grasp import GraspEnv
 from gym.envs.robotics.hrl.obstacle_removal import ObstacleRemovalEnv
+from gym.envs.robotics.hrl.combine import CombineEnv
