@@ -289,8 +289,10 @@ class FetchEnv(robot_env.RobotEnv):
             elif self.grasp_mode:
                 delta = np.array([0.1, -0.2, 0.15])
             elif self.removal_mode:
-                target_object_pos = self.sim.data.get_site_xpos("target_object")
+                target_object_pos = self.sim.data.get_geom_xpos("target_object")
                 delta = target_object_pos - goal
+            elif self.combine_mode:
+                pass
             goal += delta
         else:
             goal = self.initial_gripper_xpos[:3] + self.np_random.uniform(
@@ -331,8 +333,7 @@ class FetchEnv(robot_env.RobotEnv):
         if self.has_object and not (self.removal_mode or self.combine_mode):
             self.height_offset = self.sim.data.get_site_xpos("object0")[2]
         if self.removal_mode:
-            length = 3
-            self.initial_target_xpos = self.sim.data.get_joint_qpos("target_object:joint")[:length].copy()
+            self.initial_target_xpos = self.sim.data.get_geom_xpos("target_object").copy()
 
     def render(self, mode="human", width=500, height=500):
         return super(FetchEnv, self).render(mode, width, height)
