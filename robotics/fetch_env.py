@@ -299,14 +299,14 @@ class FetchEnv(robot_env.RobotEnv):
             if self.target_in_the_air and self.np_random.uniform() < 0.5:
                 goal[2] += self.np_random.uniform(0, 0.45)
             elif self.grasp_mode:
-                delta = np.array([0.1, -0.2, 0.15])
+                delta = np.array([0.1, -0.2, 0.1])
             # removal -> gemo (box)
             elif self.removal_mode:
                 box_target_object_pos = self.sim.data.get_geom_xpos("target_object")
                 delta = box_target_object_pos - goal
             # combine -> site (sphere)
             elif self.combine_mode:
-                site_target_object_pos = np.array([1.44193226, 0.54910037, 0.57469975])
+                site_target_object_pos = np.array([1.44193226, 0.54910037, 0.63472284])
                 delta = site_target_object_pos - goal
             goal += delta
         else:
