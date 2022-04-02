@@ -97,10 +97,11 @@ class FetchEnv(robot_env.RobotEnv):
         else:
             '''
                 achieved_goal = concatenate(
-                    Coordinate of obstacle_0
-                    Coordinate of obstacle_1
+                    xpos of obstacle_0
+                    xpos of obstacle_1
                     ...
                 )
+                goal = xpos of red sphere
             '''
             # DIY
             grip_pos = self.sim.data.get_site_xpos("robot0:grip")
@@ -108,8 +109,9 @@ class FetchEnv(robot_env.RobotEnv):
                 return -(1 - self._is_success(achieved_goal, goal))
             else:
                 reward = removal_reward(achieved_goal, goal)
+                red_box_xpos = self.sim.data.get_geom_xpos("target_object").copy()
                 reward = np.where(reward < self.max_reward_dist, reward, self.max_reward_dist)\
-                         - goal_distance(np.broadcast_to(self.initial_target_xpos, goal.shape), goal)
+                         - goal_distance(np.broadcast_to(red_box_xpos, goal.shape), goal)
                 return reward
 
 
@@ -343,8 +345,6 @@ class FetchEnv(robot_env.RobotEnv):
         # DIY
         if self.has_object and not (self.grasp_mode or self.removal_mode or self.combine_mode):
             self.height_offset = self.sim.data.get_site_xpos("object0")[2]
-        if self.removal_mode:
-            self.initial_target_xpos = self.sim.data.get_geom_xpos("target_object").copy()
 
     def render(self, mode="human", width=500, height=500):
         return super(FetchEnv, self).render(mode, width, height)
