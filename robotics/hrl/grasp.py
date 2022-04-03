@@ -25,7 +25,7 @@ class GraspEnv(fetch_env.FetchEnv, utils.EzPickle):
             target_in_the_air=False, # True,
             target_offset=0.0,
             obj_range=0, # 0.15,
-            target_range=0.15,
+            target_range=0, # 0.15,
             distance_threshold=0.05,
             initial_qpos=initial_qpos,
             reward_type=reward_type,

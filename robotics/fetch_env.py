@@ -9,11 +9,7 @@ def goal_distance(goal_a, goal_b):
 
 # DIY
 def removal_reward(obstacle_coordinate, target_coordinate):
-    if len(obstacle_coordinate.shape) > 1:
-        reward = goal_distance(obstacle_coordinate, target_coordinate)
-    else:
-        reward = goal_distance(obstacle_coordinate, target_coordinate)
-    return reward
+    return goal_distance(obstacle_coordinate, target_coordinate)
 
 
 class FetchEnv(robot_env.RobotEnv):
@@ -90,7 +86,7 @@ class FetchEnv(robot_env.RobotEnv):
     def compute_reward(self, achieved_goal, goal, info):
         # Compute distance between goal and the achieved goal.
         # DIY
-        if not self.removal_mode:
+        if not (self.grasp_mode or self.removal_mode):
             d = goal_distance(achieved_goal, goal)
             if self.reward_type == "sparse":
                 return -(d > self.distance_threshold).astype(np.float32)
@@ -98,24 +94,16 @@ class FetchEnv(robot_env.RobotEnv):
                 return -d
         else:
             '''
-                achieved_goal = concatenate(
-                    xpos of obstacle_0
-                    xpos of obstacle_1
-                    ...
-                )
+                achieved_goal = xpos of cyan box
                 goal = xpos of red sphere
             '''
             # DIY
             grip_pos = self.sim.data.get_site_xpos("robot0:grip")
             if self.reward_type == "sparse":
-                return -(1 - self._is_success(achieved_goal, goal))
+                reward = -(1 - self._is_success(achieved_goal, goal))
             else:
-                reward = removal_reward(achieved_goal, goal)
-                # red_box_xpos = self.sim.data.get_geom_xpos("target_object").copy()
-                bool_idx = np.logical_and(self.reward_dist_inf <= reward, reward <= self.reward_dist_sup)
-                reward = np.where(bool_idx, reward, 0)
-                         # - goal_distance(np.broadcast_to(red_box_xpos, goal.shape), goal)
-                return reward
+                reward = removal_reward(achieved_goal, goal) - goal_distance(np.broadcast_to(grip_pos, achieved_goal.shape), achieved_goal)
+            return reward
 
 
     # RobotEnv methods
@@ -266,7 +254,7 @@ class FetchEnv(robot_env.RobotEnv):
         if self.has_object:
             object_xpos = self.initial_gripper_xpos[:2]
             # DIY
-            if not (self.grasp_mode or self.removal_mode or self.combine_mode):
+            if not (self.grasp_mode or self.removal_mode):
                 while np.linalg.norm(object_xpos - self.initial_gripper_xpos[:2]) < 0.1:
                     object_xpos = self.initial_gripper_xpos[:2] + self.np_random.uniform(
                         -self.obj_range, self.obj_range, size=2
