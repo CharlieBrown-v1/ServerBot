@@ -109,9 +109,9 @@ class FetchEnv(robot_env.RobotEnv):
                 return -(1 - self._is_success(achieved_goal, goal))
             else:
                 reward = removal_reward(achieved_goal, goal)
-                red_box_xpos = self.sim.data.get_geom_xpos("target_object").copy()
-                reward = np.where(reward < self.max_reward_dist, reward, self.max_reward_dist)\
-                         - goal_distance(np.broadcast_to(red_box_xpos, goal.shape), goal)
+                # red_box_xpos = self.sim.data.get_geom_xpos("target_object").copy()
+                reward = np.where(reward < self.max_reward_dist, reward, self.max_reward_dist)
+                         # - goal_distance(np.broadcast_to(red_box_xpos, goal.shape), goal)
                 return reward
 
 
@@ -268,7 +268,6 @@ class FetchEnv(robot_env.RobotEnv):
                     object_xpos = self.initial_gripper_xpos[:2] + self.np_random.uniform(
                         -self.obj_range, self.obj_range, size=2
                     )
-            if not (self.grasp_mode or self.removal_mode or self.combine_mode):
                 object_qpos = self.sim.data.get_joint_qpos("object0:joint")
                 assert object_qpos.shape == (7,)
                 object_qpos[:2] = object_xpos
@@ -326,7 +325,7 @@ class FetchEnv(robot_env.RobotEnv):
             return d < self.distance_threshold
         else:
             r = removal_reward(achieved_goal, desired_goal)
-            return r > self.max_reward_dist
+            return r > self.max_reward_dist + self.distance_threshold
 
     def _env_setup(self, initial_qpos):
         for name, value in initial_qpos.items():

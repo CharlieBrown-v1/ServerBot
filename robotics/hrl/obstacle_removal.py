@@ -30,7 +30,7 @@ class ObstacleRemovalEnv(fetch_env.FetchEnv, utils.EzPickle):
             target_offset=0.0,
             obj_range=0, # 0.15,
             target_range=0, # 0.15,
-            distance_threshold=0.05,
+            distance_threshold=0.03,
             initial_qpos=initial_qpos,
             reward_type=reward_type,
             removal_mode=True,
