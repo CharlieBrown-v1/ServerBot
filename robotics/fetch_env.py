@@ -32,8 +32,7 @@ class FetchEnv(robot_env.RobotEnv):
             grasp_mode=False,
             removal_mode=False,
             combine_mode=False,
-            reward_dist_inf=0.2,
-            reward_dist_sup=0.4,
+            reward_dist_sup=0.2,
             initial_target_xpos=None,
     ):
         """Initializes a new Fetch environment.
@@ -69,7 +68,6 @@ class FetchEnv(robot_env.RobotEnv):
         self.combine_mode = combine_mode
         len_const = 4
         self.obstacle_name_list = ['obstacle_' + str(i) for i in range(len(initial_qpos) - len_const)]
-        self.reward_dist_inf = reward_dist_inf
         self.reward_dist_sup = reward_dist_sup
 
         super(FetchEnv, self).__init__(
@@ -103,6 +101,10 @@ class FetchEnv(robot_env.RobotEnv):
                 reward = -(1 - self._is_success(achieved_goal, goal))
             else:
                 reward = removal_reward(achieved_goal, goal) - goal_distance(np.broadcast_to(grip_pos, achieved_goal.shape), achieved_goal)
+            if self.removal_mode:
+                site_target_objtect_pos = self.sim.data.get_site_xpos("target_object")
+                d = goal_distance(np.broadcast_to(site_target_objtect_pos, goal.shape), goal)
+                reward -= d
             return reward
 
 
@@ -254,7 +256,7 @@ class FetchEnv(robot_env.RobotEnv):
         if self.has_object:
             object_xpos = self.initial_gripper_xpos[:2]
             # DIY
-            if not (self.grasp_mode or self.removal_mode):
+            if not (self.grasp_mode or self.removal_mode or self.combine_mode):
                 while np.linalg.norm(object_xpos - self.initial_gripper_xpos[:2]) < 0.1:
                     object_xpos = self.initial_gripper_xpos[:2] + self.np_random.uniform(
                         -self.obj_range, self.obj_range, size=2
@@ -318,8 +320,7 @@ class FetchEnv(robot_env.RobotEnv):
             r = removal_reward(achieved_goal, desired_goal)
             site_target_objtect_pos = self.sim.data.get_site_xpos("target_object")
             d = goal_distance(np.broadcast_to(site_target_objtect_pos, desired_goal.shape), desired_goal)
-            bool_res = np.logical_and(self.reward_dist_inf <= r, r <= self.reward_dist_sup)
-            return bool_res & (d < self.distance_threshold)
+            return (r > self.reward_dist_sup) & (d < self.distance_threshold)
 
     def _env_setup(self, initial_qpos):
         for name, value in initial_qpos.items():
