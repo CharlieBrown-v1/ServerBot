@@ -325,7 +325,9 @@ class FetchEnv(robot_env.RobotEnv):
             return d < self.distance_threshold
         else:
             r = removal_reward(achieved_goal, desired_goal)
-            return r > self.max_reward_dist + self.distance_threshold
+            site_target_objtect_pos = self.sim.data.get_site_xpos("target_object")
+            d = goal_distance(np.broadcast_to(site_target_objtect_pos, desired_goal.shape), desired_goal)
+            return (r > self.max_reward_dist) & (d < self.distance_threshold)
 
     def _env_setup(self, initial_qpos):
         for name, value in initial_qpos.items():
