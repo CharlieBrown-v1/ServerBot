@@ -268,10 +268,14 @@ class FetchEnv(robot_env.RobotEnv):
                     object_xpos = self.initial_gripper_xpos[:2] + self.np_random.uniform(
                         -self.obj_range, self.obj_range, size=2
                     )
-            if not (self.removal_mode or self.combine_mode):
+            if not (self.grasp_mode or self.removal_mode or self.combine_mode):
                 object_qpos = self.sim.data.get_joint_qpos("object0:joint")
                 assert object_qpos.shape == (7,)
                 object_qpos[:2] = object_xpos
+                self.sim.data.set_joint_qpos("object0:joint", object_qpos)
+            elif self.grasp_mode:
+                object_qpos = self.sim.data.get_joint_qpos("object0:joint")
+                assert object_qpos.shape == (7,)
                 self.sim.data.set_joint_qpos("object0:joint", object_qpos)
             else:
                 target_qpos = self.sim.data.get_joint_qpos(f'target_object:joint')
