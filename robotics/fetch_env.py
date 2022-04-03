@@ -112,7 +112,8 @@ class FetchEnv(robot_env.RobotEnv):
             else:
                 reward = removal_reward(achieved_goal, goal)
                 # red_box_xpos = self.sim.data.get_geom_xpos("target_object").copy()
-                reward = np.where(self.reward_dist_inf <= reward <= self.reward_dist_sup, reward, 0)
+                bool_idx = np.logical_and(self.reward_dist_inf <= reward, reward <= self.reward_dist_sup)
+                reward = np.where(bool_idx, reward, 0)
                          # - goal_distance(np.broadcast_to(red_box_xpos, goal.shape), goal)
                 return reward
 
@@ -329,7 +330,8 @@ class FetchEnv(robot_env.RobotEnv):
             r = removal_reward(achieved_goal, desired_goal)
             site_target_objtect_pos = self.sim.data.get_site_xpos("target_object")
             d = goal_distance(np.broadcast_to(site_target_objtect_pos, desired_goal.shape), desired_goal)
-            return (self.reward_dist_inf <= r <= self.reward_dist_sup) & (d < self.distance_threshold)
+            bool_res = np.logical_and(self.reward_dist_inf <= r, r <= self.reward_dist_sup)
+            return bool_res & (d < self.distance_threshold)
 
     def _env_setup(self, initial_qpos):
         for name, value in initial_qpos.items():
