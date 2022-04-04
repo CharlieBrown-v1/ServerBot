@@ -85,10 +85,6 @@ class RobotEnv(gym.GoalEnv):
         '''
         info = {
             "is_success": self._is_success(obs["achieved_goal"], self.goal),
-            "prev_obs_tar_dist": self._get_obs_tar(),
-            "prev_grip_achi_dist" : self._get_grip_achi(),
-            "prev_tar_sph_dist" : self._get_tar_sph(),
-            "prev_achi_sph_dist" : self._get_achi_sph(),
         }
         done = self.hrl_mode and info['is_success']
         reward = self.compute_reward(obs["achieved_goal"], self.goal, info)
@@ -155,22 +151,6 @@ class RobotEnv(gym.GoalEnv):
 
     def _set_action(self, action):
         """Applies the given action to the simulation."""
-        raise NotImplementedError()
-    # DIY
-    def _get_obs_tar(self):
-        """Get prev state"""
-        raise NotImplementedError()
-
-    def _get_grip_achi(self):
-        """Get prev state"""
-        raise NotImplementedError()
-
-    def _get_tar_sph(self):
-        """Get prev state"""
-        raise NotImplementedError()
-
-    def _get_achi_sph(self):
-        """Get prev state"""
         raise NotImplementedError()
 
     def _is_success(self, achieved_goal, desired_goal):
