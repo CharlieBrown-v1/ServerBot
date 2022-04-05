@@ -136,6 +136,7 @@ class FetchEnv(robot_env.RobotEnv):
                     curr_obs_tar_dist = np.where(curr_obs_tar_dist > self.reward_dist_sup, curr_obs_tar_dist,
                                                  self.reward_dist_sup)
                     reward += curr_obs_tar_dist - self.prev_obs_tar_dist
+                    self.prev_obs_tar_dist = curr_obs_tar_dist
             return reward
 
 
