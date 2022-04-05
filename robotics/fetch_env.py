@@ -125,6 +125,11 @@ class FetchEnv(robot_env.RobotEnv):
                                              self.reward_dist_sup)
                     reward += curr_obs_tar_dist - self.prev_obs_tar_dist
                     self.prev_obs_tar_dist = curr_obs_tar_dist
+                elif self.combine_mode:
+                    curr_obs_tar_dist = obs_tar_dist(achieved_goal, goal)
+                    curr_obs_tar_dist = np.where(curr_obs_tar_dist > self.reward_dist_sup, curr_obs_tar_dist,
+                                                 self.reward_dist_sup)
+                    reward += curr_obs_tar_dist - self.prev_obs_tar_dist
             return reward
 
 
@@ -371,8 +376,10 @@ class FetchEnv(robot_env.RobotEnv):
             self.prev_grip_achi_dist = goal_distance(grip_xpos, obstacle_xpos)
             self.prev_tar_sph_dist = goal_distance(target_xpos, sph_xpos)
         elif self.combine_mode:
+            obstacle_xpos = self.sim.data.get_geom_xpos("obstacle_0")
             achieved_xpos = self.sim.data.get_geom_xpos("target_object")
             sph_xpos = self.sim.data.get_site_xpos("target_object")
+            self.prev_obs_tar_dist = obs_tar_dist(obstacle_xpos, achieved_xpos)
             self.prev_grip_achi_dist = goal_distance(grip_xpos, achieved_xpos)
             self.prev_achi_sph_dist = goal_distance(achieved_xpos, sph_xpos)
 
