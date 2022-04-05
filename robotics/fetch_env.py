@@ -32,7 +32,7 @@ class FetchEnv(robot_env.RobotEnv):
             grasp_mode=False,
             removal_mode=False,
             combine_mode=False,
-            reward_dist_sup=0.25,
+            reward_dist_sup=0.4,
     ):
         """Initializes a new Fetch environment.
 
