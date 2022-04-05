@@ -33,6 +33,6 @@ class FinalEnv(fetch_env.FetchEnv, utils.EzPickle):
             distance_threshold=0.05,
             initial_qpos=initial_qpos,
             reward_type=reward_type,
-            combine_mode=True,
+            final_mode=True,
         )
         utils.EzPickle.__init__(self, reward_type=reward_type)
