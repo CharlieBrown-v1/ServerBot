@@ -3,10 +3,10 @@ from gym import utils
 from gym.envs.robotics import fetch_env
 
 
-MODEL_XML_PATH = os.path.join("hrl", "combine.xml")
+MODEL_XML_PATH = os.path.join("hrl", "final.xml")
 
 
-class CombineEnv(fetch_env.FetchEnv, utils.EzPickle):
+class FinalEnv(fetch_env.FetchEnv, utils.EzPickle):
     def __init__(self, reward_type="dense"):
         initial_qpos = {
             "robot0:slide0": 0.405,
