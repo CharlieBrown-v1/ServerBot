@@ -80,7 +80,7 @@ class FetchEnv(robot_env.RobotEnv):
             n_substeps=n_substeps,
             n_actions=4,
             initial_qpos=initial_qpos,
-            hrl_mode=grasp_mode or removal_mode or combine_mode,
+            hrl_mode=grasp_mode or removal_mode or combine_mode or final_mode,
         )
 
     # GoalEnv methods
@@ -89,7 +89,7 @@ class FetchEnv(robot_env.RobotEnv):
     def compute_reward(self, achieved_goal, goal, info):
         # Compute distance between goal and the achieved goal.
         # DIY
-        if not (self.grasp_mode or self.removal_mode or self.combine_mode):
+        if not (self.grasp_mode or self.removal_mode or self.combine_mode or self.final_mode):
             d = goal_distance(achieved_goal, goal)
             if self.reward_type == "sparse":
                 return -(d > self.distance_threshold).astype(np.float32)
