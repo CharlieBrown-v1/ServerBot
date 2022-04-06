@@ -14,10 +14,10 @@ class FinalEnv(fetch_env.FetchEnv, utils.EzPickle):
             "robot0:slide2": 0.0,
             "target_object:joint": [1.45, 0.74, 0.4, 1.0, 0.0, 0.0, 0.0],
             "obstacle_0:joint": [1.395, 0.74, 0.4, 1.0, 0.0, 0.0, 0.0],
-            "obstacle_1:joint": [1.505, 0.74, 0.4, 1.0, 0.0, 0.0, 0.0],
-            "obstacle_2:joint": [1.45, 0.795, 0.4, 1.0, 0.0, 0.0, 0.0],
-            "obstacle_3:joint": [1.45, 0.685, 0.4, 1.0, 0.0, 0.0, 0.0],
-            "obstacle_4:joint": [1.45, 0.74, 0.45, 1.0, 0.0, 0.0, 0.0],
+            # "obstacle_2:joint": [1.505, 0.74, 0.4, 1.0, 0.0, 0.0, 0.0],
+            # "obstacle_3:joint": [1.45, 0.795, 0.4, 1.0, 0.0, 0.0, 0.0],
+            # "obstacle_4:joint": [1.45, 0.685, 0.4, 1.0, 0.0, 0.0, 0.0],
+            "obstacle_1:joint": [1.45, 0.74, 0.45, 1.0, 0.0, 0.0, 0.0],
         }
         fetch_env.FetchEnv.__init__(
             self,

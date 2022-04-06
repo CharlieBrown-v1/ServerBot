@@ -131,11 +131,11 @@ class FetchEnv(robot_env.RobotEnv):
                     curr_achi_sph_dist = goal_distance(achieved_goal, goal)
                     reward += self.prev_achi_sph_dist - curr_achi_sph_dist
                     self.prev_achi_sph_dist = curr_achi_sph_dist
-                    curr_obs_tar_dist = obs_tar_dist(achieved_goal, goal)
-                    curr_obs_tar_dist = np.where(curr_obs_tar_dist > self.reward_dist_sup, curr_obs_tar_dist,
-                                                 self.reward_dist_sup)
-                    reward += curr_obs_tar_dist - self.prev_obs_tar_dist
-                    self.prev_obs_tar_dist = curr_obs_tar_dist
+                    # curr_obs_tar_dist = obs_tar_dist(achieved_goal, goal)
+                    # curr_obs_tar_dist = np.where(curr_obs_tar_dist > self.reward_dist_sup, curr_obs_tar_dist,
+                    #                              self.reward_dist_sup)
+                    # reward += curr_obs_tar_dist - self.prev_obs_tar_dist
+                    # self.prev_obs_tar_dist = curr_obs_tar_dist
             return reward
 
 

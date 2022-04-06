@@ -29,11 +29,7 @@
 			<joint name="obstacle_0:joint" type="free" damping="0.01"></joint>
 			<geom size="0.025 0.025 0.045" type="box" condim="3" name="obstacle_0" material="block_mat" mass="2"></geom>
 		</body>
-		<body name="obstacle_1" pos="0.025 0.025 0.025">
-			<joint name="obstacle_1:joint" type="free" damping="0.01"></joint>
-			<geom size="0.025 0.025 0.045" type="box" condim="3" name="obstacle_1" material="block_mat" mass="2"></geom>
-		</body>
-
+		<!--
 		<body name="obstacle_2" pos="0.025 0.025 0.025">
 			<joint name="obstacle_2:joint" type="free" damping="0.01"></joint>
 			<geom size="0.025 0.025 0.045" type="box" condim="3" name="obstacle_2" material="block_mat" mass="2"></geom>
@@ -43,9 +39,15 @@
 			<joint name="obstacle_3:joint" type="free" damping="0.01"></joint>
 			<geom size="0.025 0.025 0.045" type="box" condim="3" name="obstacle_3" material="block_mat" mass="2"></geom>
 		</body>
+
 		<body name="obstacle_4" pos="0.025 0.025 0.025">
 			<joint name="obstacle_4:joint" type="free" damping="0.01"></joint>
-			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_4" material="block_mat" mass="2"></geom>
+			<geom size="0.025 0.025 0.045" type="box" condim="3" name="obstacle_4" material="block_mat" mass="2"></geom>
+		</body>
+		-->
+		<body name="obstacle_1" pos="0.025 0.025 0.025">
+			<joint name="obstacle_1:joint" type="free" damping="0.01"></joint>
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_1" material="block_mat" mass="2"></geom>
 		</body>
 		<light directional="true" ambient="0.2 0.2 0.2" diffuse="0.8 0.8 0.8" specular="0.3 0.3 0.3" castshadow="false" pos="0 0 4" dir="0 0 -1" name="light0"></light>
 	</worldbody>
