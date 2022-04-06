@@ -117,7 +117,7 @@ class FetchEnv(robot_env.RobotEnv):
                     reward += self.prev_achi_sph_dist - curr_achi_sph_dist
                     self.prev_achi_sph_dist = curr_achi_sph_dist
                 elif self.removal_mode:
-                    punish_factor = 10
+                    punish_factor = 2
                     site_target_objtect_pos = self.sim.data.get_site_xpos("target_object")
                     curr_tar_sph_dist = goal_distance(np.broadcast_to(site_target_objtect_pos, goal.shape), goal)
                     reward += punish_factor * (self.prev_tar_sph_dist - curr_tar_sph_dist)
