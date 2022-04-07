@@ -4,13 +4,17 @@ from gym.envs.robotics import rotations, robot_env, utils
 
 
 my_infinity = 0x3f3f3f3f
+
 d = 0.01
-length_scale = 40
-width_scale = 40
-height_scale = 40
+length_scale = 41
+width_scale = 41
+height_scale = 41
 length = length_scale * d
 width = width_scale * d
 height = height_scale * d
+
+item_list = ['air', 'goal', 'achieved_goal', 'obstacle']
+item_dict = dict(zip(item_list, np.arange(len(item_list))))
 
 
 def goal_distance(goal_a, goal_b):
@@ -44,6 +48,7 @@ class FetchEnv(robot_env.RobotEnv):
             combine_mode=False,
             final_mode=False,
             cube_mode=False,
+            debug_mode=False,
             reward_dist_sup=0.25,
     ):
         """Initializes a new Fetch environment.
@@ -79,6 +84,7 @@ class FetchEnv(robot_env.RobotEnv):
         self.combine_mode = combine_mode
         self.final_mode = final_mode
         self.cube_mode = cube_mode
+        self.debug_mode = debug_mode
         self.object_name_list = [f'{name[: name.rfind(":")]}' for name in initial_qpos.keys() if name.find('robot') == -1]
         obstacle_len_const = 4
         self.obstacle_name_list = ['obstacle_' + str(i) for i in range(len(initial_qpos) - obstacle_len_const)]
@@ -185,9 +191,80 @@ class FetchEnv(robot_env.RobotEnv):
         utils.ctrl_set_action(self.sim, action)
         utils.mocap_set_action(self.sim, action)
 
-    def _map_object2cube(self, cube_obs: np.ndarray, object_xpos_list: list):
+    def _map_once(self, cube_obs: np.ndarray,
+                  compute_starting_point: np.ndarray,
+                  starting_point_idx: int,
+                  xpos_start: np.ndarray,
+                  xpos_end: np.ndarray,
+                  item_key: int,
+                  ):
+        idx_start = np.floor((xpos_start - compute_starting_point) / d).astype(int)
+        idx_end = np.ceil((xpos_end - compute_starting_point) / d).astype(int)
+        idx_end = np.where(idx_start < idx_end, idx_end, idx_end + 1)
+        cube_obs[
+            max(starting_point_idx + idx_start[0], 0): min(starting_point_idx + idx_end[0], length_scale),
+            max(starting_point_idx + idx_start[1], 0): min(starting_point_idx + idx_end[1], length_scale),
+            max(starting_point_idx + idx_start[2], 0): min(starting_point_idx + idx_end[2], length_scale),
+        ] \
+            = item_key
 
-        pass
+    def _map_object2cube(self, cube_obs: np.ndarray, starting_point: np.ndarray,
+                         goal_xpos_tuple: tuple,
+                         achieved_goal_xpos_tuple: tuple,
+                         obstacle_xpos_tuple_list: list,
+                         goal_size: int,
+                         achieved_goal_size: int,
+                         obstacle_size: int,
+                         ):
+        starting_point_idx = length_scale // 2
+        compute_starting_point = starting_point - (d / 2)
+
+        goal_xpos = goal_xpos_tuple[0]
+        goal_xpos_start = goal_xpos_tuple[1]
+        goal_xpos_end = goal_xpos_tuple[2]
+        self._map_once(cube_obs, compute_starting_point, starting_point_idx,
+                       goal_xpos_start, goal_xpos_end, item_dict['goal'])
+        if self.debug_mode:
+            self._verify_cube(cube_obs, starting_point, starting_point_idx, 'goal', goal_xpos_start, goal_xpos_end)
+
+        achieved_goal_xpos = achieved_goal_xpos_tuple[0]
+        achieved_goal_xpos_start = achieved_goal_xpos_tuple[1]
+        achieved_goal_xpos_end = achieved_goal_xpos_tuple[2]
+        self._map_once(cube_obs, compute_starting_point, starting_point_idx,
+                       achieved_goal_xpos_start, achieved_goal_xpos_end, item_dict['achieved_goal'])
+        if self.debug_mode:
+            self._verify_cube(cube_obs, starting_point, starting_point_idx,'achieved_goal', achieved_goal_xpos_start, achieved_goal_xpos_end)
+
+        for obstacle_xpos_pair in obstacle_xpos_tuple_list:
+            obstacle_xpos = obstacle_xpos_pair[0]
+            obstacle_xpos_start = obstacle_xpos_pair[1]
+            obstacle_xpos_end = obstacle_xpos_pair[2]
+            self._map_once(cube_obs, compute_starting_point, starting_point_idx,
+                           obstacle_xpos_start, obstacle_xpos_end, item_dict['obstacle'])
+            if self.debug_mode:
+                self._verify_cube(cube_obs, starting_point, starting_point_idx, 'obstacle', obstacle_xpos_start, obstacle_xpos_end)
+
+    def _verify_cube(self, cube_obs: np.ndarray,
+                     starting_point: np.ndarray,
+                     starting_point_idx: int,
+                     verify_name: str,
+                     verify_xpos_start: np.ndarray,
+                     verify_xpos_end: np.ndarray,
+                     ):
+        starting_point_start = starting_point - (d / 2)
+        starting_point_end = starting_point + (d / 2)
+        x, y, z = np.where(cube_obs == item_dict[verify_name])
+        x_start, x_end = x.min() - starting_point_idx, x.max() - starting_point_idx
+        y_start, y_end = y.min() - starting_point_idx, y.max() - starting_point_idx
+        z_start, z_end = z.min() - starting_point_idx, z.max() - starting_point_idx
+        start_idx = np.array([x_start, y_start, z_start])
+        end_idx = np.array([x_end, y_end, z_end])
+        cube_xpos_start = starting_point_start + d * np.array([x_start, y_start, z_start])
+        cube_xpos_end = starting_point_end + d * np.array([x_end, y_end, z_end])
+        flag_0 = np.logical_or(cube_xpos_start <= verify_xpos_start, start_idx == 0 - starting_point_idx)
+        flag_1 = np.logical_or(cube_xpos_end >= verify_xpos_end, end_idx == length_scale - 1 - starting_point_idx)
+        assert flag_0.all() and flag_1.all()
+
 
     def _get_obs(self):
         # positions
@@ -204,18 +281,17 @@ class FetchEnv(robot_env.RobotEnv):
         if self.has_object:
             # DIY
             if self.cube_mode:
+                goal_size = 0.02
+                achieved_goal_size = 0.025
+                obstacle_size = np.array([0.025, 0.025, 0.045])
+
                 starting_point = grip_pos.copy()
-                length_start = starting_point[0] - length
-                length_end = starting_point[0] + length
-                width_start = starting_point[1] - width
-                width_end = starting_point[1] + width
-                height_start = starting_point[2] - height
-                height_end = starting_point[2] + height
 
                 if self.removal_mode:
                     object_pos = [self.sim.data.get_geom_xpos(name).copy() for name in self.obstacle_name_list]
+                    achieved_goal_size = obstacle_size.copy()
                     cube_achieved_pos = np.concatenate(object_pos.copy())
-                elif self.combine_mode or self.final_mode:
+                elif self.grasp_mode or self.combine_mode or self.final_mode:
                     target_object_pos = self.sim.data.get_geom_xpos("target_object")
                     cube_achieved_pos = np.squeeze(target_object_pos.copy())
                 else:
@@ -223,24 +299,38 @@ class FetchEnv(robot_env.RobotEnv):
                     cube_achieved_pos = np.squeeze(object_pos.copy())
 
                 cube_obs = np.zeros((length_scale, width_scale, height_scale), dtype=int)
-                obeject_xpos_list = [self.sim.data.get_geom_xpos(name) for name in self.object_name_list if name.find('robot') == -1]
-                self._map_object2cube(cube_obs, obeject_xpos_list)
-                physical_obs = [grip_pos, gripper_state, grip_velp, gripper_vel]
-                for name in self.object_name_list:
-                    # rotations
-                    object_rot = rotations.mat2euler(self.sim.data.get_geom_xmat(name))
-                    # velocities
-                    object_velp = self.sim.data.get_geom_xvelp(name) * dt
-                    object_velr = self.sim.data.get_geom_xvelr(name) * dt
-                    # gripper state
-                    object_rel_pos = object_pos - grip_pos
-                    object_velp -= grip_velp
+                goal_xpos = self.goal.copy()
+                goal_xpos_tuple = (goal_xpos, goal_xpos - goal_size, goal_xpos + goal_size)
+                achieved_goal_xpos = cube_achieved_pos.copy()
+                achieved_goal_xpos_tuple = (achieved_goal_xpos, achieved_goal_xpos - achieved_goal_size, achieved_goal_xpos + achieved_goal_size)
+                obstacle_xpos_list = [self.sim.data.get_geom_xpos(name) for name in self.obstacle_name_list]
+                obstacle_xpos_tuple_list = [(obstacle_xpos, obstacle_xpos - obstacle_size, obstacle_xpos + obstacle_size) for obstacle_xpos in obstacle_xpos_list]
+                self._map_object2cube(cube_obs, starting_point,
+                                      goal_xpos_tuple,
+                                      achieved_goal_xpos_tuple,
+                                      obstacle_xpos_tuple_list,
+                                      goal_size,
+                                      achieved_goal_size,
+                                      obstacle_size,
+                                      )
 
-                    physical_obs.append(object_rot.flatten().copy())
-                    physical_obs.append(object_velp.flatten().copy())
-                    physical_obs.append(object_velr.flatten().copy())
-                    physical_obs.append(object_rel_pos.flatten().copy())
-            elif not(self.removal_mode or self.combine_mode or self.final_mode):
+                physical_obs = [grip_pos, gripper_state, grip_velp, gripper_vel]
+                target_pos = self.sim.data.get_site_xpos("target_object")
+                # rotations
+                target_rot = rotations.mat2euler(self.sim.data.get_site_xmat("target_object"))
+                # velocities
+                target_velp = self.sim.data.get_site_xvelp("target_object") * dt
+                target_velr = self.sim.data.get_site_xvelr("target_object") * dt
+                # gripper state
+                target_rel_pos = target_pos - grip_pos
+                target_velp -= grip_velp
+
+                physical_obs.append(target_pos.flatten().copy())
+                physical_obs.append(target_rot.flatten().copy())
+                physical_obs.append(target_velp.flatten().copy())
+                physical_obs.append(target_velr.flatten().copy())
+                physical_obs.append(target_rel_pos.flatten().copy())
+            elif not (self.grasp_mode or self.removal_mode or self.combine_mode or self.final_mode):
                 object_pos = self.sim.data.get_site_xpos("object0")
                 # rotations
                 object_rot = rotations.mat2euler(self.sim.data.get_site_xmat("object0"))
@@ -263,7 +353,7 @@ class FetchEnv(robot_env.RobotEnv):
                     object_velr.append(self.sim.data.get_geom_xvelr(self.obstacle_name_list[idx]).copy() * dt)
                     object_rel_pos.append(object_pos - grip_pos)
                     object_velp[idx] -= grip_velp
-                if self.combine_mode or self.final_mode:
+                if self.grasp_mode or self.combine_mode or self.final_mode:
                     target_object_pos = self.sim.data.get_geom_xpos("target_object")
                     object_pos.append(target_object_pos.copy())
                     object_rot.append(rotations.mat2euler(self.sim.data.get_geom_xmat("target_object")).copy())
@@ -283,7 +373,7 @@ class FetchEnv(robot_env.RobotEnv):
             achieved_goal = cube_achieved_pos.copy()
         elif self.removal_mode:
             achieved_goal = np.concatenate(object_pos.copy())
-        elif self.combine_mode or self.final_mode:
+        elif self.grasp_mode or self.combine_mode or self.final_mode:
             achieved_goal = np.squeeze(target_object_pos.copy())
         else:
             achieved_goal = np.squeeze(object_pos.copy())
@@ -295,7 +385,7 @@ class FetchEnv(robot_env.RobotEnv):
                     np.concatenate(physical_obs),
                 ]
             )
-        elif self.removal_mode or self.combine_mode or self.final_mode:
+        elif self.grasp_mode or self.removal_mode or self.combine_mode or self.final_mode:
             obs = np.concatenate(
                 [
                     grip_pos,
@@ -352,7 +442,7 @@ class FetchEnv(robot_env.RobotEnv):
         if self.has_object:
             object_xpos = self.initial_gripper_xpos[:2]
             # DIY
-            if not (self.removal_mode or self.combine_mode or self.final_mode):
+            if not (self.grasp_mode or self.removal_mode or self.combine_mode or self.final_mode):
                 while np.linalg.norm(object_xpos - self.initial_gripper_xpos[:2]) < 0.1:
                     object_xpos = self.initial_gripper_xpos[:2] + self.np_random.uniform(
                         -self.obj_range, self.obj_range, size=2
@@ -361,6 +451,15 @@ class FetchEnv(robot_env.RobotEnv):
                 assert object_qpos.shape == (7,)
                 object_qpos[:2] = object_xpos
                 self.sim.data.set_joint_qpos("object0:joint", object_qpos)
+            elif self.grasp_mode:
+                while np.linalg.norm(object_xpos - self.initial_gripper_xpos[:2]) < 0.1:
+                    object_xpos = self.initial_gripper_xpos[:2] + self.np_random.uniform(
+                        -self.obj_range, self.obj_range, size=2
+                    )
+                object_qpos = self.sim.data.get_joint_qpos("target_object:joint")
+                assert object_qpos.shape == (7,)
+                object_qpos[:2] = object_xpos
+                self.sim.data.set_joint_qpos("target_object:joint", object_qpos)
             elif self.removal_mode:
                 target_qpos = self.sim.data.get_joint_qpos(f'target_object:joint')
                 assert target_qpos.shape == (7,)
@@ -428,25 +527,20 @@ class FetchEnv(robot_env.RobotEnv):
         self.initial_gripper_xpos = self.sim.data.get_site_xpos("robot0:grip").copy()
         # DIY
         if self.has_object and not self.removal_mode:
-            if self.combine_mode or self.final_mode:
+            if self.grasp_mode or self.combine_mode or self.final_mode:
                 self.height_offset = self.sim.data.get_site_xpos("target_object")[2]
             else:
                 self.height_offset = self.sim.data.get_site_xpos("object0")[2]
         # DIY
         grip_xpos = self.sim.data.get_site_xpos("robot0:grip").copy()
-        if self.grasp_mode:
-            achieved_xpos = self.sim.data.get_geom_xpos("object0")
-            # sph_xpos = self.sim.data.get_site_xpos("object0")
-            self.prev_grip_achi_dist = goal_distance(grip_xpos, achieved_xpos)
-            self.prev_achi_sph_dist = my_infinity # goal_distance(achieved_xpos, sph_xpos)
-        elif self.removal_mode:
+        if self.removal_mode:
             obstacle_xpos = self.sim.data.get_geom_xpos("obstacle_0")
             target_xpos = self.sim.data.get_geom_xpos("target_object")
             sph_xpos = self.sim.data.get_site_xpos("target_object")
             self.prev_obs_tar_dist = obs_tar_dist(obstacle_xpos, target_xpos)
             self.prev_grip_achi_dist = goal_distance(grip_xpos, obstacle_xpos)
             self.prev_tar_sph_dist = goal_distance(target_xpos, sph_xpos)
-        elif self.combine_mode or self.final_mode:
+        elif self.grasp_mode or self.combine_mode or self.final_mode:
             # obstacle_xpos = self.sim.data.get_geom_xpos("obstacle_0")
             achieved_xpos = self.sim.data.get_geom_xpos("target_object")
             # sph_xpos = self.sim.data.get_site_xpos("target_object")

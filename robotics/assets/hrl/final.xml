@@ -29,7 +29,7 @@
 			<joint name="obstacle_0:joint" type="free" damping="0.01"></joint>
 			<geom size="0.025 0.025 0.045" type="box" condim="3" name="obstacle_0" material="block_mat" mass="2"></geom>
 		</body>
-		<!--
+		
 		<body name="obstacle_2" pos="0.025 0.025 0.025">
 			<joint name="obstacle_2:joint" type="free" damping="0.01"></joint>
 			<geom size="0.025 0.025 0.045" type="box" condim="3" name="obstacle_2" material="block_mat" mass="2"></geom>
@@ -44,7 +44,7 @@
 			<joint name="obstacle_4:joint" type="free" damping="0.01"></joint>
 			<geom size="0.025 0.025 0.045" type="box" condim="3" name="obstacle_4" material="block_mat" mass="2"></geom>
 		</body>
-		-->
+
 		<body name="obstacle_1" pos="0.025 0.025 0.025">
 			<joint name="obstacle_1:joint" type="free" damping="0.01"></joint>
 			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_1" material="block_mat" mass="2"></geom>
