@@ -100,6 +100,7 @@ class FetchEnv(robot_env.RobotEnv):
             n_actions=4,
             initial_qpos=initial_qpos,
             hrl_mode=grasp_mode or removal_mode or combine_mode or final_mode or cube_mode,
+            cube_mode=cube_mode,
         )
 
     # GoalEnv methods
@@ -298,7 +299,7 @@ class FetchEnv(robot_env.RobotEnv):
                     object_pos = self.sim.data.get_site_xpos("object0")
                     cube_achieved_pos = np.squeeze(object_pos.copy())
 
-                cube_obs = np.zeros((length_scale, width_scale, height_scale), dtype=int)
+                cube_obs = np.zeros((length_scale, width_scale, height_scale), dtype=np.uint8)
                 goal_xpos = self.goal.copy()
                 goal_xpos_tuple = (goal_xpos, goal_xpos - goal_size, goal_xpos + goal_size)
                 achieved_goal_xpos = cube_achieved_pos.copy()
@@ -379,6 +380,13 @@ class FetchEnv(robot_env.RobotEnv):
             achieved_goal = np.squeeze(object_pos.copy())
         # DIY
         if self.cube_mode:
+            print()
+            return {
+                "cube_observation": cube_obs.flatten().copy(),
+                "physical_observation": np.concatenate(physical_obs).copy(),
+                "achieved_goal": achieved_goal.copy(),
+                "desired_goal": self.goal.copy(),
+            }
             obs = np.concatenate(
                 [
                     cube_obs.flatten(),

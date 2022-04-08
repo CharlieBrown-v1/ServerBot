@@ -19,7 +19,7 @@ DEFAULT_SIZE = 500
 
 
 class RobotEnv(gym.GoalEnv):
-    def __init__(self, model_path, initial_qpos, n_actions, n_substeps, hrl_mode=False):
+    def __init__(self, model_path, initial_qpos, n_actions, n_substeps, hrl_mode=False, cube_mode=False):
         if model_path.startswith("/"):
             fullpath = model_path
         else:
@@ -45,20 +45,39 @@ class RobotEnv(gym.GoalEnv):
         obs = self._get_obs()
         self.action_space = spaces.Box(-1.0, 1.0, shape=(n_actions,), dtype="float32")
         # DIY
-        self.observation_space = spaces.Dict(
-            dict(
-                desired_goal=spaces.Box(
-                    -np.inf, np.inf, shape=obs["desired_goal"].shape, dtype="float32"
-                ),
-                achieved_goal=spaces.Box(
-                    -np.inf, np.inf, shape=obs["achieved_goal"].shape, dtype="float32"
-                ),
-                observation=spaces.Box(
-                    -np.inf, np.inf, shape=obs["observation"].shape, dtype="float32"
-                ),
-            )
-        )
         self.hrl_mode = hrl_mode
+        self.cube_mode = cube_mode
+        if self.cube_mode:
+            self.observation_space = spaces.Dict(
+                dict(
+                    desired_goal=spaces.Box(
+                        -np.inf, np.inf, shape=obs["desired_goal"].shape, dtype="float32"
+                    ),
+                    achieved_goal=spaces.Box(
+                        -np.inf, np.inf, shape=obs["achieved_goal"].shape, dtype="float32"
+                    ),
+                    cube_observation=spaces.Box(
+                        0, 255, shape=obs["cube_observation"].shape, dtype=np.uint8
+                    ),
+                    physical_observation=spaces.Box(
+                        -np.inf, np.inf, shape=obs["physical_observation"].shape, dtype="float32"
+                    ),
+                )
+            )
+        else:
+            self.observation_space = spaces.Dict(
+                dict(
+                    desired_goal=spaces.Box(
+                        -np.inf, np.inf, shape=obs["desired_goal"].shape, dtype="float32"
+                    ),
+                    achieved_goal=spaces.Box(
+                        -np.inf, np.inf, shape=obs["achieved_goal"].shape, dtype="float32"
+                    ),
+                    observation=spaces.Box(
+                        -np.inf, np.inf, shape=obs["observation"].shape, dtype="float32"
+                    ),
+                )
+            )
 
     @property
     def dt(self):
@@ -77,6 +96,7 @@ class RobotEnv(gym.GoalEnv):
         self.sim.step()
         self._step_callback()
         obs = self._get_obs()
+        # DIY
         '''
             self.goal: Red Point
             obs['desired_goal']: Red Point
