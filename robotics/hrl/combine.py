@@ -24,7 +24,7 @@ class CombineEnv(fetch_env.FetchEnv, utils.EzPickle):
             gripper_extra_height=0.2,
             target_in_the_air=True,
             target_offset=0.0,
-            obj_range=0, # 0.15,
+            obj_range=0.15,
             target_range=0.15,
             distance_threshold=0.05,
             initial_qpos=initial_qpos,
