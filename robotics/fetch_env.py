@@ -35,7 +35,10 @@ def goal_distance(goal_a, goal_b):
 
 # DIY
 def obs_tar_dist(obstacle_xpos, target_xpos):
-    return goal_distance(obstacle_xpos, target_xpos)
+    if len(obstacle_xpos.shape) <= 1:
+        return goal_distance(obstacle_xpos[:2], target_xpos[:2])
+    else:
+        return goal_distance(obstacle_xpos[:, :2], target_xpos[:, :2])
 
 
 class FetchEnv(robot_env.RobotEnv):
@@ -62,6 +65,7 @@ class FetchEnv(robot_env.RobotEnv):
             cube_mode=False,
             debug_mode=False,
             reward_dist_sup=0.25,
+            height_diff=0.005,
     ):
         """Initializes a new Fetch environment.
 
@@ -102,6 +106,8 @@ class FetchEnv(robot_env.RobotEnv):
         self.obstacle_name_list = ['obstacle_' + str(i) for i in range(len(initial_qpos) - obstacle_len_const)]
 
         self.reward_dist_sup = reward_dist_sup
+        self.height_diff = height_diff
+
         self.prev_obs_tar_dist = None
         self.prev_grip_achi_dist = None
         self.prev_tar_sph_dist = None
@@ -145,7 +151,7 @@ class FetchEnv(robot_env.RobotEnv):
                     reward += self.prev_achi_sph_dist - curr_achi_sph_dist
                     self.prev_achi_sph_dist = curr_achi_sph_dist
                 elif self.removal_mode:
-                    punish_factor = 2
+                    punish_factor = 5
                     site_target_objtect_pos = self.sim.data.get_site_xpos("target_object")
                     curr_tar_sph_dist = goal_distance(np.broadcast_to(site_target_objtect_pos, goal.shape), goal)
                     reward += punish_factor * (self.prev_tar_sph_dist - curr_tar_sph_dist)
@@ -526,10 +532,14 @@ class FetchEnv(robot_env.RobotEnv):
             d = goal_distance(achieved_goal, desired_goal)
             return d < self.distance_threshold
         else:
-            r = obs_tar_dist(achieved_goal, desired_goal)
+            reward_dist = obs_tar_dist(achieved_goal, desired_goal)
             site_target_objtect_pos = self.sim.data.get_site_xpos("target_object")
             d = goal_distance(np.broadcast_to(site_target_objtect_pos, desired_goal.shape), desired_goal)
-            return (r > self.reward_dist_sup) & (d < self.distance_threshold)
+            if len(achieved_goal.shape) < 1:
+                height_diff = achieved_goal[2] - desired_goal[2]
+            else:
+                height_diff = achieved_goal[:, 2] - desired_goal[:, 2]
+            return (reward_dist > self.reward_dist_sup) & (d < self.distance_threshold) & (height_diff < self.height_diff)
 
     def _env_setup(self, initial_qpos):
         for name, value in initial_qpos.items():
