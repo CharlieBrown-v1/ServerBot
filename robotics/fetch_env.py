@@ -535,7 +535,7 @@ class FetchEnv(robot_env.RobotEnv):
             reward_dist = obs_tar_dist(achieved_goal, desired_goal)
             site_target_objtect_pos = self.sim.data.get_site_xpos("target_object")
             d = goal_distance(np.broadcast_to(site_target_objtect_pos, desired_goal.shape), desired_goal)
-            if len(achieved_goal.shape) < 1:
+            if len(achieved_goal.shape) <= 1:
                 height_diff = achieved_goal[2] - desired_goal[2]
             else:
                 height_diff = achieved_goal[:, 2] - desired_goal[:, 2]
