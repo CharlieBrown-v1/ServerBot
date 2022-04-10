@@ -17,3 +17,4 @@ from gym.envs.robotics.hrl.grasp import GraspEnv
 from gym.envs.robotics.hrl.obstacle_removal import ObstacleRemovalEnv
 from gym.envs.robotics.hrl.combine import CombineEnv
 from gym.envs.robotics.hrl.final import FinalEnv
+from gym.envs.robotics.hrl.hrl import HrlEnv

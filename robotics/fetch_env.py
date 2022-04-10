@@ -11,8 +11,11 @@ length = length_scale * d
 width = width_scale * d
 height = height_scale * d
 
-item_list = ['air', 'goal', 'achieved_goal', 'obstacle']
-item_dict = dict(zip(item_list, np.arange(len(item_list))))
+item_name = ['air', 'goal', 'achieved_goal', 'obstacle']
+item_dict = dict(zip(item_name, np.arange(len(item_name))))
+task_name = ['removal', 'grasp']
+task_dict = dict(zip(task_name, np.arange(len(task_name))))
+
 
 target_qpos     = np.array([1.45, 0.74, 0.4, 1.0, 0.0, 0.0, 0.0])
 obstacle_0_qpos = np.array([1.395, 0.74, 0.42, 1.0, 0.0, 0.0, 0.0])
@@ -63,6 +66,7 @@ class FetchEnv(robot_env.RobotEnv):
             combine_mode=False,
             final_mode=False,
             cube_mode=False,
+            hrl_mode=False,
             debug_mode=False,
             reward_dist_sup=0.25,
     ):
@@ -107,31 +111,79 @@ class FetchEnv(robot_env.RobotEnv):
         self.reward_dist_sup = reward_dist_sup
 
         self.init_height_diff = None
-        self.prev_obs_tar_dist = None
-        self.prev_grip_achi_dist = None
-        self.prev_tar_sph_dist = None
+        self.prev_obs_achi_dist = None
+        self.prev_grip_obj_dist = None
         self.prev_achi_sph_dist = None
+        self.prev_achi_desi_dist = None
+
+        self.hrl_mode = hrl_mode
+        if self.hrl_mode:
+            self.task_state = task_dict['removal']
+            self.focusing_obsatcle_name = None
+            self.left_obstacle_count = len(self.obstacle_name_list)
 
         super(FetchEnv, self).__init__(
             model_path=model_path,
             n_substeps=n_substeps,
             n_actions=4,
             initial_qpos=initial_qpos,
-            hrl_mode=grasp_mode or removal_mode or combine_mode or final_mode or cube_mode,
+            hrl_mode=grasp_mode or removal_mode or combine_mode or final_mode or cube_mode or hrl_mode,
         )
 
     # GoalEnv methods
     # ----------------------------
 
+    # DIY
+    def hrl_reward(self, achieved_goal, goal, info):
+        grip_pos = self.sim.data.get_site_xpos("robot0:grip")
+        reward = 0
+        if self.reward_type == "sparse":
+            if self.task_state == task_dict['removal']:
+                close_obstacle_xpos = self.sim.data.get_geom_xpos(self.focusing_obsatcle_name)
+                reward += -(1 - self._is_success(close_obstacle_xpos, achieved_goal))
+            elif self.task_state == task_dict['grasp']:
+                reward += -(1 - self._is_success(achieved_goal, goal))
+        else:
+            # grip_box: smaller -> better (prev - curr)
+            # achi_sph: smaller -> better (prev - curr)
+            # tar_sph: smaller -> better (prev - curr)
+            # obs_tar: larger -> better (curr - prev)
+            if self.task_state == task_dict['removal']:
+                closest_obstacle_xpos = self.sim.data.get_geom_xpos(self.focusing_obsatcle_name)
+                curr_grip_obs_dist = goal_distance(np.broadcast_to(grip_pos, closest_obstacle_xpos.shape), closest_obstacle_xpos)
+                reward += self.prev_grip_obj_dist - curr_grip_obs_dist
+                self.prev_grip_obj_dist = curr_grip_obs_dist
+                punish_factor = 5
+                sph_xpos = self.sim.data.get_site_xpos("target_object")
+                curr_achi_sph_dist = goal_distance(np.broadcast_to(sph_xpos, achieved_goal.shape), achieved_goal)
+                reward += punish_factor * (self.prev_achi_sph_dist - curr_achi_sph_dist)
+                self.prev_achi_sph_dist = curr_achi_sph_dist
+                curr_obs_achi_dist = obs_tar_dist(closest_obstacle_xpos, achieved_goal)
+                curr_obs_achi_dist = np.where(curr_obs_achi_dist <= self.reward_dist_sup, curr_obs_achi_dist,
+                                             self.reward_dist_sup)
+                reward += curr_obs_achi_dist - self.prev_obs_achi_dist
+                self.prev_obs_achi_dist = curr_obs_achi_dist
+            elif self.task_state == task_dict['grasp']:
+                curr_grip_achi_dist = goal_distance(np.broadcast_to(grip_pos, achieved_goal.shape), achieved_goal)
+                reward += self.prev_grip_obj_dist - curr_grip_achi_dist
+                self.prev_grip_obj_dist = curr_grip_achi_dist
+                curr_achi_sph_dist = goal_distance(achieved_goal, goal)
+                reward += self.prev_achi_desi_dist - curr_achi_sph_dist
+                self.prev_achi_desi_dist = curr_achi_sph_dist
+        return reward
+
+    # DIY
     def compute_reward(self, achieved_goal, goal, info):
         # Compute distance between goal and the achieved goal.
         # DIY
-        if not (self.grasp_mode or self.removal_mode or self.combine_mode or self.final_mode):
+        if not (self.grasp_mode or self.removal_mode or self.combine_mode or self.final_mode or self.hrl_mode):
             d = goal_distance(achieved_goal, goal)
             if self.reward_type == "sparse":
                 return -(d > self.distance_threshold).astype(np.float32)
             else:
                 return -d
+        elif self.hrl_mode:
+            return self.hrl_reward(achieved_goal, goal, info)
         else:
             # DIY
             grip_pos = self.sim.data.get_site_xpos("robot0:grip")
@@ -143,34 +195,24 @@ class FetchEnv(robot_env.RobotEnv):
                 # tar_sph: smaller -> better (prev - curr)
                 # obs_tar: larger -> better (curr - prev)
                 curr_grip_achi_dist = goal_distance(np.broadcast_to(grip_pos, achieved_goal.shape), achieved_goal)
-                reward = self.prev_grip_achi_dist - curr_grip_achi_dist
-                self.prev_grip_achi_dist = curr_grip_achi_dist
-                if self.grasp_mode or self.final_mode:
+                reward = self.prev_grip_obj_dist - curr_grip_achi_dist
+                self.prev_grip_obj_dist = curr_grip_achi_dist
+                if self.grasp_mode or self.combine_mode or self.final_mode:
                     curr_achi_sph_dist = goal_distance(achieved_goal, goal)
-                    reward += self.prev_achi_sph_dist - curr_achi_sph_dist
-                    self.prev_achi_sph_dist = curr_achi_sph_dist
+                    reward += self.prev_achi_desi_dist - curr_achi_sph_dist
+                    self.prev_achi_desi_dist = curr_achi_sph_dist
                 elif self.removal_mode:
                     punish_factor = 5
                     site_target_objtect_pos = self.sim.data.get_site_xpos("target_object")
                     curr_tar_sph_dist = goal_distance(np.broadcast_to(site_target_objtect_pos, goal.shape), goal)
-                    reward += punish_factor * (self.prev_tar_sph_dist - curr_tar_sph_dist)
-                    self.prev_tar_sph_dist = curr_tar_sph_dist
+                    reward += punish_factor * (self.prev_achi_sph_dist - curr_tar_sph_dist)
+                    self.prev_achi_sph_dist = curr_tar_sph_dist
                     curr_obs_tar_dist = obs_tar_dist(achieved_goal, goal)
                     curr_obs_tar_dist = np.where(curr_obs_tar_dist <= self.reward_dist_sup, curr_obs_tar_dist,
                                              self.reward_dist_sup)
-                    reward += curr_obs_tar_dist - self.prev_obs_tar_dist
-                    self.prev_obs_tar_dist = curr_obs_tar_dist
-                elif self.combine_mode:
-                    curr_achi_sph_dist = goal_distance(achieved_goal, goal)
-                    reward += self.prev_achi_sph_dist - curr_achi_sph_dist
-                    self.prev_achi_sph_dist = curr_achi_sph_dist
-                    # curr_obs_tar_dist = obs_tar_dist(achieved_goal, goal)
-                    # curr_obs_tar_dist = np.where(curr_obs_tar_dist <= self.reward_dist_sup, curr_obs_tar_dist,
-                    #                              self.reward_dist_sup)
-                    # reward += curr_obs_tar_dist - self.prev_obs_tar_dist
-                    # self.prev_obs_tar_dist = curr_obs_tar_dist
+                    reward += curr_obs_tar_dist - self.prev_obs_achi_dist
+                    self.prev_obs_achi_dist = curr_obs_tar_dist
             return reward
-
 
     # RobotEnv methods
     # ----------------------------
@@ -312,7 +354,7 @@ class FetchEnv(robot_env.RobotEnv):
                     obstacle_pos = [self.sim.data.get_geom_xpos(name).copy() for name in self.obstacle_name_list]
                     achieved_goal_size = obstacle_size.copy()
                     cube_achieved_pos = np.concatenate(obstacle_pos.copy())
-                elif self.grasp_mode or self.combine_mode or self.final_mode:
+                elif self.grasp_mode or self.combine_mode or self.final_mode or self.hrl_mode:
                     target_object_pos = self.sim.data.get_geom_xpos("target_object")
                     cube_achieved_pos = np.squeeze(target_object_pos.copy())
                 else:
@@ -351,7 +393,7 @@ class FetchEnv(robot_env.RobotEnv):
                 physical_obs.append(target_velp.flatten().copy())
                 physical_obs.append(target_velr.flatten().copy())
                 physical_obs.append(target_rel_pos.flatten().copy())
-            elif not (self.grasp_mode or self.removal_mode or self.combine_mode or self.final_mode):
+            elif not (self.grasp_mode or self.removal_mode or self.combine_mode or self.final_mode or self.hrl_mode):
                 object_pos = self.sim.data.get_site_xpos("object0")
                 # rotations
                 object_rot = rotations.mat2euler(self.sim.data.get_site_xmat("object0"))
@@ -374,7 +416,7 @@ class FetchEnv(robot_env.RobotEnv):
                     object_velr.append(self.sim.data.get_geom_xvelr(self.obstacle_name_list[idx]).copy() * dt)
                     object_rel_pos.append(object_pos - grip_pos)
                     object_velp[idx] -= grip_velp
-                if self.grasp_mode or self.combine_mode or self.final_mode:
+                if self.grasp_mode or self.combine_mode or self.final_mode or self.hrl_mode:
                     target_object_pos = self.sim.data.get_geom_xpos("target_object")
                     object_pos.append(target_object_pos.copy())
                     object_rot.append(rotations.mat2euler(self.sim.data.get_geom_xmat("target_object")).copy())
@@ -394,7 +436,7 @@ class FetchEnv(robot_env.RobotEnv):
             achieved_goal = cube_achieved_pos.copy()
         elif self.removal_mode:
             achieved_goal = np.concatenate(object_pos.copy())
-        elif self.grasp_mode or self.combine_mode or self.final_mode:
+        elif self.grasp_mode or self.combine_mode or self.final_mode or self.hrl_mode:
             achieved_goal = np.squeeze(target_object_pos.copy())
         else:
             achieved_goal = np.squeeze(object_pos.copy())
@@ -406,7 +448,7 @@ class FetchEnv(robot_env.RobotEnv):
                     np.concatenate(physical_obs),
                 ]
             )
-        elif self.grasp_mode or self.removal_mode or self.combine_mode or self.final_mode:
+        elif self.grasp_mode or self.removal_mode or self.combine_mode or self.final_mode or self.hrl_mode:
             obs = np.concatenate(
                 [
                     grip_pos,
@@ -463,7 +505,7 @@ class FetchEnv(robot_env.RobotEnv):
         if self.has_object:
             object_xpos = self.initial_gripper_xpos[:2]
             # DIY
-            if not (self.grasp_mode or self.removal_mode or self.combine_mode or self.final_mode):
+            if not (self.grasp_mode or self.removal_mode or self.combine_mode or self.final_mode or self.hrl_mode):
                 while np.linalg.norm(object_xpos - self.initial_gripper_xpos[:2]) < 0.1:
                     object_xpos = self.initial_gripper_xpos[:2] + self.np_random.uniform(
                         -self.obj_range, self.obj_range, size=2
@@ -525,8 +567,34 @@ class FetchEnv(robot_env.RobotEnv):
         return goal.copy()
 
     # DIY
+    # achievd_goal: cyan box
+    # desired_goal: red sph
+    def hrl_is_success(self, achieved_goal, desired_goal):
+        if self.task_state == task_dict['removal']:
+            reward_dist = obs_tar_dist(achieved_goal, desired_goal)
+            site_target_objtect_pos = self.sim.data.get_site_xpos("target_object")
+            d = goal_distance(np.broadcast_to(site_target_objtect_pos, desired_goal.shape), desired_goal)
+            if len(achieved_goal.shape) <= 1:
+                height_diff = achieved_goal[2] - desired_goal[2]
+            else:
+                height_diff = achieved_goal[:, 2] - desired_goal[:, 2]
+            if (reward_dist > self.reward_dist_sup) & (d < self.distance_threshold) & (0 <= height_diff < self.init_height_diff):
+                self.left_obstacle_count -= 1
+                if self.left_obstacle_count == 0:
+                    self.task_state = task_dict['grasp']
+                    self._state_init(desired_goal)
+                else:
+                    self._state_init()
+            return False
+        elif self.task_state == task_dict['grasp']:
+            d = goal_distance(achieved_goal, desired_goal)
+            return d < self.distance_threshold
+
+    # DIY
     def _is_success(self, achieved_goal, desired_goal):
-        if not self.removal_mode:
+        if self.hrl_mode:
+            return self.hrl_is_success(achieved_goal, desired_goal)
+        elif not self.removal_mode:
             d = goal_distance(achieved_goal, desired_goal)
             return d < self.distance_threshold
         else:
@@ -559,34 +627,61 @@ class FetchEnv(robot_env.RobotEnv):
         self.initial_gripper_xpos = self.sim.data.get_site_xpos("robot0:grip").copy()
         # DIY
         if self.has_object and not self.removal_mode:
-            if self.grasp_mode or self.combine_mode or self.final_mode:
+            if self.grasp_mode or self.combine_mode or self.final_mode or self.hrl_mode:
                 self.height_offset = self.sim.data.get_site_xpos("target_object")[2]
             else:
                 self.height_offset = self.sim.data.get_site_xpos("object0")[2]
 
-    def _state_init(self, goal_xpos: np.ndarray):
+    def _state_init(self, goal_xpos: np.ndarray = None):
         # DIY
         grip_xpos = self.sim.data.get_site_xpos("robot0:grip").copy()
         if self.removal_mode:
             obstacle_xpos = self.sim.data.get_geom_xpos("obstacle_0")
             target_xpos = self.sim.data.get_geom_xpos("target_object")
             sph_xpos = self.sim.data.get_site_xpos("target_object")
-            self.prev_obs_tar_dist = obs_tar_dist(obstacle_xpos, target_xpos)
-            self.prev_tar_sph_dist = goal_distance(target_xpos, sph_xpos)
-            self.prev_grip_achi_dist = goal_distance(grip_xpos, obstacle_xpos)
+            self.prev_obs_achi_dist = obs_tar_dist(obstacle_xpos, target_xpos)
+            self.prev_achi_sph_dist = goal_distance(target_xpos, sph_xpos)
+            self.prev_grip_obj_dist = goal_distance(grip_xpos, obstacle_xpos)
             self.init_height_diff = obstacle_xpos[2] - target_xpos[2]
         elif self.grasp_mode:
             achieved_xpos = self.sim.data.get_geom_xpos("target_object")
-            self.prev_grip_achi_dist = goal_distance(grip_xpos, achieved_xpos)
-            self.prev_achi_sph_dist = goal_distance(achieved_xpos, goal_xpos)
+            self.prev_grip_obj_dist = goal_distance(grip_xpos, achieved_xpos)
+            self.prev_achi_desi_dist = goal_distance(achieved_xpos, goal_xpos)
         elif self.combine_mode or self.final_mode:
             obstacle_xpos = self.sim.data.get_geom_xpos("obstacle_0")
             achieved_xpos = self.sim.data.get_geom_xpos("target_object")
             sph_xpos = self.sim.data.get_site_xpos("target_object")
-            self.prev_obs_tar_dist = obs_tar_dist(obstacle_xpos, achieved_xpos)
-            self.prev_tar_sph_dist = goal_distance(achieved_xpos, sph_xpos)
-            self.prev_grip_achi_dist = goal_distance(grip_xpos, achieved_xpos)
-            self.prev_achi_sph_dist = goal_distance(achieved_xpos, goal_xpos)
-
+            self.prev_obs_achi_dist = obs_tar_dist(obstacle_xpos, achieved_xpos)
+            self.prev_achi_sph_dist = goal_distance(achieved_xpos, sph_xpos)
+            self.prev_grip_obj_dist = goal_distance(grip_xpos, achieved_xpos)
+            self.prev_achi_desi_dist = goal_distance(achieved_xpos, goal_xpos)
+        elif self.hrl_mode:
+            if self.task_state == task_dict['removal']:
+                achieved_xpos = self.sim.data.get_geom_xpos("target_object")
+                sph_xpos = self.sim.data.get_site_xpos("target_object")
+                self._get_closest_obstacle(achieved_xpos)
+                obstacle_xpos = self.sim.data.get_geom_xpos(self.focusing_obsatcle_name)
+                self.prev_grip_obj_dist = goal_distance(grip_xpos, obstacle_xpos)
+                self.prev_achi_sph_dist = goal_distance(achieved_xpos, sph_xpos)
+                self.init_height_diff = obstacle_xpos[2] - achieved_xpos[2]
+            elif self.task_state == task_dict['grasp']:
+                achieved_xpos = self.sim.data.get_geom_xpos("target_object")
+                self.prev_grip_obj_dist = goal_distance(grip_xpos, achieved_xpos)
+                self.prev_achi_desi_dist = goal_distance(achieved_xpos, goal_xpos)
+            
+    # DIY
+    def _get_closest_obstacle(self, achieved_xpos: np.ndarray):
+        min_dist = np.inf
+        min_name = None
+        for name in self.obstacle_name_list:
+            obstacle_xpos = self.sim.data.get_geom_xpos(name)
+            dist = obs_tar_dist(obstacle_xpos, achieved_xpos) 
+            if dist < min_dist:
+                min_dist = dist
+                min_name = name 
+        assert min_name is not None
+        self.focusing_obsatcle_name, self.prev_obs_achi_dist = min_name, min_dist
+        return min_name
+        
     def render(self, mode="human", width=500, height=500):
         return super(FetchEnv, self).render(mode, width, height)
