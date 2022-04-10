@@ -15,11 +15,11 @@ item_list = ['air', 'goal', 'achieved_goal', 'obstacle']
 item_dict = dict(zip(item_list, np.arange(len(item_list))))
 
 target_qpos     = np.array([1.45, 0.74, 0.4, 1.0, 0.0, 0.0, 0.0])
-obstacle_0_qpos = np.array([1.395, 0.74, 0.4, 1.0, 0.0, 0.0, 0.0])
+obstacle_0_qpos = np.array([1.395, 0.74, 0.42, 1.0, 0.0, 0.0, 0.0])
 obstacle_1_qpos = np.array([1.45, 0.74, 0.45, 1.0, 0.0, 0.0, 0.0])
-obstacle_2_qpos = np.array([1.505, 0.74, 0.4, 1.0, 0.0, 0.0, 0.0])
-obstacle_3_qpos = np.array([1.45, 0.795, 0.4, 1.0, 0.0, 0.0, 0.0])
-obstacle_4_qpos = np.array([1.45, 0.685, 0.4, 1.0, 0.0, 0.0, 0.0])
+obstacle_2_qpos = np.array([1.505, 0.74, 0.42, 1.0, 0.0, 0.0, 0.0])
+obstacle_3_qpos = np.array([1.45, 0.795, 0.42, 1.0, 0.0, 0.0, 0.0])
+obstacle_4_qpos = np.array([1.45, 0.685, 0.42, 1.0, 0.0, 0.0, 0.0])
 obstacle_delta_list = [
                            obstacle_0_qpos - target_qpos,
                            obstacle_1_qpos - target_qpos,
@@ -65,7 +65,6 @@ class FetchEnv(robot_env.RobotEnv):
             cube_mode=False,
             debug_mode=False,
             reward_dist_sup=0.25,
-            height_diff=0.005,
     ):
         """Initializes a new Fetch environment.
 
@@ -106,8 +105,8 @@ class FetchEnv(robot_env.RobotEnv):
         self.obstacle_name_list = ['obstacle_' + str(i) for i in range(len(initial_qpos) - obstacle_len_const)]
 
         self.reward_dist_sup = reward_dist_sup
-        self.height_diff = height_diff
 
+        self.init_height_diff = None
         self.prev_obs_tar_dist = None
         self.prev_grip_achi_dist = None
         self.prev_tar_sph_dist = None
@@ -492,7 +491,6 @@ class FetchEnv(robot_env.RobotEnv):
                     obstacle_qpos = target_qpos + obstacle_delta_list[idx]
                     self.sim.data.set_joint_qpos(f"{name}:joint", obstacle_qpos)
 
-
         self.sim.forward()
         return True
 
@@ -522,7 +520,7 @@ class FetchEnv(robot_env.RobotEnv):
             )
 
         # DIY
-        self._prev_state_init(goal)
+        self._state_init(goal)
 
         return goal.copy()
 
@@ -539,7 +537,7 @@ class FetchEnv(robot_env.RobotEnv):
                 height_diff = achieved_goal[2] - desired_goal[2]
             else:
                 height_diff = achieved_goal[:, 2] - desired_goal[:, 2]
-            return (reward_dist > self.reward_dist_sup) & (d < self.distance_threshold) & (height_diff < self.height_diff)
+            return (reward_dist > self.reward_dist_sup) & (d < self.distance_threshold) & (0 <= height_diff < self.init_height_diff)
 
     def _env_setup(self, initial_qpos):
         for name, value in initial_qpos.items():
@@ -566,7 +564,7 @@ class FetchEnv(robot_env.RobotEnv):
             else:
                 self.height_offset = self.sim.data.get_site_xpos("object0")[2]
 
-    def _prev_state_init(self, goal_xpos: np.ndarray):
+    def _state_init(self, goal_xpos: np.ndarray):
         # DIY
         grip_xpos = self.sim.data.get_site_xpos("robot0:grip").copy()
         if self.removal_mode:
@@ -576,6 +574,7 @@ class FetchEnv(robot_env.RobotEnv):
             self.prev_obs_tar_dist = obs_tar_dist(obstacle_xpos, target_xpos)
             self.prev_grip_achi_dist = goal_distance(grip_xpos, obstacle_xpos)
             self.prev_tar_sph_dist = goal_distance(target_xpos, sph_xpos)
+            self.init_height_diff = obstacle_xpos[2] - target_xpos[2]
         elif self.grasp_mode or self.combine_mode or self.final_mode:
             # obstacle_xpos = self.sim.data.get_geom_xpos("obstacle_0")
             achieved_xpos = self.sim.data.get_geom_xpos("target_object")

@@ -13,7 +13,7 @@ class CombineEnv(fetch_env.FetchEnv, utils.EzPickle):
             "robot0:slide1": 0.48,
             "robot0:slide2": 0.0,
             "target_object:joint": [1.45, 0.74, 0.4, 1.0, 0.0, 0.0, 0.0],
-            "obstacle_0:joint": [1.395, 0.74, 0.4, 1.0, 0.0, 0.0, 0.0],
+            "obstacle_0:joint": [1.395, 0.74, 0.42, 1.0, 0.0, 0.0, 0.0],
         }
         fetch_env.FetchEnv.__init__(
             self,
