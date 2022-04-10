@@ -118,9 +118,12 @@ class FetchEnv(robot_env.RobotEnv):
 
         self.hrl_mode = hrl_mode
         if self.hrl_mode:
-            self.task_state = task_dict['removal']
             self.focusing_obsatcle_name = None
             self.left_obstacle_count = len(self.obstacle_name_list)
+            if self.left_obstacle_count > 0:
+                self.task_state = task_dict['removal']
+            else:
+                self.task_state = task_dict['grasp']
 
         super(FetchEnv, self).__init__(
             model_path=model_path,
