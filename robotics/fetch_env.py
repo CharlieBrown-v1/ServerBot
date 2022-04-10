@@ -309,9 +309,9 @@ class FetchEnv(robot_env.RobotEnv):
                 starting_point = grip_pos.copy()
 
                 if self.removal_mode:
-                    object_pos = [self.sim.data.get_geom_xpos(name).copy() for name in self.obstacle_name_list]
+                    obstacle_pos = [self.sim.data.get_geom_xpos(name).copy() for name in self.obstacle_name_list]
                     achieved_goal_size = obstacle_size.copy()
-                    cube_achieved_pos = np.concatenate(object_pos.copy())
+                    cube_achieved_pos = np.concatenate(obstacle_pos.copy())
                 elif self.grasp_mode or self.combine_mode or self.final_mode:
                     target_object_pos = self.sim.data.get_geom_xpos("target_object")
                     cube_achieved_pos = np.squeeze(target_object_pos.copy())
@@ -572,14 +572,19 @@ class FetchEnv(robot_env.RobotEnv):
             target_xpos = self.sim.data.get_geom_xpos("target_object")
             sph_xpos = self.sim.data.get_site_xpos("target_object")
             self.prev_obs_tar_dist = obs_tar_dist(obstacle_xpos, target_xpos)
-            self.prev_grip_achi_dist = goal_distance(grip_xpos, obstacle_xpos)
             self.prev_tar_sph_dist = goal_distance(target_xpos, sph_xpos)
+            self.prev_grip_achi_dist = goal_distance(grip_xpos, obstacle_xpos)
             self.init_height_diff = obstacle_xpos[2] - target_xpos[2]
-        elif self.grasp_mode or self.combine_mode or self.final_mode:
-            # obstacle_xpos = self.sim.data.get_geom_xpos("obstacle_0")
+        elif self.grasp_mode:
             achieved_xpos = self.sim.data.get_geom_xpos("target_object")
-            # sph_xpos = self.sim.data.get_site_xpos("target_object")
-            # self.prev_obs_tar_dist = obs_tar_dist(obstacle_xpos, achieved_xpos)
+            self.prev_grip_achi_dist = goal_distance(grip_xpos, achieved_xpos)
+            self.prev_achi_sph_dist = goal_distance(achieved_xpos, goal_xpos)
+        elif self.combine_mode or self.final_mode:
+            obstacle_xpos = self.sim.data.get_geom_xpos("obstacle_0")
+            achieved_xpos = self.sim.data.get_geom_xpos("target_object")
+            sph_xpos = self.sim.data.get_site_xpos("target_object")
+            self.prev_obs_tar_dist = obs_tar_dist(obstacle_xpos, achieved_xpos)
+            self.prev_tar_sph_dist = goal_distance(achieved_xpos, sph_xpos)
             self.prev_grip_achi_dist = goal_distance(grip_xpos, achieved_xpos)
             self.prev_achi_sph_dist = goal_distance(achieved_xpos, goal_xpos)
 
