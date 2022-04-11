@@ -34,6 +34,6 @@ class ObstacleRemovalEnv(fetch_env.FetchEnv, utils.EzPickle):
             initial_qpos=initial_qpos,
             reward_type=reward_type,
             removal_mode=True,
-            cube_mode=True,
+            # cube_mode=True,
         )
         utils.EzPickle.__init__(self, reward_type=reward_type)
