@@ -583,7 +583,7 @@ class FetchEnv(robot_env.RobotEnv):
             if len(achieved_goal.shape) <= 1:
                 height_diff = closest_obstacle_xpos[2] - achieved_goal[2]
             else:
-                height_diff = closest_obstacle_xpos[:, 2] - achieved_goal[:, 2]
+                height_diff = closest_obstacle_xpos[2] - achieved_goal[:, 2]
             if (obs_achi_dist > self.obs_achi_dist_sup) & (delta_achi_dist < self.distance_threshold) & (0 <= height_diff < self.init_height_diff):
                 self.left_obstacle_count -= 1
                 if self.left_obstacle_count == 0:
