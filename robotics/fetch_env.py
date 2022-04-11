@@ -204,10 +204,10 @@ class FetchEnv(robot_env.RobotEnv):
                     reward += self.prev_achi_desi_dist - curr_achi_desi_dist
                     self.prev_achi_desi_dist = curr_achi_desi_dist
                 elif self.removal_mode:
-                    # punish_factor = -5
-                    # curr_achi_xpos = self.sim.data.get_geom_xpos("target_object")
-                    # reward += punish_factor * goal_distance(self.prev_achi_xpos, curr_achi_xpos)
-                    # self.prev_achi_xpos = curr_achi_xpos.copy()
+                    punish_factor = -5
+                    curr_achi_xpos = self.sim.data.get_geom_xpos("target_object")
+                    reward += punish_factor * goal_distance(self.prev_achi_xpos, curr_achi_xpos)
+                    self.prev_achi_xpos = curr_achi_xpos.copy()
                     curr_obs_achi_dist = obs_achi_distance(achieved_goal, goal)
                     curr_obs_achi_dist = np.where(curr_obs_achi_dist <= self.obs_achi_dist_sup, curr_obs_achi_dist,
                                              self.obs_achi_dist_sup)
@@ -611,7 +611,7 @@ class FetchEnv(robot_env.RobotEnv):
                 height_diff = achieved_goal[2] - desired_goal[2]
             else:
                 height_diff = achieved_goal[:, 2] - desired_goal[:, 2]
-            return obs_achi_dist > self.obs_achi_dist_sup
+            return (obs_achi_dist > self.obs_achi_dist_sup) & (d < self.distance_threshold)
             # return (obs_achi_dist > self.obs_achi_dist_sup) & (d < self.distance_threshold) & (0 <= height_diff < self.init_height_diff)
 
     def _env_setup(self, initial_qpos):
