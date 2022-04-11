@@ -19,7 +19,7 @@ DEFAULT_SIZE = 500
 
 
 class RobotEnv(gym.GoalEnv):
-    def __init__(self, model_path, initial_qpos, n_actions, n_substeps, hrl_mode=False):
+    def __init__(self, model_path, initial_qpos, n_actions, n_substeps, super_hrl_mode=False):
         if model_path.startswith("/"):
             fullpath = model_path
         else:
@@ -45,7 +45,7 @@ class RobotEnv(gym.GoalEnv):
         obs = self._get_obs()
         self.action_space = spaces.Box(-1.0, 1.0, shape=(n_actions,), dtype="float32")
         # DIY
-        self.hrl_mode = hrl_mode
+        self.super_hrl_mode = super_hrl_mode
         self.observation_space = spaces.Dict(
             dict(
                 desired_goal=spaces.Box(
@@ -87,7 +87,7 @@ class RobotEnv(gym.GoalEnv):
         info = {
             "is_success": self._is_success(obs["achieved_goal"], self.goal),
         }
-        done = self.hrl_mode and info['is_success']
+        done = self.super_hrl_mode and info['is_success']
         reward = self.compute_reward(obs["achieved_goal"], self.goal, info)
         return obs, reward, done, info
 
