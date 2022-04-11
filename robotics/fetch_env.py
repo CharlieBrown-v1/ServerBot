@@ -441,6 +441,7 @@ class FetchEnv(robot_env.RobotEnv):
             achieved_goal = np.squeeze(target_object_pos.copy())
         else:
             achieved_goal = np.squeeze(object_pos.copy())
+
         # DIY
         if self.cube_mode:
             obs = np.concatenate(
@@ -477,6 +478,10 @@ class FetchEnv(robot_env.RobotEnv):
                     gripper_vel,
                 ]
             )
+
+        if self.hrl_mode:
+            obs = np.r_[obs, self.task_state.copy()]
+
         return {
             "observation": obs.copy(),
             "achieved_goal": achieved_goal.copy(),
