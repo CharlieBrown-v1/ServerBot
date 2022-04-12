@@ -3,6 +3,7 @@ import numpy as np
 from gym.envs.robotics import rotations, robot_env, utils
 
 
+epsilon = 1e-3
 d = 0.01
 length_scale = 41
 width_scale = 41
@@ -105,8 +106,8 @@ class FetchEnv(robot_env.RobotEnv):
         self.cube_mode = cube_mode
         self.debug_mode = debug_mode
 
-        obstacle_len_const = 4
-        self.obstacle_name_list = ['obstacle_' + str(i) for i in range(len(initial_qpos) - obstacle_len_const)]
+        object_len_const = 4
+        self.obstacle_name_list = ['obstacle_' + str(i) for i in range(len(initial_qpos) - object_len_const)]
 
         self.obs_achi_dist_sup = obs_achi_dist_sup
 
@@ -156,7 +157,7 @@ class FetchEnv(robot_env.RobotEnv):
                 curr_grip_obs_dist = goal_distance(np.broadcast_to(grip_pos, closest_obstacle_xpos.shape), closest_obstacle_xpos)
                 reward += self.prev_grip_obj_dist - curr_grip_obs_dist
                 self.prev_grip_obj_dist = curr_grip_obs_dist
-                punish_factor = -10
+                punish_factor = -100
                 curr_achi_xpos = self.sim.data.get_geom_xpos("target_object")
                 reward += punish_factor * goal_distance(self.prev_achi_xpos, curr_achi_xpos)
                 self.prev_achi_xpos = curr_achi_xpos.copy()
@@ -204,7 +205,7 @@ class FetchEnv(robot_env.RobotEnv):
                     reward += self.prev_achi_desi_dist - curr_achi_desi_dist
                     self.prev_achi_desi_dist = curr_achi_desi_dist
                 elif self.removal_mode:
-                    punish_factor = -10
+                    punish_factor = -100
                     curr_achi_xpos = self.sim.data.get_geom_xpos("target_object")
                     reward += punish_factor * goal_distance(self.prev_achi_xpos, curr_achi_xpos)
                     self.prev_achi_xpos = curr_achi_xpos.copy()
@@ -584,7 +585,7 @@ class FetchEnv(robot_env.RobotEnv):
                 height_diff = closest_obstacle_xpos[2] - achieved_goal[2]
             else:
                 height_diff = closest_obstacle_xpos[2] - achieved_goal[:, 2]
-            if (obs_achi_dist > self.obs_achi_dist_sup) & (delta_achi_dist < self.distance_threshold) & (0 <= height_diff <= self.init_height_diff):
+            if (obs_achi_dist > self.obs_achi_dist_sup) & (delta_achi_dist < self.distance_threshold) & (0 <= height_diff - self.init_height_diff <= epsilon):
                 self.left_obstacle_count -= 1
                 if self.left_obstacle_count == 0:
                     self.task_state = task_dict['grasp']
@@ -611,7 +612,7 @@ class FetchEnv(robot_env.RobotEnv):
                 height_diff = achieved_goal[2] - desired_goal[2]
             else:
                 height_diff = achieved_goal[:, 2] - desired_goal[:, 2]
-            return (obs_achi_dist > self.obs_achi_dist_sup) & (d < self.distance_threshold) & (0 <= height_diff <= self.init_height_diff)
+            return (obs_achi_dist > self.obs_achi_dist_sup) & (d < self.distance_threshold) & (0 <= height_diff - self.init_height_diff <= epsilon)
 
     def _env_setup(self, initial_qpos):
         for name, value in initial_qpos.items():
