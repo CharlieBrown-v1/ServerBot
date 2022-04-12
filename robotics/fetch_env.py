@@ -17,8 +17,8 @@ task_name = ['removal', 'grasp']
 task_dict = dict(zip(task_name, np.arange(len(task_name))))
 
 target_qpos = np.array([1.45, 0.74, 0.4, 1.0, 0.0, 0.0, 0.0])
-obstacle_0_qpos = np.array([1.395, 0.74, 0.42, 1.0, 0.0, 0.0, 0.0])
-obstacle_1_qpos = np.array([1.45, 0.74, 0.45, 1.0, 0.0, 0.0, 0.0])
+obstacle_0_qpos = np.array([1.45, 0.74, 0.45, 1.0, 0.0, 0.0, 0.0])
+obstacle_1_qpos = np.array([1.395, 0.74, 0.42, 1.0, 0.0, 0.0, 0.0])
 obstacle_2_qpos = np.array([1.505, 0.74, 0.42, 1.0, 0.0, 0.0, 0.0])
 obstacle_3_qpos = np.array([1.45, 0.795, 0.42, 1.0, 0.0, 0.0, 0.0])
 obstacle_4_qpos = np.array([1.45, 0.685, 0.42, 1.0, 0.0, 0.0, 0.0])
