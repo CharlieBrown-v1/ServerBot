@@ -155,18 +155,18 @@ class FetchEnv(robot_env.RobotEnv):
             # obs_tar: larger -> better (curr - prev)
             if self.task_state == task_dict['removal']:
                 # achieved_goal: obstacle_geom
-                target_xpos = self.sim.data.get_geom_xpos("target_object")
-                curr_grip_obs_dist = goal_distance(np.broadcast_to(grip_pos, achieved_goal.shape),
-                                                   achieved_goal)
+                closest_obstacle_xpos = self.sim.data.get_geom_xpos(self.closest_obstacle_name)
+                curr_grip_obs_dist = goal_distance(np.broadcast_to(grip_pos, closest_obstacle_xpos.shape),
+                                                   closest_obstacle_xpos)
                 reward += self.prev_grip_obj_dist - curr_grip_obs_dist
                 self.prev_grip_obj_dist = curr_grip_obs_dist
                 punish_factor = -10
-                delta_target_geom_dist = goal_distance(self.prev_achi_xpos, target_xpos)
+                delta_target_geom_dist = goal_distance(self.prev_achi_xpos, achieved_goal)
                 delta_target_geom_dist = np.where(delta_target_geom_dist > self.delta_achi_inf, delta_target_geom_dist,
                                                   0)
                 reward += punish_factor * delta_target_geom_dist
-                self.prev_achi_xpos = target_xpos.copy()
-                curr_obs_achi_dist = distance_xy(achieved_goal, target_xpos)
+                self.prev_achi_xpos = achieved_goal.copy()
+                curr_obs_achi_dist = distance_xy(closest_obstacle_xpos, achieved_goal)
                 curr_obs_achi_dist = np.where(curr_obs_achi_dist <= self.obs_achi_dist_sup, curr_obs_achi_dist,
                                               self.obs_achi_dist_sup)
                 reward += curr_obs_achi_dist - self.prev_obs_achi_dist
@@ -447,16 +447,11 @@ class FetchEnv(robot_env.RobotEnv):
         # DIY
         if not self.has_object:
             achieved_goal = grip_pos.copy()
-        elif self.hrl_mode:
-            if self.task_state == task_dict['removal']:
-                achieved_goal = np.squeeze(self.sim.data.get_geom_xpos(self.closest_obstacle_name).copy())
-            else:
-                achieved_goal = np.squeeze(target_object_pos.copy())
         elif self.cube_mode:
             achieved_goal = cube_achieved_pos.copy()
         elif self.removal_mode:
             achieved_goal = np.concatenate(object_pos.copy())
-        elif self.grasp_mode or self.combine_mode or self.final_mode:
+        elif self.grasp_mode or self.combine_mode or self.final_mode or self.hrl_mode:
             achieved_goal = np.squeeze(target_object_pos.copy())
         else:
             achieved_goal = np.squeeze(object_pos.copy())
@@ -497,6 +492,9 @@ class FetchEnv(robot_env.RobotEnv):
                     gripper_vel,
                 ]
             )
+
+        if self.hrl_mode:
+            obs = np.r_[obs, self.task_state.copy()]
 
         return {
             "observation": obs.copy(),
