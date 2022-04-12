@@ -155,25 +155,24 @@ class FetchEnv(robot_env.RobotEnv):
             # obs_tar: larger -> better (curr - prev)
             if self.task_state == task_dict['removal']:
                 # achieved_goal: obstacle_geom
-                # goal: target_geom
+                target_xpos = self.sim.data.get_geom_xpos("target_object")
                 curr_grip_obs_dist = goal_distance(np.broadcast_to(grip_pos, achieved_goal.shape),
                                                    achieved_goal)
                 reward += self.prev_grip_obj_dist - curr_grip_obs_dist
                 self.prev_grip_obj_dist = curr_grip_obs_dist
                 punish_factor = -10
-                delta_target_geom_dist = goal_distance(self.prev_achi_xpos, goal)
+                delta_target_geom_dist = goal_distance(self.prev_achi_xpos, target_xpos)
                 delta_target_geom_dist = np.where(delta_target_geom_dist > self.delta_achi_inf, delta_target_geom_dist,
                                                   0)
                 reward += punish_factor * delta_target_geom_dist
-                self.prev_achi_xpos = goal.copy()
-                curr_obs_achi_dist = distance_xy(achieved_goal, goal)
+                self.prev_achi_xpos = target_xpos.copy()
+                curr_obs_achi_dist = distance_xy(achieved_goal, target_xpos)
                 curr_obs_achi_dist = np.where(curr_obs_achi_dist <= self.obs_achi_dist_sup, curr_obs_achi_dist,
                                               self.obs_achi_dist_sup)
                 reward += curr_obs_achi_dist - self.prev_obs_achi_dist
                 self.prev_obs_achi_dist = curr_obs_achi_dist
             elif self.task_state == task_dict['grasp']:
                 # achieved_goal: target_geom
-                # goal: target_sph
                 curr_grip_achi_dist = goal_distance(np.broadcast_to(grip_pos, achieved_goal.shape), achieved_goal)
                 reward += self.prev_grip_obj_dist - curr_grip_achi_dist
                 self.prev_grip_obj_dist = curr_grip_achi_dist
@@ -499,15 +498,10 @@ class FetchEnv(robot_env.RobotEnv):
                 ]
             )
 
-        if self.hrl_mode and self.task_state == task_dict['removal']:
-            goal = target_object_pos.copy()
-        else:
-            goal = self.goal.copy()
-
         return {
             "observation": obs.copy(),
             "achieved_goal": achieved_goal.copy(),
-            "desired_goal": goal.copy(),
+            "desired_goal": self.goal.copy(),
         }
 
     def _viewer_setup(self):
