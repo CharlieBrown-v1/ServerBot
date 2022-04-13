@@ -170,7 +170,6 @@ class FetchEnv(robot_env.RobotEnv):
                                               self.obs_achi_dist_sup)
                 reward += curr_obs_achi_dist - self.prev_obs_achi_dist
                 self.prev_obs_achi_dist = curr_obs_achi_dist
-
             elif self.task_state == task_dict['grasp']:
                 curr_grip_achi_dist = goal_distance(np.broadcast_to(grip_pos, achieved_goal.shape), achieved_goal)
                 reward += self.prev_grip_obj_dist - curr_grip_achi_dist
