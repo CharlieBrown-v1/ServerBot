@@ -69,6 +69,7 @@ class FetchEnv(robot_env.RobotEnv):
             cube_mode=False,
             hrl_mode=False,
             debug_mode=False,
+            demo_mode=False,
             obs_achi_dist_sup=0.1,
             delta_achi_inf=0.02,
     ):
@@ -105,8 +106,9 @@ class FetchEnv(robot_env.RobotEnv):
         self.combine_mode = combine_mode
         self.final_mode = final_mode
         self.cube_mode = cube_mode
-        self.debug_mode = debug_mode
         self.hrl_mode = hrl_mode
+        self.debug_mode = debug_mode
+        self.demo_mode = demo_mode
 
         object_len_const = 4
         self.obstacle_name_list = ['obstacle_' + str(i) for i in range(len(initial_qpos) - object_len_const)]
@@ -582,8 +584,11 @@ class FetchEnv(robot_env.RobotEnv):
                 box_target_object_pos = self.sim.data.get_geom_xpos("target_object")
                 delta = box_target_object_pos - goal
             else:
-                if self.target_in_the_air and self.np_random.uniform() < 0.5:
-                    goal[2] += self.np_random.uniform(0, 0.45)
+                if self.target_in_the_air:
+                    if self.demo_mode:
+                        goal[2] += self.np_random.uniform(0.1, 0.2)
+                    elif self.np_random.uniform() < 0.5:
+                        goal[2] += self.np_random.uniform(0, 0.45)
 
             goal += delta
         else:
