@@ -3,7 +3,9 @@ import numpy as np
 from gym.envs.robotics import rotations, robot_env, utils
 
 
-epsilon = 1e-3
+epsilon = 1e-3  # Used by removal judgement
+
+# Used by cube space
 d = 0.01
 length_scale = 41
 width_scale = 41
@@ -11,11 +13,13 @@ height_scale = 41
 length = length_scale * d
 width = width_scale * d
 height = height_scale * d
-
 item_name = ['air', 'goal', 'achieved_goal', 'obstacle']
 item_dict = dict(zip(item_name, np.arange(len(item_name))))
+
+# Used by upper policy
 task_name = ['removal', 'grasp']
 task_dict = dict(zip(task_name, np.arange(len(task_name))))
+
 
 target_qpos = np.array([1.45, 0.74, 0.4, 1.0, 0.0, 0.0, 0.0])
 obstacle_0_qpos = np.array([1.45, 0.74, 0.45, 1.0, 0.0, 0.0, 0.0])
