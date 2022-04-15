@@ -1,4 +1,7 @@
+import copy
+import os
 import numpy as np
+import xml.etree.ElementTree as ET
 
 from gym import error
 
@@ -76,13 +79,13 @@ def reset_mocap2body_xpos(sim):
     """
 
     if (
-        sim.model.eq_type is None
-        or sim.model.eq_obj1id is None
-        or sim.model.eq_obj2id is None
+            sim.model.eq_type is None
+            or sim.model.eq_obj1id is None
+            or sim.model.eq_obj2id is None
     ):
         return
     for eq_type, obj1_id, obj2_id in zip(
-        sim.model.eq_type, sim.model.eq_obj1id, sim.model.eq_obj2id
+            sim.model.eq_type, sim.model.eq_obj1id, sim.model.eq_obj2id
     ):
         if eq_type != mujoco_py.const.EQ_WELD:
             continue
@@ -99,3 +102,185 @@ def reset_mocap2body_xpos(sim):
         assert mocap_id != -1
         sim.data.mocap_pos[mocap_id][:] = sim.data.body_xpos[body_idx]
         sim.data.mocap_quat[mocap_id][:] = sim.data.body_xquat[body_idx]
+
+
+# DIY: generate obstacles
+
+def get_full_path(path: str):
+    if path.startswith("/"):
+        fullpath = path
+    else:
+        fullpath = os.path.join(os.path.dirname(__file__), "assets", path)
+    if not os.path.exists(fullpath):
+        raise IOError("File {} does not exist".format(fullpath))
+    return fullpath
+
+
+def init_base_obstacle_body(base_obstacle_xml_path='hrl/base_obstacle.xml'):
+    fullpath = get_full_path(base_obstacle_xml_path)
+    tree = ET.parse(fullpath)
+    worldbody = tree.find('./worldbody')
+    assert worldbody is not None
+    base_obstacle_body = worldbody.find('./body[@name="obstacle"]')
+    assert base_obstacle_body is not None
+    return base_obstacle_body
+
+
+def compute_ellipsoid_volume(ellipsoid_size: np.ndarray):
+    return 4 * np.pi * np.prod(ellipsoid_size) / 3
+
+
+def compute_volume(geom_type: str, geom_size: np.ndarray):
+    volume = 0
+    if geom_type == 'sphere':
+        volume += compute_ellipsoid_volume(np.ones(3) * geom_size[0])
+    elif geom_size.size == 2:
+        geom_radius = geom_size[0]
+        geom_half_length = geom_size[1]
+        volume += np.pi * np.power(geom_radius, 2) * 2 * geom_half_length
+        if geom_type == 'capsule':
+            volume += compute_ellipsoid_volume(np.ones(3) * geom_radius)
+    elif geom_size.size == 3:
+        if geom_type == 'ellipsoid':
+            volume += compute_ellipsoid_volume(geom_size)
+        elif geom_type == 'box':
+            volume += np.prod(2 * geom_size)
+    assert volume != 0
+    return volume
+
+
+class ObstacleGenerator:
+    def __init__(self,
+                 total_obstacle_count=200,
+                 single_count_sup=15,
+                 is_random=False,
+                 generate_flag=False,
+                 ):
+        """
+        Args:
+            is_random (bool): whether random generating obstacles
+            obstacle_count (object): None -> random pick, k (int) -> generate k obstacles each time
+        """
+        self.density = 1.6e4  # 2 / (0.05^3) kg/m^3
+        self.size_inf = 0.02
+        self.size_sup = 0.04
+        self.xy_dist_sup_from_target = 0.1
+        self.z_dist_sup_from_target = 0.05
+
+        table_xpos = np.array([1.3, 0.75])
+        table_size = np.array([0.25, 0.35])
+        self.desktop_lower_boundary = table_xpos - table_size + self.size_sup
+        self.desktop_upper_boundary = table_xpos + table_size - self.size_sup
+        self.initial_xpos_origin = np.array([20.0, 20.0, 0.0])
+        self.initial_xpos_size = np.array([5.0, 5.0, 0])
+
+        self.obstacle_type_list = ['sphere', 'capsule', 'cylinder', 'ellipsoid', 'box']
+        self.size_dim_list = [['sphere'], ['capsule', 'cylinder'], ['ellipsoid', 'box']]
+
+        self.total_obstacle_count = total_obstacle_count
+        self.single_count_sup = single_count_sup
+        self.is_random = is_random
+
+        self.obstacle_name_list = []
+        self.base_obstacle_body = init_base_obstacle_body(base_obstacle_xml_path='hrl/base_obstacle.xml')
+        if self.is_random:
+            self.init_total_obstacle(generate_flag=generate_flag)
+
+    def generate_one_obstacle(self, worldbody: ET.Element, idx):
+        new_obstacle_body = copy.deepcopy(self.base_obstacle_body)
+        new_obstacle_joint = new_obstacle_body.find('joint')
+        new_obstacle_geom = new_obstacle_body.find('geom')
+        """
+            body: name, pos
+            joint: name
+            geom: name, type, size, mass
+        """
+        new_xpos = self.initial_xpos_origin.copy()
+        delta_xpos = np.random.uniform(0, self.initial_xpos_size, new_xpos.size)
+        new_xpos += delta_xpos
+        new_obstacle_body.set('name', f'obstacle_{idx}')
+        new_obstacle_body.set('pos', ' '.join(list(new_xpos.astype(str))))
+
+        new_obstacle_joint.set('name', f'obstacle_{idx}:joint')
+
+        new_type = np.random.choice(self.obstacle_type_list)
+        new_size_dim = [size_dim for size_dim in np.arange(len(self.size_dim_list))
+                        if new_type in self.size_dim_list[size_dim]][0] + 1
+        new_size = np.random.uniform(self.size_inf, self.size_sup, new_size_dim)
+        new_mass = self.density * compute_volume(new_type, new_size)
+        new_obstacle_geom.set('name', f'obstacle_{idx}')
+        new_obstacle_geom.set('type', new_type)
+        new_obstacle_geom.set('size', ' '.join(list(new_size.astype(str))))
+        new_obstacle_geom.set('mass', f'{new_mass}')
+
+        worldbody.append(new_obstacle_body)
+        return new_xpos
+
+    def init_total_obstacle(self, generate_flag=False, base_xml_path='hrl/base_hrl.xml', xml_path='hrl/hrl.xml'):
+        base_fullpath = get_full_path(base_xml_path)
+        fullpath = get_full_path(xml_path)
+
+        if generate_flag:
+            tree = ET.parse(base_fullpath)
+            worldbody = tree.find('./worldbody')
+            assert worldbody is not None
+
+            assert self.is_random
+            for idx in np.arange(self.total_obstacle_count):
+                obstacle_name = f'obstacle_{idx}'
+                obstacle_xpos = self.generate_one_obstacle(worldbody=worldbody, idx=idx)
+                self.obstacle_name_list.append(obstacle_name)
+            tree.write(fullpath)
+        else:
+            tree = ET.parse(fullpath)
+            worldbody = tree.find('./worldbody')
+            assert worldbody is not None
+
+            for body in worldbody.findall('body'):
+                body_name = body.get('name')
+                if body_name.find('obstacle') != -1:
+                    obstacle_name = body_name
+                    obstacle_xpos = np.array(body.get('pos').split(), dtype=np.float)
+                    self.obstacle_name_list.append(obstacle_name)
+
+    def sample_one_qpos_on_table(self, target_qpos: np.ndarray):
+        obstacle_qpos = target_qpos.copy()
+        obstacle_xpos = obstacle_qpos[:3]
+
+        delta_xy_dist = np.random.uniform(-self.xy_dist_sup_from_target, self.xy_dist_sup_from_target, 2)
+        delta_z_dist = np.random.uniform(0, self.z_dist_sup_from_target)
+        obstacle_xpos[: 2] += delta_xy_dist
+        obstacle_xpos[: 2] = np.where(obstacle_xpos[: 2] >= self.desktop_lower_boundary,
+                                      obstacle_xpos[: 2],
+                                      self.desktop_lower_boundary)
+        obstacle_xpos[: 2] = np.where(obstacle_xpos[: 2] <= self.desktop_upper_boundary,
+                                      obstacle_xpos[: 2],
+                                      self.desktop_upper_boundary)
+        obstacle_xpos[2] += delta_z_dist
+        return obstacle_qpos
+
+    def sample_obstacles(self, target_qpos: np.ndarray):
+        obstacle_name_list = []
+        obstacle_qpos_list = []
+        if self.is_random:
+            obstacle_count = np.random.randint(self.single_count_sup)
+            for _ in np.arange(obstacle_count):
+                obstacle_name = np.random.choice(self.obstacle_name_list)
+                obstacle_qpos = self.sample_one_qpos_on_table(target_qpos)
+                obstacle_name_list.append(obstacle_name)
+                obstacle_qpos_list.append(obstacle_qpos)
+        else:
+            delta_obstacle_0_qpos = np.array([0.0, 0.0, 0.03, 1.0, 0.0, 0.0, 0.0])
+            delta_obstacle_1_qpos = np.array([-0.055, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0])
+            delta_obstacle_2_qpos = np.array([0.055, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0])
+            delta_obstacle_3_qpos = np.array([0.0, -0.055, 0.0, 1.0, 0.0, 0.0, 0.0])
+            delta_obstacle_4_qpos = np.array([0.0, 0.055, 0.0, 1.0, 0.0, 0.0, 0.0])
+            obstacle_name_list.extend([f'obstacle_{idx}' for idx in np.arange(5)])
+            obstacle_qpos_list.extend([
+                target_qpos + delta_obstacle_0_qpos,
+                target_qpos + delta_obstacle_1_qpos,
+                target_qpos + delta_obstacle_2_qpos,
+                target_qpos + delta_obstacle_3_qpos,
+                target_qpos + delta_obstacle_4_qpos,
+            ])
+        return dict(zip(obstacle_name_list, obstacle_qpos_list))

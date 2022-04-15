@@ -1,61 +1,1036 @@
-<?xml version="1.0" encoding="utf-8"?>
 <mujoco>
-	<compiler angle="radian" coordinate="local" meshdir="../stls/fetch" texturedir="../textures"></compiler>
+	<compiler angle="radian" coordinate="local" meshdir="../stls/fetch" texturedir="../textures" />
 	<option timestep="0.002">
-		<flag warmstart="enable"></flag>
+		<flag warmstart="enable" />
 	</option>
+	<size nconmax="3000" njmax="3000" />
 
-	<include file="shared.xml"></include>
+	<include file="shared.xml" />
 
 	<worldbody>
-		<geom name="floor0" pos="0.8 0.75 0" size="0.85 0.7 1" type="plane" condim="3" material="floor_mat"></geom>
+		<geom name="floor0" pos="0.8 0.75 0" size="0.85 0.7 1" type="plane" condim="3" material="floor_mat" />
 		<body name="floor0" pos="0.8 0.75 0">
-			<site name="target0" pos="0 0 0.5" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere"></site>
+			<site name="target0" pos="0 0 0.5" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
 		</body>
 
-		<include file="robot.xml"></include>
+		<include file="robot.xml" />
 
 		<body pos="1.3 0.75 0.2" name="table0">
-			<geom name="table" size="0.25 0.35 0.2" type="box" mass="2000" material="table_mat"></geom>
+			<geom name="table" size="0.25 0.35 0.2" type="box" mass="2000" material="table_mat" />
 		</body>
 
 		<body name="target_object" pos="0.025 0.025 0.025">
-			<joint name="target_object:joint" type="free" damping="0.01"></joint>
-			<geom size="0.025 0.025 0.025" type="box" condim="3" name="target_object" material="block_mat" mass="2" rgba="0 1 1 1"></geom>
-			<site name="target_object" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere"></site>
+			<joint name="target_object:joint" type="free" damping="0.01" />
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="target_object" material="block_mat" mass="2" rgba="0 1 1 1" />
+			<site name="target_object" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
 		</body>
 
-		<body name="obstacle_0" pos="0.025 0.025 0.025">
-			<joint name="obstacle_0:joint" type="free" damping="0.01"></joint>
-			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_0" material="block_mat" mass="2"></geom>
+		<light directional="true" ambient="0.2 0.2 0.2" diffuse="0.8 0.8 0.8" specular="0.3 0.3 0.3" castshadow="false" pos="0 0 4" dir="0 0 -1" name="light0" />
+
+		<body name="obstacle_0" pos="24.54044589296948 20.164486489012692 0.0">
+			<joint name="obstacle_0:joint" type="free" damping="0.01" />
+			<geom size="0.027557684479013685 0.028910311097622418" type="capsule" condim="3" name="obstacle_0" material="block_mat" mass="3.6097910335835564" />
 		</body>
 
-		<!--
-		<body name="obstacle_1" pos="0.025 0.025 0.025">
-			<joint name="obstacle_1:joint" type="free" damping="0.01"></joint>
-			<geom size="0.025 0.025 0.045" type="box" condim="3" name="obstacle_1" material="block_mat" mass="2"></geom>
+		<body name="obstacle_1" pos="23.01882885035631 20.552235716293417 0.0">
+			<joint name="obstacle_1:joint" type="free" damping="0.01" />
+			<geom size="0.02226188227067477 0.03590520679517615 0.02512048900337455" type="ellipsoid" condim="3" name="obstacle_1" material="block_mat" mass="1.3457239922619793" />
 		</body>
 
-		<body name="obstacle_2" pos="0.025 0.025 0.025">
-			<joint name="obstacle_2:joint" type="free" damping="0.01"></joint>
-			<geom size="0.025 0.025 0.045" type="box" condim="3" name="obstacle_2" material="block_mat" mass="2"></geom>
+		<body name="obstacle_2" pos="23.59763460140764 24.908095657610012 0.0">
+			<joint name="obstacle_2:joint" type="free" damping="0.01" />
+			<geom size="0.021445183737391335 0.02093925429283528" type="capsule" condim="3" name="obstacle_2" material="block_mat" mass="1.6290954508044506" />
 		</body>
 
-		<body name="obstacle_3" pos="0.025 0.025 0.025">
-			<joint name="obstacle_3:joint" type="free" damping="0.01"></joint>
-			<geom size="0.025 0.025 0.045" type="box" condim="3" name="obstacle_3" material="block_mat" mass="2"></geom>
+		<body name="obstacle_3" pos="21.44934599170846 24.522272058813623 0.0">
+			<joint name="obstacle_3:joint" type="free" damping="0.01" />
+			<geom size="0.033985005943552096 0.021131750646592083 0.027745518391058287" type="box" condim="3" name="obstacle_3" material="block_mat" mass="2.5505018374321504" />
 		</body>
 
-		<body name="obstacle_4" pos="0.025 0.025 0.025">
-			<joint name="obstacle_4:joint" type="free" damping="0.01"></joint>
-			<geom size="0.025 0.025 0.045" type="box" condim="3" name="obstacle_4" material="block_mat" mass="2"></geom>
+		<body name="obstacle_4" pos="21.052917035473396 21.74057766115169 0.0">
+			<joint name="obstacle_4:joint" type="free" damping="0.01" />
+			<geom size="0.02921398546058126 0.03327714655825396" type="cylinder" condim="3" name="obstacle_4" material="block_mat" mass="2.8551409174285505" />
 		</body>
-		-->
-		<light directional="true" ambient="0.2 0.2 0.2" diffuse="0.8 0.8 0.8" specular="0.3 0.3 0.3" castshadow="false" pos="0 0 4" dir="0 0 -1" name="light0"></light>
-	</worldbody>
+
+		<body name="obstacle_5" pos="24.500351991777336 20.669837542417216 0.0">
+			<joint name="obstacle_5:joint" type="free" damping="0.01" />
+			<geom size="0.031442790530862144 0.025940130656358716 0.028732481122128624" type="box" condim="3" name="obstacle_5" material="block_mat" mass="2.999689765747663" />
+		</body>
+
+		<body name="obstacle_6" pos="23.756884139572495 23.74575261950449 0.0">
+			<joint name="obstacle_6:joint" type="free" damping="0.01" />
+			<geom size="0.03427495504935758 0.02600190408764236" type="capsule" condim="3" name="obstacle_6" material="block_mat" mass="5.769456033929832" />
+		</body>
+
+		<body name="obstacle_7" pos="20.184468680779585 23.708726458539168 0.0">
+			<joint name="obstacle_7:joint" type="free" damping="0.01" />
+			<geom size="0.03421521209471993 0.023736542273653106 0.03648691884706934" type="ellipsoid" condim="3" name="obstacle_7" material="block_mat" mass="1.9860147711094458" />
+		</body>
+
+		<body name="obstacle_8" pos="23.209331897016806 20.559046129681967 0.0">
+			<joint name="obstacle_8:joint" type="free" damping="0.01" />
+			<geom size="0.023169395618637664 0.02291056816611616" type="capsule" condim="3" name="obstacle_8" material="block_mat" mass="2.0700078424045105" />
+		</body>
+
+		<body name="obstacle_9" pos="24.487529505927874 24.124452581829345 0.0">
+			<joint name="obstacle_9:joint" type="free" damping="0.01" />
+			<geom size="0.03061284831143765 0.024159418517524282 0.024516800760041004" type="ellipsoid" condim="3" name="obstacle_9" material="block_mat" mass="1.21524154014184" />
+		</body>
+
+		<body name="obstacle_10" pos="24.43139221570084 23.69549237067279 0.0">
+			<joint name="obstacle_10:joint" type="free" damping="0.01" />
+			<geom size="0.03636308898473936 0.029150065455577946" type="capsule" condim="3" name="obstacle_10" material="block_mat" mass="7.09738873272619" />
+		</body>
+
+		<body name="obstacle_11" pos="21.237482553344613 22.079055819361294 0.0">
+			<joint name="obstacle_11:joint" type="free" damping="0.01" />
+			<geom size="0.02138487042543971 0.03272254334220653" type="capsule" condim="3" name="obstacle_11" material="block_mat" mass="2.159822236947042" />
+		</body>
+
+		<body name="obstacle_12" pos="24.126911127405936 23.58650681022441 0.0">
+			<joint name="obstacle_12:joint" type="free" damping="0.01" />
+			<geom size="0.028848678107796837 0.03411154479771858" type="cylinder" condim="3" name="obstacle_12" material="block_mat" mass="2.85399412240568" />
+		</body>
+
+		<body name="obstacle_13" pos="22.0186733202022 24.286696473875203 0.0">
+			<joint name="obstacle_13:joint" type="free" damping="0.01" />
+			<geom size="0.038600394619215044 0.023243373313931715" type="cylinder" condim="3" name="obstacle_13" material="block_mat" mass="3.481629052423299" />
+		</body>
+
+		<body name="obstacle_14" pos="20.523874582367768 20.83688693944337 0.0">
+			<joint name="obstacle_14:joint" type="free" damping="0.01" />
+			<geom size="0.02631021576886195" type="sphere" condim="3" name="obstacle_14" material="block_mat" mass="1.2206237647849298" />
+		</body>
+
+		<body name="obstacle_15" pos="23.009703281316554 21.00381831733732 0.0">
+			<joint name="obstacle_15:joint" type="free" damping="0.01" />
+			<geom size="0.020464875657825492 0.03247667739190371" type="cylinder" condim="3" name="obstacle_15" material="block_mat" mass="1.3673813834706559" />
+		</body>
+
+		<body name="obstacle_16" pos="22.966389295085875 23.005796293007442 0.0">
+			<joint name="obstacle_16:joint" type="free" damping="0.01" />
+			<geom size="0.03856475614367512 0.03289896182859935 0.037524836592785576" type="ellipsoid" condim="3" name="obstacle_16" material="block_mat" mass="3.1908044174488808" />
+		</body>
+
+		<body name="obstacle_17" pos="21.88218417889965 20.87537049215582 0.0">
+			<joint name="obstacle_17:joint" type="free" damping="0.01" />
+			<geom size="0.03745130942674644 0.03633344522518152" type="cylinder" condim="3" name="obstacle_17" material="block_mat" mass="5.1231897948480745" />
+		</body>
+
+		<body name="obstacle_18" pos="23.504141376020453 22.074594000897584 0.0">
+			<joint name="obstacle_18:joint" type="free" damping="0.01" />
+			<geom size="0.029398724375086695 0.039055564773920914 0.030657876970430875" type="ellipsoid" condim="3" name="obstacle_18" material="block_mat" mass="2.359185433337178" />
+		</body>
+
+		<body name="obstacle_19" pos="21.125812079275118 23.385025200186735 0.0">
+			<joint name="obstacle_19:joint" type="free" damping="0.01" />
+			<geom size="0.03759809177905375 0.02403896794566675" type="capsule" condim="3" name="obstacle_19" material="block_mat" mass="6.9783305169653" />
+		</body>
+
+		<body name="obstacle_20" pos="23.31535787127773 23.58073955374176 0.0">
+			<joint name="obstacle_20:joint" type="free" damping="0.01" />
+			<geom size="0.026639590366839213 0.038659813549830786" type="capsule" condim="3" name="obstacle_20" material="block_mat" mass="4.025172347175511" />
+		</body>
+
+		<body name="obstacle_21" pos="20.65722977094876 22.385968424344696 0.0">
+			<joint name="obstacle_21:joint" type="free" damping="0.01" />
+			<geom size="0.03203943911948576 0.026897288867596045" type="cylinder" condim="3" name="obstacle_21" material="block_mat" mass="2.775736061594671" />
+		</body>
+
+		<body name="obstacle_22" pos="23.140193400482666 21.390504846178157 0.0">
+			<joint name="obstacle_22:joint" type="free" damping="0.01" />
+			<geom size="0.027476482156367124 0.02236458699042096 0.02096725908279713" type="ellipsoid" condim="3" name="obstacle_22" material="block_mat" mass="0.863519729608278" />
+		</body>
+
+		<body name="obstacle_23" pos="24.349412345968737 24.629740402480373 0.0">
+			<joint name="obstacle_23:joint" type="free" damping="0.01" />
+			<geom size="0.03575198038062258" type="sphere" condim="3" name="obstacle_23" material="block_mat" mass="3.0627313356226056" />
+		</body>
+
+		<body name="obstacle_24" pos="22.85409531951848 22.0821776036222 0.0">
+			<joint name="obstacle_24:joint" type="free" damping="0.01" />
+			<geom size="0.02156270212265745 0.03097191750001032" type="capsule" condim="3" name="obstacle_24" material="block_mat" mass="2.119606677951955" />
+		</body>
+
+		<body name="obstacle_25" pos="21.727336199090082 22.338172236933534 0.0">
+			<joint name="obstacle_25:joint" type="free" damping="0.01" />
+			<geom size="0.02328376516420334 0.02240274160443261 0.03344798076254276" type="ellipsoid" condim="3" name="obstacle_25" material="block_mat" mass="1.169318650941285" />
+		</body>
+
+		<body name="obstacle_26" pos="21.596709862733608 21.33657728315542 0.0">
+			<joint name="obstacle_26:joint" type="free" damping="0.01" />
+			<geom size="0.03967702246423231 0.021601404069119656 0.021950511208862617" type="ellipsoid" condim="3" name="obstacle_26" material="block_mat" mass="1.260881536148597" />
+		</body>
+
+		<body name="obstacle_27" pos="22.764973306028175 24.000866276944326 0.0">
+			<joint name="obstacle_27:joint" type="free" damping="0.01" />
+			<geom size="0.022047214985672994 0.025575299180936067" type="capsule" condim="3" name="obstacle_27" material="block_mat" mass="1.9680044627933424" />
+		</body>
+
+		<body name="obstacle_28" pos="21.113460505189337 20.340918503691093 0.0">
+			<joint name="obstacle_28:joint" type="free" damping="0.01" />
+			<geom size="0.02304500259975179 0.03870582370341535" type="cylinder" condim="3" name="obstacle_28" material="block_mat" mass="2.0664727754691956" />
+		</body>
+
+		<body name="obstacle_29" pos="22.616096112946195 23.316457289617745 0.0">
+			<joint name="obstacle_29:joint" type="free" damping="0.01" />
+			<geom size="0.028031911483737966 0.028533826787680273" type="capsule" condim="3" name="obstacle_29" material="block_mat" mass="3.730332280018223" />
+		</body>
+
+		<body name="obstacle_30" pos="22.88094805422924 20.1322767116843 0.0">
+			<joint name="obstacle_30:joint" type="free" damping="0.01" />
+			<geom size="0.03979238622109143 0.020142500644840695" type="cylinder" condim="3" name="obstacle_30" material="block_mat" mass="3.2063668040705413" />
+		</body>
+
+		<body name="obstacle_31" pos="22.27094799388166 24.525446331579165 0.0">
+			<joint name="obstacle_31:joint" type="free" damping="0.01" />
+			<geom size="0.030257827577757322 0.028963155164891757" type="capsule" condim="3" name="obstacle_31" material="block_mat" mass="4.522375861409211" />
+		</body>
+
+		<body name="obstacle_32" pos="23.022618886791435 23.864147704147776 0.0">
+			<joint name="obstacle_32:joint" type="free" damping="0.01" />
+			<geom size="0.030077585995885114" type="sphere" condim="3" name="obstacle_32" material="block_mat" mass="1.8236333401150382" />
+		</body>
+
+		<body name="obstacle_33" pos="22.672994215498154 24.205618055911778 0.0">
+			<joint name="obstacle_33:joint" type="free" damping="0.01" />
+			<geom size="0.03441107248853567" type="sphere" condim="3" name="obstacle_33" material="block_mat" mass="2.7308837761703364" />
+		</body>
+
+		<body name="obstacle_34" pos="24.849263788175683 21.147283325357783 0.0">
+			<joint name="obstacle_34:joint" type="free" damping="0.01" />
+			<geom size="0.028177113858043033 0.03351180469514037" type="cylinder" condim="3" name="obstacle_34" material="block_mat" mass="2.6747960987128194" />
+		</body>
+
+		<body name="obstacle_35" pos="22.069501558756404 21.362392399841564 0.0">
+			<joint name="obstacle_35:joint" type="free" damping="0.01" />
+			<geom size="0.03447248601544812 0.03732520808769389 0.03973665865151155" type="ellipsoid" condim="3" name="obstacle_35" material="block_mat" mass="3.426689701021578" />
+		</body>
+
+		<body name="obstacle_36" pos="21.835075943324952 24.148374695156242 0.0">
+			<joint name="obstacle_36:joint" type="free" damping="0.01" />
+			<geom size="0.0303557382319354 0.02949357848507572" type="capsule" condim="3" name="obstacle_36" material="block_mat" mass="4.606874138480294" />
+		</body>
+
+		<body name="obstacle_37" pos="22.949943321499365 23.15269392737272 0.0">
+			<joint name="obstacle_37:joint" type="free" damping="0.01" />
+			<geom size="0.02904278843341348 0.02621059622413012" type="cylinder" condim="3" name="obstacle_37" material="block_mat" mass="2.222559383508187" />
+		</body>
+
+		<body name="obstacle_38" pos="24.103914314594476 23.399040700493224 0.0">
+			<joint name="obstacle_38:joint" type="free" damping="0.01" />
+			<geom size="0.027162553026133313 0.022678348993343013" type="capsule" condim="3" name="obstacle_38" material="block_mat" mass="3.025239637930654" />
+		</body>
+
+		<body name="obstacle_39" pos="22.565400884730725 22.50720904164204 0.0">
+			<joint name="obstacle_39:joint" type="free" damping="0.01" />
+			<geom size="0.0369084855575009 0.0398777539940957 0.023265415595827333" type="ellipsoid" condim="3" name="obstacle_39" material="block_mat" mass="2.294966350235719" />
+		</body>
+
+		<body name="obstacle_40" pos="21.88793994670147 21.037178532450657 0.0">
+			<joint name="obstacle_40:joint" type="free" damping="0.01" />
+			<geom size="0.03409182538048328 0.03633490229098794" type="capsule" condim="3" name="obstacle_40" material="block_mat" mass="6.901035946211309" />
+		</body>
+
+		<body name="obstacle_41" pos="21.963047116125598 23.762062270535818 0.0">
+			<joint name="obstacle_41:joint" type="free" damping="0.01" />
+			<geom size="0.02116972643026573 0.02982622979268238" type="capsule" condim="3" name="obstacle_41" material="block_mat" mass="1.9796311301796639" />
+		</body>
+
+		<body name="obstacle_42" pos="23.776667659073865 23.871720729016776 0.0">
+			<joint name="obstacle_42:joint" type="free" damping="0.01" />
+			<geom size="0.03134747350762014 0.028827566831896634 0.03074835969888285" type="ellipsoid" condim="3" name="obstacle_42" material="block_mat" mass="1.862263265166757" />
+		</body>
+
+		<body name="obstacle_43" pos="21.69602559202738 24.31615817386788 0.0">
+			<joint name="obstacle_43:joint" type="free" damping="0.01" />
+			<geom size="0.021677092234860806 0.0392565730990949" type="capsule" condim="3" name="obstacle_43" material="block_mat" mass="2.537117745291884" />
+		</body>
+
+		<body name="obstacle_44" pos="24.615178602840423 21.3683907052034 0.0">
+			<joint name="obstacle_44:joint" type="free" damping="0.01" />
+			<geom size="0.037091956967203035 0.028588797454976493 0.020457667021898513" type="box" condim="3" name="obstacle_44" material="block_mat" mass="2.7767815193442758" />
+		</body>
+
+		<body name="obstacle_45" pos="20.69619144416854 22.822377028445604 0.0">
+			<joint name="obstacle_45:joint" type="free" damping="0.01" />
+			<geom size="0.026887132001719032 0.039860509528497054 0.03833549298033116" type="box" condim="3" name="obstacle_45" material="block_mat" mass="5.258941591956659" />
+		</body>
+
+		<body name="obstacle_46" pos="20.819388051329003 23.41745633314091 0.0">
+			<joint name="obstacle_46:joint" type="free" damping="0.01" />
+			<geom size="0.03498230427987804" type="sphere" condim="3" name="obstacle_46" material="block_mat" mass="2.8691538125643783" />
+		</body>
+
+		<body name="obstacle_47" pos="23.887228926132785 20.787240306309165 0.0">
+			<joint name="obstacle_47:joint" type="free" damping="0.01" />
+			<geom size="0.021816313492838586 0.02632839123522427 0.02993177263020311" type="box" condim="3" name="obstacle_47" material="block_mat" mass="2.2006354043133265" />
+		</body>
+
+		<body name="obstacle_48" pos="20.764679000163294 20.59369654620589 0.0">
+			<joint name="obstacle_48:joint" type="free" damping="0.01" />
+			<geom size="0.027149101034278738" type="sphere" condim="3" name="obstacle_48" material="block_mat" mass="1.3411425861108388" />
+		</body>
+
+		<body name="obstacle_49" pos="22.015799107421152 22.520439448943502 0.0">
+			<joint name="obstacle_49:joint" type="free" damping="0.01" />
+			<geom size="0.03995439330684967 0.022253931932175848" type="cylinder" condim="3" name="obstacle_49" material="block_mat" mass="3.5713769165323446" />
+		</body>
+
+		<body name="obstacle_50" pos="20.131105604846166 21.295723156641778 0.0">
+			<joint name="obstacle_50:joint" type="free" damping="0.01" />
+			<geom size="0.03161720933840076 0.022215860110488615 0.026876185403365022" type="ellipsoid" condim="3" name="obstacle_50" material="block_mat" mass="1.2652107903005831" />
+		</body>
+
+		<body name="obstacle_51" pos="20.08703151049582 23.436030620778844 0.0">
+			<joint name="obstacle_51:joint" type="free" damping="0.01" />
+			<geom size="0.02395353346100912 0.03480504043912778" type="cylinder" condim="3" name="obstacle_51" material="block_mat" mass="2.0076183980226894" />
+		</body>
+
+		<body name="obstacle_52" pos="23.81255464881059 23.724335189401316 0.0">
+			<joint name="obstacle_52:joint" type="free" damping="0.01" />
+			<geom size="0.027059895386727165 0.020581904334897913" type="capsule" condim="3" name="obstacle_52" material="block_mat" mass="2.843053139307024" />
+		</body>
+
+		<body name="obstacle_53" pos="22.614680627229706 24.675464362656044 0.0">
+			<joint name="obstacle_53:joint" type="free" damping="0.01" />
+			<geom size="0.028767914123767807" type="sphere" condim="3" name="obstacle_53" material="block_mat" mass="1.5956355838572949" />
+		</body>
+
+		<body name="obstacle_54" pos="21.675641811041032 24.176114317561044 0.0">
+			<joint name="obstacle_54:joint" type="free" damping="0.01" />
+			<geom size="0.03193399955637069 0.02112518415933278 0.02296466717335081" type="ellipsoid" condim="3" name="obstacle_54" material="block_mat" mass="1.0382993115826995" />
+		</body>
+
+		<body name="obstacle_55" pos="23.989573596977138 20.711944611543075 0.0">
+			<joint name="obstacle_55:joint" type="free" damping="0.01" />
+			<geom size="0.031102994384235125 0.024631474771159168 0.029893563087832836" type="ellipsoid" condim="3" name="obstacle_55" material="block_mat" mass="1.5348957797740497" />
+		</body>
+
+		<body name="obstacle_56" pos="21.741014231422668 22.28294878504423 0.0">
+			<joint name="obstacle_56:joint" type="free" damping="0.01" />
+			<geom size="0.023275313861775098 0.0322824909994647" type="cylinder" condim="3" name="obstacle_56" material="block_mat" mass="1.7581583262135019" />
+		</body>
+
+		<body name="obstacle_57" pos="20.07810386933536 20.932329365936948 0.0">
+			<joint name="obstacle_57:joint" type="free" damping="0.01" />
+			<geom size="0.03178126989540489 0.03040556456861398 0.03726812223823352" type="ellipsoid" condim="3" name="obstacle_57" material="block_mat" mass="2.4136284787562845" />
+		</body>
+
+		<body name="obstacle_58" pos="24.879621404908388 22.2457880517766 0.0">
+			<joint name="obstacle_58:joint" type="free" damping="0.01" />
+			<geom size="0.03929601936583846 0.022270336177644717" type="capsule" condim="3" name="obstacle_58" material="block_mat" mass="7.524007553719285" />
+		</body>
+
+		<body name="obstacle_59" pos="24.73910491100684 24.612395580733285 0.0">
+			<joint name="obstacle_59:joint" type="free" damping="0.01" />
+			<geom size="0.03773728901365972 0.03827857208781346" type="cylinder" condim="3" name="obstacle_59" material="block_mat" mass="5.480207159316753" />
+		</body>
+
+		<body name="obstacle_60" pos="20.83868060871379 21.60302305629779 0.0">
+			<joint name="obstacle_60:joint" type="free" damping="0.01" />
+			<geom size="0.02828953942453908" type="sphere" condim="3" name="obstacle_60" material="block_mat" mass="1.5173515846132313" />
+		</body>
+
+		<body name="obstacle_61" pos="24.458855546954048 21.87791235580185 0.0">
+			<joint name="obstacle_61:joint" type="free" damping="0.01" />
+			<geom size="0.02579756526579418 0.029467076059952337" type="capsule" condim="3" name="obstacle_61" material="block_mat" mass="3.122142893631734" />
+		</body>
+
+		<body name="obstacle_62" pos="20.19519069597049 22.856856169343633 0.0">
+			<joint name="obstacle_62:joint" type="free" damping="0.01" />
+			<geom size="0.029245818486539135" type="sphere" condim="3" name="obstacle_62" material="block_mat" mass="1.676486006065414" />
+		</body>
+
+		<body name="obstacle_63" pos="20.61654986133086 23.18286916047876 0.0">
+			<joint name="obstacle_63:joint" type="free" damping="0.01" />
+			<geom size="0.0233150076745923 0.02018858291927977 0.037298149052387444" type="box" condim="3" name="obstacle_63" material="block_mat" mass="2.2471840749139615" />
+		</body>
+
+		<body name="obstacle_64" pos="21.481243104082345 21.66690776971897 0.0">
+			<joint name="obstacle_64:joint" type="free" damping="0.01" />
+			<geom size="0.035333515359308246" type="sphere" condim="3" name="obstacle_64" material="block_mat" mass="2.956440449669858" />
+		</body>
+
+		<body name="obstacle_65" pos="24.938280777289584 24.584897141644415 0.0">
+			<joint name="obstacle_65:joint" type="free" damping="0.01" />
+			<geom size="0.02282392498557824 0.03961344174093397 0.025692747445411876" type="box" condim="3" name="obstacle_65" material="block_mat" mass="2.973400606846335" />
+		</body>
+
+		<body name="obstacle_66" pos="24.10449234581176 23.50465138344274 0.0">
+			<joint name="obstacle_66:joint" type="free" damping="0.01" />
+			<geom size="0.031460138562299206 0.03091379420921592" type="capsule" condim="3" name="obstacle_66" material="block_mat" mass="5.162754992050983" />
+		</body>
+
+		<body name="obstacle_67" pos="21.950531555232608 20.579282248216103 0.0">
+			<joint name="obstacle_67:joint" type="free" damping="0.01" />
+			<geom size="0.032785707716104756 0.031131816811233875" type="cylinder" condim="3" name="obstacle_67" material="block_mat" mass="3.36413521373389" />
+		</body>
+
+		<body name="obstacle_68" pos="24.534944707826405 22.791139353273863 0.0">
+			<joint name="obstacle_68:joint" type="free" damping="0.01" />
+			<geom size="0.021641939613217375 0.03565422087552249 0.03848424965753168" type="ellipsoid" condim="3" name="obstacle_68" material="block_mat" mass="1.9902092793925907" />
+		</body>
+
+		<body name="obstacle_69" pos="23.67116372935918 24.288990831409066 0.0">
+			<joint name="obstacle_69:joint" type="free" damping="0.01" />
+			<geom size="0.029790248833190536 0.03510195266144732" type="cylinder" condim="3" name="obstacle_69" material="block_mat" mass="3.1316944947582988" />
+		</body>
+
+		<body name="obstacle_70" pos="21.259096255965993 23.26927229278604 0.0">
+			<joint name="obstacle_70:joint" type="free" damping="0.01" />
+			<geom size="0.03189501394183418 0.024037315777053023" type="cylinder" condim="3" name="obstacle_70" material="block_mat" mass="2.458280365799238" />
+		</body>
+
+		<body name="obstacle_71" pos="23.36028442240434 21.778269482198684 0.0">
+			<joint name="obstacle_71:joint" type="free" damping="0.01" />
+			<geom size="0.030444543544873304 0.02971673600243313" type="cylinder" condim="3" name="obstacle_71" material="block_mat" mass="2.7689804611821636" />
+		</body>
+
+		<body name="obstacle_72" pos="20.800262051377217 20.968621785238913 0.0">
+			<joint name="obstacle_72:joint" type="free" damping="0.01" />
+			<geom size="0.03163834473513566" type="sphere" condim="3" name="obstacle_72" material="block_mat" mass="2.1225105302461253" />
+		</body>
+
+		<body name="obstacle_73" pos="24.047509196718575 24.033820948309973 0.0">
+			<joint name="obstacle_73:joint" type="free" damping="0.01" />
+			<geom size="0.03712938227269022" type="sphere" condim="3" name="obstacle_73" material="block_mat" mass="3.4305342809631636" />
+		</body>
+
+		<body name="obstacle_74" pos="21.780679601099923 24.378961650225158 0.0">
+			<joint name="obstacle_74:joint" type="free" damping="0.01" />
+			<geom size="0.035738357352498376 0.03637247732931433 0.02296999987846931" type="ellipsoid" condim="3" name="obstacle_74" material="block_mat" mass="2.001138068435423" />
+		</body>
+
+		<body name="obstacle_75" pos="21.64914727156837 21.184830666782872 0.0">
+			<joint name="obstacle_75:joint" type="free" damping="0.01" />
+			<geom size="0.036440816444077755 0.03641466461620277" type="cylinder" condim="3" name="obstacle_75" material="block_mat" mass="4.861299324356505" />
+		</body>
+
+		<body name="obstacle_76" pos="23.304593177529522 23.830437639638113 0.0">
+			<joint name="obstacle_76:joint" type="free" damping="0.01" />
+			<geom size="0.030884033125927253" type="sphere" condim="3" name="obstacle_76" material="block_mat" mass="1.974288522523684" />
+		</body>
+
+		<body name="obstacle_77" pos="22.498253912953928 23.35126056777732 0.0">
+			<joint name="obstacle_77:joint" type="free" damping="0.01" />
+			<geom size="0.026750501912037133" type="sphere" condim="3" name="obstacle_77" material="block_mat" mass="1.2829342423433565" />
+		</body>
+
+		<body name="obstacle_78" pos="23.73877610794106 23.504679221908518 0.0">
+			<joint name="obstacle_78:joint" type="free" damping="0.01" />
+			<geom size="0.02240987503281608 0.026721225617299393 0.0252911123772467" type="box" condim="3" name="obstacle_78" material="block_mat" mass="1.9385352816578865" />
+		</body>
+
+		<body name="obstacle_79" pos="20.25958547872502 22.63453660687945 0.0">
+			<joint name="obstacle_79:joint" type="free" damping="0.01" />
+			<geom size="0.02617103878531214 0.026674648275382375" type="cylinder" condim="3" name="obstacle_79" material="block_mat" mass="1.8367095106035867" />
+		</body>
+
+		<body name="obstacle_80" pos="24.396982088802645 24.081039643445898 0.0">
+			<joint name="obstacle_80:joint" type="free" damping="0.01" />
+			<geom size="0.022846447467447212" type="sphere" condim="3" name="obstacle_80" material="block_mat" mass="0.7992168427833365" />
+		</body>
+
+		<body name="obstacle_81" pos="20.477014741293605 22.32594567155077 0.0">
+			<joint name="obstacle_81:joint" type="free" damping="0.01" />
+			<geom size="0.02070181324870597 0.026000365569465708" type="capsule" condim="3" name="obstacle_81" material="block_mat" mass="1.714813427400238" />
+		</body>
+
+		<body name="obstacle_82" pos="22.452790299369862 20.75318887454928 0.0">
+			<joint name="obstacle_82:joint" type="free" damping="0.01" />
+			<geom size="0.03210679169711489 0.03090270372711399 0.03139393303353762" type="ellipsoid" condim="3" name="obstacle_82" material="block_mat" mass="2.087602018676001" />
+		</body>
+
+		<body name="obstacle_83" pos="20.00345942590568 20.25129742257872 0.0">
+			<joint name="obstacle_83:joint" type="free" damping="0.01" />
+			<geom size="0.021012610024351747 0.03920581102418641 0.039695998273633126" type="box" condim="3" name="obstacle_83" material="block_mat" mass="4.185883532337171" />
+		</body>
+
+		<body name="obstacle_84" pos="23.41645313263707 22.602831910663905 0.0">
+			<joint name="obstacle_84:joint" type="free" damping="0.01" />
+			<geom size="0.03866607829140197 0.024698464054383616" type="cylinder" condim="3" name="obstacle_84" material="block_mat" mass="3.7121887409552348" />
+		</body>
+
+		<body name="obstacle_85" pos="21.228691872384353 24.66197566189269 0.0">
+			<joint name="obstacle_85:joint" type="free" damping="0.01" />
+			<geom size="0.025577585904844193" type="sphere" condim="3" name="obstacle_85" material="block_mat" mass="1.1214689345709017" />
+		</body>
+
+		<body name="obstacle_86" pos="23.75315449806357 23.841639702230378 0.0">
+			<joint name="obstacle_86:joint" type="free" damping="0.01" />
+			<geom size="0.029057420304730006" type="sphere" condim="3" name="obstacle_86" material="block_mat" mass="1.6442950825809555" />
+		</body>
+
+		<body name="obstacle_87" pos="20.687645120781 24.257395953678884 0.0">
+			<joint name="obstacle_87:joint" type="free" damping="0.01" />
+			<geom size="0.02799751729496227" type="sphere" condim="3" name="obstacle_87" material="block_mat" mass="1.4708458407737894" />
+		</body>
+
+		<body name="obstacle_88" pos="23.718273028629536 20.343795619533207 0.0">
+			<joint name="obstacle_88:joint" type="free" damping="0.01" />
+			<geom size="0.027352245093308643 0.025610537788301614" type="capsule" condim="3" name="obstacle_88" material="block_mat" mass="3.297687725676706" />
+		</body>
+
+		<body name="obstacle_89" pos="22.14984315913799 21.05519734703421 0.0">
+			<joint name="obstacle_89:joint" type="free" damping="0.01" />
+			<geom size="0.03916198978396118 0.036141918622027425 0.03803290196476848" type="box" condim="3" name="obstacle_89" material="block_mat" mass="6.890415118335153" />
+		</body>
+
+		<body name="obstacle_90" pos="23.978249745220435 23.399845777652715 0.0">
+			<joint name="obstacle_90:joint" type="free" damping="0.01" />
+			<geom size="0.023528325580446575 0.033389905902283835" type="capsule" condim="3" name="obstacle_90" material="block_mat" mass="2.731154317923044" />
+		</body>
+
+		<body name="obstacle_91" pos="20.634289559670528 23.585352689967774 0.0">
+			<joint name="obstacle_91:joint" type="free" damping="0.01" />
+			<geom size="0.037995373784928135" type="sphere" condim="3" name="obstacle_91" material="block_mat" mass="3.676213756509457" />
+		</body>
+
+		<body name="obstacle_92" pos="20.191794998456924 21.785454476057648 0.0">
+			<joint name="obstacle_92:joint" type="free" damping="0.01" />
+			<geom size="0.023532243921788987 0.021281570043206882 0.02702168772589794" type="ellipsoid" condim="3" name="obstacle_92" material="block_mat" mass="0.9069598648550281" />
+		</body>
+
+		<body name="obstacle_93" pos="24.354800100346708 23.996770593649405 0.0">
+			<joint name="obstacle_93:joint" type="free" damping="0.01" />
+			<geom size="0.021003559736501063 0.037820956799289984" type="capsule" condim="3" name="obstacle_93" material="block_mat" mass="2.2983225553003392" />
+		</body>
+
+		<body name="obstacle_94" pos="23.580985003564276 21.656699060106032 0.0">
+			<joint name="obstacle_94:joint" type="free" damping="0.01" />
+			<geom size="0.027573097389994538 0.029116405437598032" type="cylinder" condim="3" name="obstacle_94" material="block_mat" mass="2.225403254075521" />
+		</body>
+
+		<body name="obstacle_95" pos="23.908681797998725 24.13504870237311 0.0">
+			<joint name="obstacle_95:joint" type="free" damping="0.01" />
+			<geom size="0.021499842982717083 0.027510382297750068 0.0336879107251339" type="box" condim="3" name="obstacle_95" material="block_mat" mass="2.550444991107294" />
+		</body>
+
+		<body name="obstacle_96" pos="21.50511427849486 24.72376910897746 0.0">
+			<joint name="obstacle_96:joint" type="free" damping="0.01" />
+			<geom size="0.029943491998544826" type="sphere" condim="3" name="obstacle_96" material="block_mat" mass="1.7993511699860816" />
+		</body>
+
+		<body name="obstacle_97" pos="21.920407013341674 23.67681620041406 0.0">
+			<joint name="obstacle_97:joint" type="free" damping="0.01" />
+			<geom size="0.027505329008079896 0.03180941350541633 0.02567394285855502" type="ellipsoid" condim="3" name="obstacle_97" material="block_mat" mass="1.5054754166163673" />
+		</body>
+
+		<body name="obstacle_98" pos="21.962070274602016 22.234571558339145 0.0">
+			<joint name="obstacle_98:joint" type="free" damping="0.01" />
+			<geom size="0.024600809002031404 0.02469223325720956 0.03843678617185419" type="box" condim="3" name="obstacle_98" material="block_mat" mass="2.9885931552266554" />
+		</body>
+
+		<body name="obstacle_99" pos="24.20633702880824 24.04994437715454 0.0">
+			<joint name="obstacle_99:joint" type="free" damping="0.01" />
+			<geom size="0.03904621501263414 0.02271183956574067 0.032893862791574635" type="ellipsoid" condim="3" name="obstacle_99" material="block_mat" mass="1.9550358323630075" />
+		</body>
+
+		<body name="obstacle_100" pos="21.49513945119759 23.743753838700336 0.0">
+			<joint name="obstacle_100:joint" type="free" damping="0.01" />
+			<geom size="0.03335113031438188 0.023205077217563024 0.023712895372525064" type="ellipsoid" condim="3" name="obstacle_100" material="block_mat" mass="1.2299480046837035" />
+		</body>
+
+		<body name="obstacle_101" pos="21.159015748616262 24.94643409146528 0.0">
+			<joint name="obstacle_101:joint" type="free" damping="0.01" />
+			<geom size="0.026154772152994003" type="sphere" condim="3" name="obstacle_101" material="block_mat" mass="1.1991165996020692" />
+		</body>
+
+		<body name="obstacle_102" pos="21.837458059252814 21.996241476610546 0.0">
+			<joint name="obstacle_102:joint" type="free" damping="0.01" />
+			<geom size="0.020254222678354968 0.02944777695983577" type="capsule" condim="3" name="obstacle_102" material="block_mat" mass="1.771332808899797" />
+		</body>
+
+		<body name="obstacle_103" pos="23.329973254710247 24.530086583257066 0.0">
+			<joint name="obstacle_103:joint" type="free" damping="0.01" />
+			<geom size="0.03693065758305379 0.03898632817362796" type="capsule" condim="3" name="obstacle_103" material="block_mat" mass="8.721220185642004" />
+		</body>
+
+		<body name="obstacle_104" pos="20.392198415738545 23.731461501441093 0.0">
+			<joint name="obstacle_104:joint" type="free" damping="0.01" />
+			<geom size="0.03299288728833371 0.03226315324677549" type="cylinder" condim="3" name="obstacle_104" material="block_mat" mass="3.530590178779113" />
+		</body>
+
+		<body name="obstacle_105" pos="21.903944251701006 21.59607738434648 0.0">
+			<joint name="obstacle_105:joint" type="free" damping="0.01" />
+			<geom size="0.03721117694020679 0.03495439098755336 0.03950425540111354" type="box" condim="3" name="obstacle_105" material="block_mat" mass="6.577017481712359" />
+		</body>
+
+		<body name="obstacle_106" pos="22.733277069697923 23.715270628173172 0.0">
+			<joint name="obstacle_106:joint" type="free" damping="0.01" />
+			<geom size="0.022768418084071578 0.03298192671035245 0.03384666951565601" type="box" condim="3" name="obstacle_106" material="block_mat" mass="3.2533799838279185" />
+		</body>
+
+		<body name="obstacle_107" pos="21.658013314897367 23.212691444493228 0.0">
+			<joint name="obstacle_107:joint" type="free" damping="0.01" />
+			<geom size="0.029629670900303186 0.02133798421542124 0.0391994048088258" type="ellipsoid" condim="3" name="obstacle_107" material="block_mat" mass="1.6609948355519202" />
+		</body>
+
+		<body name="obstacle_108" pos="20.87963513232136 20.96447479875943 0.0">
+			<joint name="obstacle_108:joint" type="free" damping="0.01" />
+			<geom size="0.038826547213350084 0.03621056107603347 0.038930017355390346" type="box" condim="3" name="obstacle_108" material="block_mat" mass="7.005813828699572" />
+		</body>
+
+		<body name="obstacle_109" pos="24.826076541560123 23.939782890932207 0.0">
+			<joint name="obstacle_109:joint" type="free" damping="0.01" />
+			<geom size="0.03582094558985049 0.02495164801131383" type="capsule" condim="3" name="obstacle_109" material="block_mat" mass="6.299135217580437" />
+		</body>
+
+		<body name="obstacle_110" pos="20.589822914264865 24.27445808206974 0.0">
+			<joint name="obstacle_110:joint" type="free" damping="0.01" />
+			<geom size="0.03090631208722746 0.025880370195536042" type="cylinder" condim="3" name="obstacle_110" material="block_mat" mass="2.4852192373556288" />
+		</body>
+
+		<body name="obstacle_111" pos="24.759348963053533 22.106539996766287 0.0">
+			<joint name="obstacle_111:joint" type="free" damping="0.01" />
+			<geom size="0.025684023727764838 0.03682153480829191 0.036989444812671815" type="ellipsoid" condim="3" name="obstacle_111" material="block_mat" mass="2.3445060310843395" />
+		</body>
+
+		<body name="obstacle_112" pos="20.156561671295794 24.75094521908646 0.0">
+			<joint name="obstacle_112:joint" type="free" damping="0.01" />
+			<geom size="0.03310134425078476" type="sphere" condim="3" name="obstacle_112" material="block_mat" mass="2.43077904997631" />
+		</body>
+
+		<body name="obstacle_113" pos="23.93702847992861 24.66966782237302 0.0">
+			<joint name="obstacle_113:joint" type="free" damping="0.01" />
+			<geom size="0.03287821264306064" type="sphere" condim="3" name="obstacle_113" material="block_mat" mass="2.3819530220926417" />
+		</body>
+
+		<body name="obstacle_114" pos="23.477431643812952 23.58618447098751 0.0">
+			<joint name="obstacle_114:joint" type="free" damping="0.01" />
+			<geom size="0.026696377227162924" type="sphere" condim="3" name="obstacle_114" material="block_mat" mass="1.275162648658542" />
+		</body>
+
+		<body name="obstacle_115" pos="21.617640950026633 21.32762390811539 0.0">
+			<joint name="obstacle_115:joint" type="free" damping="0.01" />
+			<geom size="0.02848336293012779 0.024621282824538043 0.02081118666587487" type="box" condim="3" name="obstacle_115" material="block_mat" mass="1.868137140737968" />
+		</body>
+
+		<body name="obstacle_116" pos="23.23019485058642 22.028973748947898 0.0">
+			<joint name="obstacle_116:joint" type="free" damping="0.01" />
+			<geom size="0.0394759543611827 0.03670784795556522" type="capsule" condim="3" name="obstacle_116" material="block_mat" mass="9.873679396500343" />
+		</body>
+
+		<body name="obstacle_117" pos="23.45004066905431 23.898468555152387 0.0">
+			<joint name="obstacle_117:joint" type="free" damping="0.01" />
+			<geom size="0.02847370695010519 0.035611378696926675 0.025251387734683346" type="box" condim="3" name="obstacle_117" material="block_mat" mass="3.2773892050145563" />
+		</body>
+
+		<body name="obstacle_118" pos="20.65391175687043 21.46791982571806 0.0">
+			<joint name="obstacle_118:joint" type="free" damping="0.01" />
+			<geom size="0.02026033865370861 0.03159044186248351 0.023347676962910333" type="box" condim="3" name="obstacle_118" material="block_mat" mass="1.912740467872794" />
+		</body>
+
+		<body name="obstacle_119" pos="21.817153219410677 23.473123155271324 0.0">
+			<joint name="obstacle_119:joint" type="free" damping="0.01" />
+			<geom size="0.03709454396852018" type="sphere" condim="3" name="obstacle_119" material="block_mat" mass="3.4208867819888344" />
+		</body>
+
+		<body name="obstacle_120" pos="24.954103148282265 21.959584944888196 0.0">
+			<joint name="obstacle_120:joint" type="free" damping="0.01" />
+			<geom size="0.02357286368522366 0.021377771473371155" type="cylinder" condim="3" name="obstacle_120" material="block_mat" mass="1.1942272337546025" />
+		</body>
+
+		<body name="obstacle_121" pos="24.08486891466189 22.97128623764411 0.0">
+			<joint name="obstacle_121:joint" type="free" damping="0.01" />
+			<geom size="0.020957898056548036 0.03613982304823998" type="capsule" condim="3" name="obstacle_121" material="block_mat" mass="2.2127630543025933" />
+		</body>
+
+		<body name="obstacle_122" pos="20.77016136326515 20.518918199942497 0.0">
+			<joint name="obstacle_122:joint" type="free" damping="0.01" />
+			<geom size="0.025837940280576878 0.023106018195311172 0.022179018952683007" type="box" condim="3" name="obstacle_122" material="block_mat" mass="1.6948657471868178" />
+		</body>
+
+		<body name="obstacle_123" pos="22.478573489898263 21.54410482209702 0.0">
+			<joint name="obstacle_123:joint" type="free" damping="0.01" />
+			<geom size="0.028491891114398052" type="sphere" condim="3" name="obstacle_123" material="block_mat" mass="1.5501453427366507" />
+		</body>
+
+		<body name="obstacle_124" pos="21.1092841130632 23.696177872052136 0.0">
+			<joint name="obstacle_124:joint" type="free" damping="0.01" />
+			<geom size="0.025806335867742315" type="sphere" condim="3" name="obstacle_124" material="block_mat" mass="1.1518279898051025" />
+		</body>
+
+		<body name="obstacle_125" pos="24.19065580827129 21.912842950545613 0.0">
+			<joint name="obstacle_125:joint" type="free" damping="0.01" />
+			<geom size="0.02412358924391642 0.03785637849492436" type="cylinder" condim="3" name="obstacle_125" material="block_mat" mass="2.214740085826723" />
+		</body>
+
+		<body name="obstacle_126" pos="20.448440839755897 20.833170794191787 0.0">
+			<joint name="obstacle_126:joint" type="free" damping="0.01" />
+			<geom size="0.02343666041257162 0.0242578607144673" type="cylinder" condim="3" name="obstacle_126" material="block_mat" mass="1.3395033488848338" />
+		</body>
+
+		<body name="obstacle_127" pos="22.71400169704127 21.937374529714155 0.0">
+			<joint name="obstacle_127:joint" type="free" damping="0.01" />
+			<geom size="0.025119293053896218 0.02058102319852617" type="capsule" condim="3" name="obstacle_127" material="block_mat" mass="2.3677743199963612" />
+		</body>
+
+		<body name="obstacle_128" pos="20.53944199724177 21.342140564150366 0.0">
+			<joint name="obstacle_128:joint" type="free" damping="0.01" />
+			<geom size="0.02746108577218731 0.035009310652820945 0.025068533737167602" type="box" condim="3" name="obstacle_128" material="block_mat" mass="3.084893435970412" />
+		</body>
+
+		<body name="obstacle_129" pos="22.087908355066283 20.20277074027688 0.0">
+			<joint name="obstacle_129:joint" type="free" damping="0.01" />
+			<geom size="0.02177470080976296 0.0239192362034658 0.02756224992141754" type="box" condim="3" name="obstacle_129" material="block_mat" mass="1.837486427750191" />
+		</body>
+
+		<body name="obstacle_130" pos="24.057221448043492 22.17797969971963 0.0">
+			<joint name="obstacle_130:joint" type="free" damping="0.01" />
+			<geom size="0.03393668339970639 0.02581805288113509" type="cylinder" condim="3" name="obstacle_130" material="block_mat" mass="2.9892492622897757" />
+		</body>
+
+		<body name="obstacle_131" pos="24.53399030635326 20.129941141616158 0.0">
+			<joint name="obstacle_131:joint" type="free" damping="0.01" />
+			<geom size="0.02133553866008939 0.0336303070674262 0.024674388299831783" type="ellipsoid" condim="3" name="obstacle_131" material="block_mat" mass="1.186559256387012" />
+		</body>
+
+		<body name="obstacle_132" pos="20.04235251578929 20.491445659068525 0.0">
+			<joint name="obstacle_132:joint" type="free" damping="0.01" />
+			<geom size="0.021381837950159736 0.03989483475172434" type="capsule" condim="3" name="obstacle_132" material="block_mat" mass="2.488762843759379" />
+		</body>
+
+		<body name="obstacle_133" pos="20.476089961592795 22.303280006470573 0.0">
+			<joint name="obstacle_133:joint" type="free" damping="0.01" />
+			<geom size="0.025848985795860868 0.03993168306430332 0.02615898146106802" type="ellipsoid" condim="3" name="obstacle_133" material="block_mat" mass="1.8096331586779735" />
+		</body>
+
+		<body name="obstacle_134" pos="21.2266238920467 24.30377199886543 0.0">
+			<joint name="obstacle_134:joint" type="free" damping="0.01" />
+			<geom size="0.02255370211476482 0.03025925362064408" type="capsule" condim="3" name="obstacle_134" material="block_mat" mass="2.3162547489611724" />
+		</body>
+
+		<body name="obstacle_135" pos="22.97539803727924 21.05511527701441 0.0">
+			<joint name="obstacle_135:joint" type="free" damping="0.01" />
+			<geom size="0.02516578684005384 0.03611867910138761 0.037028290544973974" type="ellipsoid" condim="3" name="obstacle_135" material="block_mat" mass="2.2557170789590524" />
+		</body>
+
+		<body name="obstacle_136" pos="24.336353324688623 22.848432946451833 0.0">
+			<joint name="obstacle_136:joint" type="free" damping="0.01" />
+			<geom size="0.033643861482593074 0.02563996794901691" type="cylinder" condim="3" name="obstacle_136" material="block_mat" mass="2.9176218414353934" />
+		</body>
+
+		<body name="obstacle_137" pos="21.449917113299524 22.755310427573363 0.0">
+			<joint name="obstacle_137:joint" type="free" damping="0.01" />
+			<geom size="0.020280949774636535" type="sphere" condim="3" name="obstacle_137" material="block_mat" mass="0.5590793615465207" />
+		</body>
+
+		<body name="obstacle_138" pos="20.329557230094306 22.855839303072734 0.0">
+			<joint name="obstacle_138:joint" type="free" damping="0.01" />
+			<geom size="0.020725021963675073 0.03332669879561948 0.025315096090255566" type="box" condim="3" name="obstacle_138" material="block_mat" mass="2.23808638719128" />
+		</body>
+
+		<body name="obstacle_139" pos="22.1369751210804 22.947915275945142 0.0">
+			<joint name="obstacle_139:joint" type="free" damping="0.01" />
+			<geom size="0.023742904905814703 0.029211776016577214 0.03594609724249035" type="ellipsoid" condim="3" name="obstacle_139" material="block_mat" mass="1.6709065131446639" />
+		</body>
+
+		<body name="obstacle_140" pos="20.0386942530945 22.37273435050556 0.0">
+			<joint name="obstacle_140:joint" type="free" damping="0.01" />
+			<geom size="0.034486237754156365 0.024239518480422006 0.027620640111586957" type="box" condim="3" name="obstacle_140" material="block_mat" mass="2.9553812597107694" />
+		</body>
+
+		<body name="obstacle_141" pos="20.795398164116495 21.41310885497629 0.0">
+			<joint name="obstacle_141:joint" type="free" damping="0.01" />
+			<geom size="0.036778319938335 0.02281539817073977 0.02541601925458157" type="ellipsoid" condim="3" name="obstacle_141" material="block_mat" mass="1.4293416918885047" />
+		</body>
+
+		<body name="obstacle_142" pos="21.19447782629626 21.1350860870931 0.0">
+			<joint name="obstacle_142:joint" type="free" damping="0.01" />
+			<geom size="0.025996990770374255 0.021669989006496852 0.029554859121346748" type="ellipsoid" condim="3" name="obstacle_142" material="block_mat" mass="1.115884529188686" />
+		</body>
+
+		<body name="obstacle_143" pos="24.562133362475443 20.870259381773344 0.0">
+			<joint name="obstacle_143:joint" type="free" damping="0.01" />
+			<geom size="0.02110030571582759 0.023138645554533935" type="cylinder" condim="3" name="obstacle_143" material="block_mat" mass="1.0356554141105911" />
+		</body>
+
+		<body name="obstacle_144" pos="23.264354193803364 23.651262068256724 0.0">
+			<joint name="obstacle_144:joint" type="free" damping="0.01" />
+			<geom size="0.023346686526797944 0.020512166749854083 0.027380808344367517" type="box" condim="3" name="obstacle_144" material="block_mat" mass="1.678390549604587" />
+		</body>
+
+		<body name="obstacle_145" pos="20.928244184378322 21.33000428781766 0.0">
+			<joint name="obstacle_145:joint" type="free" damping="0.01" />
+			<geom size="0.024675501945055398 0.038780324350324684 0.02686009610708271" type="ellipsoid" condim="3" name="obstacle_145" material="block_mat" mass="1.7226362703559646" />
+		</body>
+
+		<body name="obstacle_146" pos="21.451364394540228 24.36465919077371 0.0">
+			<joint name="obstacle_146:joint" type="free" damping="0.01" />
+			<geom size="0.03397563217282947 0.03920250032779306 0.026377517334390366" type="ellipsoid" condim="3" name="obstacle_146" material="block_mat" mass="2.3546362319528447" />
+		</body>
+
+		<body name="obstacle_147" pos="21.01525564970435 20.15212937410685 0.0">
+			<joint name="obstacle_147:joint" type="free" damping="0.01" />
+			<geom size="0.038663561084711 0.030856778224715067 0.02041228320276153" type="ellipsoid" condim="3" name="obstacle_147" material="block_mat" mass="1.6321219601184558" />
+		</body>
+
+		<body name="obstacle_148" pos="21.17816711450436 22.882002598403734 0.0">
+			<joint name="obstacle_148:joint" type="free" damping="0.01" />
+			<geom size="0.02195794154873471 0.022527377946343297 0.02179953691177832" type="ellipsoid" condim="3" name="obstacle_148" material="block_mat" mass="0.7227001251999149" />
+		</body>
+
+		<body name="obstacle_149" pos="21.46801622098793 23.03182161720672 0.0">
+			<joint name="obstacle_149:joint" type="free" damping="0.01" />
+			<geom size="0.027498386487029278 0.03214788713775878" type="cylinder" condim="3" name="obstacle_149" material="block_mat" mass="2.4438059016017326" />
+		</body>
+
+		<body name="obstacle_150" pos="21.374538185888156 21.90921248140754 0.0">
+			<joint name="obstacle_150:joint" type="free" damping="0.01" />
+			<geom size="0.032813966479379175 0.022900159972998695" type="capsule" condim="3" name="obstacle_150" material="block_mat" mass="4.846898665682081" />
+		</body>
+
+		<body name="obstacle_151" pos="24.247797910178736 20.832159733832302 0.0">
+			<joint name="obstacle_151:joint" type="free" damping="0.01" />
+			<geom size="0.031065785051408064 0.03992123095128178" type="capsule" condim="3" name="obstacle_151" material="block_mat" mass="5.882536780195061" />
+		</body>
+
+		<body name="obstacle_152" pos="22.24952421844848 23.314867404167686 0.0">
+			<joint name="obstacle_152:joint" type="free" damping="0.01" />
+			<geom size="0.03308262798864771" type="sphere" condim="3" name="obstacle_152" material="block_mat" mass="2.4266581256031516" />
+		</body>
+
+		<body name="obstacle_153" pos="24.55638424414384 23.884587544556766 0.0">
+			<joint name="obstacle_153:joint" type="free" damping="0.01" />
+			<geom size="0.03777704275135036 0.028665309469050302 0.024606175890273294" type="box" condim="3" name="obstacle_153" material="block_mat" mass="3.4106620284752545" />
+		</body>
+
+		<body name="obstacle_154" pos="22.7699435460717 21.000090434154004 0.0">
+			<joint name="obstacle_154:joint" type="free" damping="0.01" />
+			<geom size="0.02111590464567817 0.03819903721284576 0.034258918422741216" type="box" condim="3" name="obstacle_154" material="block_mat" mass="3.5370868736950913" />
+		</body>
+
+		<body name="obstacle_155" pos="24.832493533595986 22.178274282229825 0.0">
+			<joint name="obstacle_155:joint" type="free" damping="0.01" />
+			<geom size="0.02357905233963105 0.02457810233633584" type="cylinder" condim="3" name="obstacle_155" material="block_mat" mass="1.3737284485392993" />
+		</body>
+
+		<body name="obstacle_156" pos="24.961606374648976 22.173408101716166 0.0">
+			<joint name="obstacle_156:joint" type="free" damping="0.01" />
+			<geom size="0.022444514435032693 0.024642450705015754" type="cylinder" condim="3" name="obstacle_156" material="block_mat" mass="1.2479700880364417" />
+		</body>
+
+		<body name="obstacle_157" pos="22.10321489824324 22.48385623572973 0.0">
+			<joint name="obstacle_157:joint" type="free" damping="0.01" />
+			<geom size="0.037030313691285045" type="sphere" condim="3" name="obstacle_157" material="block_mat" mass="3.4031474400390738" />
+		</body>
+
+		<body name="obstacle_158" pos="22.22379120700542 20.797748706662155 0.0">
+			<joint name="obstacle_158:joint" type="free" damping="0.01" />
+			<geom size="0.029363286499044926 0.026173555201778186 0.03038935770136728" type="box" condim="3" name="obstacle_158" material="block_mat" mass="2.9895021559637702" />
+		</body>
+
+		<body name="obstacle_159" pos="23.688284374379037 24.598513705572277 0.0">
+			<joint name="obstacle_159:joint" type="free" damping="0.01" />
+			<geom size="0.03498485165670243 0.031953832799022835" type="capsule" condim="3" name="obstacle_159" material="block_mat" mass="6.8015033718413935" />
+		</body>
+
+		<body name="obstacle_160" pos="23.626071733470333 20.894592668645284 0.0">
+			<joint name="obstacle_160:joint" type="free" damping="0.01" />
+			<geom size="0.02469751786985953 0.028159139190973966" type="capsule" condim="3" name="obstacle_160" material="block_mat" mass="2.736380174293858" />
+		</body>
+
+		<body name="obstacle_161" pos="21.354665366992432 24.219590799167257 0.0">
+			<joint name="obstacle_161:joint" type="free" damping="0.01" />
+			<geom size="0.03445796344354355" type="sphere" condim="3" name="obstacle_161" material="block_mat" mass="2.7420628804531786" />
+		</body>
+
+		<body name="obstacle_162" pos="20.27300830929669 23.91941328659531 0.0">
+			<joint name="obstacle_162:joint" type="free" damping="0.01" />
+			<geom size="0.035039924211971454 0.02103508373244315" type="capsule" condim="3" name="obstacle_162" material="block_mat" mass="5.479747567047484" />
+		</body>
+
+		<body name="obstacle_163" pos="24.143970879377193 22.334657646838384 0.0">
+			<joint name="obstacle_163:joint" type="free" damping="0.01" />
+			<geom size="0.03226802100197393 0.026145145577254402" type="cylinder" condim="3" name="obstacle_163" material="block_mat" mass="2.736752838695022" />
+		</body>
+
+		<body name="obstacle_164" pos="23.84769686286151 22.596985741980514 0.0">
+			<joint name="obstacle_164:joint" type="free" damping="0.01" />
+			<geom size="0.02828774078610779 0.032687780999188135" type="cylinder" condim="3" name="obstacle_164" material="block_mat" mass="2.629552330230994" />
+		</body>
+
+		<body name="obstacle_165" pos="23.349591546196727 22.924823171294168 0.0">
+			<joint name="obstacle_165:joint" type="free" damping="0.01" />
+			<geom size="0.020977849432040518 0.02607386867095063 0.020368274767030636" type="ellipsoid" condim="3" name="obstacle_165" material="block_mat" mass="0.7466709837360849" />
+		</body>
+
+		<body name="obstacle_166" pos="23.057114666238768 22.397461629882386 0.0">
+			<joint name="obstacle_166:joint" type="free" damping="0.01" />
+			<geom size="0.039861193402285375 0.036812963019809214" type="cylinder" condim="3" name="obstacle_166" material="block_mat" mass="5.880323504512574" />
+		</body>
+
+		<body name="obstacle_167" pos="23.157872877435608 22.540769164292 0.0">
+			<joint name="obstacle_167:joint" type="free" damping="0.01" />
+			<geom size="0.022512141910099388" type="sphere" condim="3" name="obstacle_167" material="block_mat" mass="0.7646435777941425" />
+		</body>
+
+		<body name="obstacle_168" pos="23.614966394138406 24.28051128513264 0.0">
+			<joint name="obstacle_168:joint" type="free" damping="0.01" />
+			<geom size="0.025463292198504302 0.03313601213637467 0.023386819039114645" type="ellipsoid" condim="3" name="obstacle_168" material="block_mat" mass="1.3224965309542445" />
+		</body>
+
+		<body name="obstacle_169" pos="22.35364530177071 24.233497329026573 0.0">
+			<joint name="obstacle_169:joint" type="free" damping="0.01" />
+			<geom size="0.03717563748578368 0.03516083446370792" type="capsule" condim="3" name="obstacle_169" material="block_mat" mass="8.328498548023935" />
+		</body>
+
+		<body name="obstacle_170" pos="22.666957595647606 20.152160811813882 0.0">
+			<joint name="obstacle_170:joint" type="free" damping="0.01" />
+			<geom size="0.03066887294827913 0.024557136014850826" type="capsule" condim="3" name="obstacle_170" material="block_mat" mass="4.255371148432685" />
+		</body>
+
+		<body name="obstacle_171" pos="22.072330316190637 20.01690527449283 0.0">
+			<joint name="obstacle_171:joint" type="free" damping="0.01" />
+			<geom size="0.022855903904123537 0.030819093198822936" type="cylinder" condim="3" name="obstacle_171" material="block_mat" mass="1.6185141850789628" />
+		</body>
+
+		<body name="obstacle_172" pos="22.56259132361276 23.465682348798854 0.0">
+			<joint name="obstacle_172:joint" type="free" damping="0.01" />
+			<geom size="0.034460044138673956" type="sphere" condim="3" name="obstacle_172" material="block_mat" mass="2.74255963715308" />
+		</body>
+
+		<body name="obstacle_173" pos="22.587451124780454 22.376133452319742 0.0">
+			<joint name="obstacle_173:joint" type="free" damping="0.01" />
+			<geom size="0.02311409841537764 0.035525367070509815" type="cylinder" condim="3" name="obstacle_173" material="block_mat" mass="1.9080613795644428" />
+		</body>
+
+		<body name="obstacle_174" pos="24.89501274894563 23.280188090200753 0.0">
+			<joint name="obstacle_174:joint" type="free" damping="0.01" />
+			<geom size="0.03195760403219559 0.033343872484223484 0.03178845794520354" type="ellipsoid" condim="3" name="obstacle_174" material="block_mat" mass="2.2702218569075288" />
+		</body>
+
+		<body name="obstacle_175" pos="22.121422529149285 24.077647888903243 0.0">
+			<joint name="obstacle_175:joint" type="free" damping="0.01" />
+			<geom size="0.022659479606806716 0.03890784587995058" type="cylinder" condim="3" name="obstacle_175" material="block_mat" mass="2.008338442443592" />
+		</body>
+
+		<body name="obstacle_176" pos="24.187301654267387 20.847252323942392 0.0">
+			<joint name="obstacle_176:joint" type="free" damping="0.01" />
+			<geom size="0.023319237770889345 0.03365159298109793 0.03847905971222951" type="box" condim="3" name="obstacle_176" material="block_mat" mass="3.8650436115406483" />
+		</body>
+
+		<body name="obstacle_177" pos="24.55125772333124 23.625003521491628 0.0">
+			<joint name="obstacle_177:joint" type="free" damping="0.01" />
+			<geom size="0.0388566726124618 0.026308323370293915" type="capsule" condim="3" name="obstacle_177" material="block_mat" mass="7.925155938081764" />
+		</body>
+
+		<body name="obstacle_178" pos="24.14342665486191 20.798241152289187 0.0">
+			<joint name="obstacle_178:joint" type="free" damping="0.01" />
+			<geom size="0.025081936513515306 0.020381370059145865" type="cylinder" condim="3" name="obstacle_178" material="block_mat" mass="1.2890072318456511" />
+		</body>
+
+		<body name="obstacle_179" pos="24.01639314647395 22.258037012089183 0.0">
+			<joint name="obstacle_179:joint" type="free" damping="0.01" />
+			<geom size="0.03200544417590717 0.03144231578646224" type="cylinder" condim="3" name="obstacle_179" material="block_mat" mass="3.2378900240415462" />
+		</body>
+
+		<body name="obstacle_180" pos="21.26150642624078 23.66903544575371 0.0">
+			<joint name="obstacle_180:joint" type="free" damping="0.01" />
+			<geom size="0.03748597272829967 0.02986681828808001 0.03740116825515335" type="box" condim="3" name="obstacle_180" material="block_mat" mass="5.359853041016677" />
+		</body>
+
+		<body name="obstacle_181" pos="20.931079137078125 24.727616907740803 0.0">
+			<joint name="obstacle_181:joint" type="free" damping="0.01" />
+			<geom size="0.035476474362667064 0.027127574475581017" type="cylinder" condim="3" name="obstacle_181" material="block_mat" mass="3.43235122669596" />
+		</body>
+
+		<body name="obstacle_182" pos="21.362555423760153 23.649885056166255 0.0">
+			<joint name="obstacle_182:joint" type="free" damping="0.01" />
+			<geom size="0.02745550076034929 0.02303804378587721 0.03243061298261781" type="ellipsoid" condim="3" name="obstacle_182" material="block_mat" mass="1.3747974503159308" />
+		</body>
+
+		<body name="obstacle_183" pos="22.99383771506892 24.359095991864148 0.0">
+			<joint name="obstacle_183:joint" type="free" damping="0.01" />
+			<geom size="0.021852924007014985 0.025533972898260326" type="capsule" condim="3" name="obstacle_183" material="block_mat" mass="1.9252687972429565" />
+		</body>
+
+		<body name="obstacle_184" pos="22.54897789578984 23.663852443654143 0.0">
+			<joint name="obstacle_184:joint" type="free" damping="0.01" />
+			<geom size="0.022424945560906573" type="sphere" condim="3" name="obstacle_184" material="block_mat" mass="0.7557928589687746" />
+		</body>
+
+		<body name="obstacle_185" pos="23.717020331801766 20.08868507343852 0.0">
+			<joint name="obstacle_185:joint" type="free" damping="0.01" />
+			<geom size="0.0347621833065395 0.03314253865389624 0.03351576582390355" type="ellipsoid" condim="3" name="obstacle_185" material="block_mat" mass="2.587918266995373" />
+		</body>
+
+		<body name="obstacle_186" pos="23.654704924848325 22.537958106628803 0.0">
+			<joint name="obstacle_186:joint" type="free" damping="0.01" />
+			<geom size="0.028113914036800174 0.02218771228308697" type="capsule" condim="3" name="obstacle_186" material="block_mat" mass="3.2522777920782806" />
+		</body>
+
+		<body name="obstacle_187" pos="22.795547200743254 23.56474000882853 0.0">
+			<joint name="obstacle_187:joint" type="free" damping="0.01" />
+			<geom size="0.03521296456973363" type="sphere" condim="3" name="obstacle_187" material="block_mat" mass="2.9262832484055212" />
+		</body>
+
+		<body name="obstacle_188" pos="21.4787195832469 24.0084024020401 0.0">
+			<joint name="obstacle_188:joint" type="free" damping="0.01" />
+			<geom size="0.02643334141556737 0.026307020478659182" type="cylinder" condim="3" name="obstacle_188" material="block_mat" mass="1.847887997672204" />
+		</body>
+
+		<body name="obstacle_189" pos="22.720468813769457 21.202676090943033 0.0">
+			<joint name="obstacle_189:joint" type="free" damping="0.01" />
+			<geom size="0.03192052081081202" type="sphere" condim="3" name="obstacle_189" material="block_mat" mass="2.1798092834254827" />
+		</body>
+
+		<body name="obstacle_190" pos="21.721244407956245 24.498015641656025 0.0">
+			<joint name="obstacle_190:joint" type="free" damping="0.01" />
+			<geom size="0.038982547038511284 0.03139697933781055" type="capsule" condim="3" name="obstacle_190" material="block_mat" mass="8.766803328438966" />
+		</body>
+
+		<body name="obstacle_191" pos="24.02417250804403 23.66224541706173 0.0">
+			<joint name="obstacle_191:joint" type="free" damping="0.01" />
+			<geom size="0.025728636457006078 0.025613887155929348 0.03692461457713617" type="ellipsoid" condim="3" name="obstacle_191" material="block_mat" mass="1.6308605413434742" />
+		</body>
+
+		<body name="obstacle_192" pos="24.94790105272919 23.94567365229037 0.0">
+			<joint name="obstacle_192:joint" type="free" damping="0.01" />
+			<geom size="0.028727221653037094" type="sphere" condim="3" name="obstacle_192" material="block_mat" mass="1.5888740349224688" />
+		</body>
+
+		<body name="obstacle_193" pos="20.013527090637464 22.16713996400647 0.0">
+			<joint name="obstacle_193:joint" type="free" damping="0.01" />
+			<geom size="0.022732902393586517 0.021562517129360137 0.02907229374053414" type="ellipsoid" condim="3" name="obstacle_193" material="block_mat" mass="0.9550854624604319" />
+		</body>
+
+		<body name="obstacle_194" pos="21.785667417521537 24.451740800360575 0.0">
+			<joint name="obstacle_194:joint" type="free" damping="0.01" />
+			<geom size="0.024085938077576672" type="sphere" condim="3" name="obstacle_194" material="block_mat" mass="0.9364816855297284" />
+		</body>
+
+		<body name="obstacle_195" pos="22.783092549687158 21.540485446648013 0.0">
+			<joint name="obstacle_195:joint" type="free" damping="0.01" />
+			<geom size="0.024161263472830312 0.02357323343522059" type="cylinder" condim="3" name="obstacle_195" material="block_mat" mass="1.3834335076177442" />
+		</body>
+
+		<body name="obstacle_196" pos="23.36985164973492 24.41169974492699 0.0">
+			<joint name="obstacle_196:joint" type="free" damping="0.01" />
+			<geom size="0.03917606747648347 0.03813493269874004 0.026619112117836095" type="ellipsoid" condim="3" name="obstacle_196" material="block_mat" mass="2.6652992723429376" />
+		</body>
+
+		<body name="obstacle_197" pos="21.74791215506461 21.218291924547806 0.0">
+			<joint name="obstacle_197:joint" type="free" damping="0.01" />
+			<geom size="0.030188209870343735 0.03292400759935505 0.026302687519964875" type="ellipsoid" condim="3" name="obstacle_197" material="block_mat" mass="1.752099522614337" />
+		</body>
+
+		<body name="obstacle_198" pos="22.254671864575666 22.90898173397821 0.0">
+			<joint name="obstacle_198:joint" type="free" damping="0.01" />
+			<geom size="0.02843220209416886 0.02976051917735785 0.02443037952854931" type="box" condim="3" name="obstacle_198" material="block_mat" mass="2.6460081904882173" />
+		</body>
+
+		<body name="obstacle_199" pos="21.863649306676347 20.22576971985977 0.0">
+			<joint name="obstacle_199:joint" type="free" damping="0.01" />
+			<geom size="0.025488605766651722 0.03614823038793531 0.03538429753273363" type="box" condim="3" name="obstacle_199" material="block_mat" mass="4.173050780141561" />
+		</body>
+
+		</worldbody>
 
 	<actuator>
-		<position ctrllimited="true" ctrlrange="0 0.2" joint="robot0:l_gripper_finger_joint" kp="30000" name="robot0:l_gripper_finger_joint" user="1"></position>
-		<position ctrllimited="true" ctrlrange="0 0.2" joint="robot0:r_gripper_finger_joint" kp="30000" name="robot0:r_gripper_finger_joint" user="1"></position>
+		<position ctrllimited="true" ctrlrange="0 0.2" joint="robot0:l_gripper_finger_joint" kp="30000" name="robot0:l_gripper_finger_joint" user="1" />
+		<position ctrllimited="true" ctrlrange="0 0.2" joint="robot0:r_gripper_finger_joint" kp="30000" name="robot0:r_gripper_finger_joint" user="1" />
 	</actuator>
 </mujoco>
