@@ -512,11 +512,12 @@ class FetchEnv(robot_env.RobotEnv):
                 self.sim.data.set_joint_qpos("target_object:joint", target_qpos)
 
                 # DIY: used by obstacle generate
-                obstacles_dict = self.obstacle_generator.sample_obstacles(target_qpos)
-                self.obstacle_name_list = list(obstacles_dict.keys())
-                for obstacle_name, obstacle_qpos in obstacles_dict.items():
-                    assert obstacle_qpos.shape == (7,)
-                    self.sim.data.set_joint_qpos(f"{obstacle_name}:joint", obstacle_qpos)
+                if not self.grasp_mode:
+                    obstacles_dict = self.obstacle_generator.sample_obstacles(target_qpos)
+                    self.obstacle_name_list = list(obstacles_dict.keys())
+                    for obstacle_name, obstacle_qpos in obstacles_dict.items():
+                        assert obstacle_qpos.shape == (7,)
+                        self.sim.data.set_joint_qpos(f"{obstacle_name}:joint", obstacle_qpos)
 
         self.sim.forward()
         return True

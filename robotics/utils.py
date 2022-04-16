@@ -156,11 +156,6 @@ class ObstacleGenerator:
                  is_random=False,
                  generate_flag=False,
                  ):
-        """
-        Args:
-            is_random (bool): whether random generating obstacles
-            obstacle_count (object): None -> random pick, k (int) -> generate k obstacles each time
-        """
         self.density = 1.6e4  # 2 / (0.05^3) kg/m^3
         self.size_inf = 0.02
         self.size_sup = 0.04
@@ -228,7 +223,7 @@ class ObstacleGenerator:
             assert self.is_random
             for idx in np.arange(self.total_obstacle_count):
                 obstacle_name = f'obstacle_{idx}'
-                obstacle_xpos = self.generate_one_obstacle(worldbody=worldbody, idx=idx)
+                self.generate_one_obstacle(worldbody=worldbody, idx=idx)
                 self.obstacle_name_list.append(obstacle_name)
             tree.write(fullpath)
         else:
@@ -240,7 +235,6 @@ class ObstacleGenerator:
                 body_name = body.get('name')
                 if body_name.find('obstacle') != -1:
                     obstacle_name = body_name
-                    obstacle_xpos = np.array(body.get('pos').split(), dtype=np.float)
                     self.obstacle_name_list.append(obstacle_name)
 
     def sample_one_qpos_on_table(self, target_qpos: np.ndarray):
