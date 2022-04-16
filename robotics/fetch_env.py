@@ -107,6 +107,9 @@ class FetchEnv(robot_env.RobotEnv):
             demo_mode=False,
             obs_achi_dist_sup=0.1,
             delta_achi_inf=0.02,
+            total_obstacle_count=200,
+            single_count_sup=15,
+            generate_flag=False,
     ):
         """Initializes a new Fetch environment.
 
@@ -147,7 +150,10 @@ class FetchEnv(robot_env.RobotEnv):
 
         self.obstacle_name_list = []
         self.obstacle_generator = utils.ObstacleGenerator(
+                                                          total_obstacle_count=total_obstacle_count,
+                                                          single_count_sup=single_count_sup,
                                                           is_random=hrl_mode,
+                                                          generate_flag=generate_flag,
                                                          )
 
         self.obs_achi_dist_sup = obs_achi_dist_sup

@@ -173,7 +173,7 @@ class ObstacleGenerator:
         self.size_dim_list = [['sphere'], ['capsule', 'cylinder'], ['ellipsoid', 'box']]
 
         self.total_obstacle_count = total_obstacle_count
-        self.single_count_sup = single_count_sup
+        self.single_count_sup = single_count_sup + 1
         self.is_random = is_random
 
         self.obstacle_name_list = []
