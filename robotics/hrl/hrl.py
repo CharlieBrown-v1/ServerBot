@@ -12,7 +12,6 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             "robot0:slide0": 0.405,
             "robot0:slide1": 0.48,
             "robot0:slide2": 0.0,
-            "target_object:joint": [1.45, 0.74, 0.4, 1.0, 0.0, 0.0, 0.0],
         }
         fetch_env.FetchEnv.__init__(
             self,
@@ -21,7 +20,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             block_gripper=False,
             n_substeps=20,
             gripper_extra_height=0.2,
-            target_in_the_air=False,
+            target_in_the_air=True,
             target_offset=0.0,
             obj_range=0.15,
             target_range=0.15,
@@ -30,6 +29,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             reward_type=reward_type,
             hrl_mode=True,
             cube_mode=True,
-            single_count_sup=0,
+            single_count_sup=5,
+            is_random=True,
         )
         utils.EzPickle.__init__(self, reward_type=reward_type)
