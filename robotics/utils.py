@@ -108,6 +108,7 @@ def reset_mocap2body_xpos(sim):
 
 epsilon = 1e-3
 
+
 def get_full_path(path: str):
     if path.startswith("/"):
         fullpath = path
@@ -291,26 +292,25 @@ class ObjectGenerator:
                 target_qpos + delta_obstacle_4_qpos,
             ])
         return dict(zip(obstacle_name_list, obstacle_qpos_list))
-    
+
     def sample_objects(self, target_xpos: np.ndarray):
         target_qpos = np.r_[target_xpos, self.qpos_posix].copy()
         # achieved_name = np.random.choice(self.object_name_list)
         achieved_name = 'target_object'
 
-        tmp_object_name_list = self.object_name_list.copy()
-        tmp_object_name_list.remove(achieved_name)
-
         object_name_list = [achieved_name]
         object_qpos_list = [target_qpos.copy()]
+
+        obstacle_name_list = self.object_name_list.copy()
+        obstacle_name_list.remove(achieved_name)
         obstacle_xpos_list = []
         if self.is_random:
             obstacle_count = np.random.randint(self.single_count_sup)
         else:
             obstacle_count = 5
-        object_name_list += list(np.random.choice(tmp_object_name_list, size=obstacle_count, replace=False))
+        object_name_list += list(np.random.choice(obstacle_name_list, size=obstacle_count, replace=False))
         for _ in np.arange(obstacle_count):
             object_qpos = self.sample_one_qpos_on_table(target_qpos)
             object_qpos_list.append(object_qpos)
             obstacle_xpos_list.append(object_qpos[:3])
-        return achieved_name, dict(zip(object_name_list, object_qpos_list)), obstacle_xpos_list
-    
+        return achieved_name, dict(zip(object_name_list, object_qpos_list)), dict(zip(obstacle_name_list, obstacle_xpos_list))
