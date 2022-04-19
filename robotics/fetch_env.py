@@ -558,8 +558,6 @@ class FetchEnv(robot_env.RobotEnv):
 
     def _is_success(self, achieved_goal, desired_goal):
         d = goal_distance(achieved_goal, desired_goal)
-        if d < self.distance_threshold:
-            print()
         return d < self.distance_threshold
 
     # DIY
