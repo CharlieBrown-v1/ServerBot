@@ -463,6 +463,8 @@ class FetchEnv(robot_env.RobotEnv):
                         -self.obj_range, self.obj_range, size=2
                     )
 
+                # DIY
+                object_xpos = self.initial_gripper_xpos.copy()
                 object_xpos[2] = self.height_offset
 
                 # DIY: used by obstacle generate
@@ -530,6 +532,11 @@ class FetchEnv(robot_env.RobotEnv):
                     goal[2] += self.np_random.uniform(0.1, 0.2)
                 elif self.np_random.uniform() < 0.5:
                     goal[2] += self.np_random.uniform(0, 0.3)
+
+            # DIY
+            if self.hrl_mode:
+                goal = self.initial_gripper_xpos.copy() + np.array([0.1, 0, 0])
+                goal[2] = self.height_offset
 
         else:
             goal = self.initial_gripper_xpos[:3] + self.np_random.uniform(

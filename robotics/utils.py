@@ -301,7 +301,7 @@ class ObjectGenerator:
         if self.is_random:
             obstacle_count = np.random.randint(self.single_count_sup)
         else:
-            obstacle_count = 5
+            obstacle_count = 1
 
         tmp_object_name_list = self.object_name_list.copy()
         tmp_object_name_list.remove(achieved_name)
@@ -311,6 +311,21 @@ class ObjectGenerator:
         obstacle_name_list = list(np.random.choice(tmp_object_name_list, size=obstacle_count, replace=False))
         obstacle_xpos_list = []
         object_name_list += obstacle_name_list.copy()
+
+        # DIY
+        if not self.is_random:
+            delta_obstacle_qpos_list = [
+                np.r_[[-0.055,  0, 0], self.qpos_posix],
+                np.r_[[0.055, 0, 0], self.qpos_posix],
+                np.r_[[0, -0.055, 0], self.qpos_posix],
+                np.r_[[0, 0.055, 0], self.qpos_posix],
+                np.r_[[0,      0, 0.05], self.qpos_posix],
+            ][: obstacle_count]
+            for delta_obstacle_qpos in delta_obstacle_qpos_list:
+                object_qpos_list.append(achieved_qpos.copy() + delta_obstacle_qpos)
+                obstacle_xpos_list.append((achieved_qpos.copy() + delta_obstacle_qpos)[:3])
+
+            return achieved_name, dict(zip(object_name_list, object_qpos_list)), dict(zip(obstacle_name_list, obstacle_xpos_list))
 
         for _ in np.arange(obstacle_count):
             obstacle_qpos = self.sample_one_qpos_on_table(achieved_qpos)
