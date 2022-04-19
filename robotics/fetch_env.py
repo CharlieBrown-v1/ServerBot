@@ -2,6 +2,9 @@ import numpy as np
 from gym.envs.robotics import rotations, robot_env, utils
 
 
+epsilon = 1e-5
+
+
 # Used by cube space
 d_list = [0.01 * i for i in np.arange(5 + 1)]
 d = d_list[2]
@@ -151,6 +154,7 @@ class FetchEnv(robot_env.RobotEnv):
             generate_flag=generate_flag,
         )
         self.object_name_list = self.object_generator.object_name_list.copy()
+        self.init_object_xpos_list = []
         self.obstacle_name_list = self.object_generator.obstacle_name_list.copy()
         self.init_obstacle_xpos_list = []
 
@@ -450,8 +454,8 @@ class FetchEnv(robot_env.RobotEnv):
         self.sim.set_state(self.initial_state)
 
         # Randomize start position of object.
+        object_xpos = self.initial_gripper_xpos.copy()
         if self.has_object:
-            object_xpos = self.initial_gripper_xpos.copy()
             # DIY
             if self.hrl_mode:
                 while np.linalg.norm(object_xpos[:2] - self.initial_gripper_xpos[:2]) < 0.1:
@@ -460,12 +464,16 @@ class FetchEnv(robot_env.RobotEnv):
                     )
 
                 object_xpos[2] = self.height_offset
+
                 # DIY: used by obstacle generate
                 self.achieved_name, object_dict, obstacle_dict\
                     = self.object_generator.sample_objects(object_xpos)
 
                 self.object_name_list = list(object_dict.keys()).copy()
+                self.init_object_xpos_list = [object_qpos[:3].copy() for object_qpos in object_dict.values()]
+
                 self.obstacle_name_list = list(obstacle_dict.keys()).copy()
+                self.init_obstacle_xpos_list = list(obstacle_dict.values()).copy()
 
                 for object_name, object_qpos in object_dict.items():
                     assert object_qpos.shape == (7,)
@@ -482,8 +490,28 @@ class FetchEnv(robot_env.RobotEnv):
 
         self.sim.forward()
 
+        done = False
+        while True:
+            while not done:
+                self.sim.step()
+                curr_object_xpos_list = [self.sim.data.get_geom_xpos(object_name).copy() for object_name in
+                                         self.object_name_list]
+                done = np.linalg.norm(np.concatenate(curr_object_xpos_list) - np.concatenate(self.init_object_xpos_list)
+                                      , ord=np.inf) < epsilon
+                self.init_object_xpos_list = curr_object_xpos_list.copy()
+            all_in_desk = np.all(np.array([object_xpos[2] for object_xpos in self.init_object_xpos_list]) > 0.4)
+            if all_in_desk:
+                break
+            object_qpos_list, obstacle_xpos_list = self.object_generator.resample_obstacles(
+                self.achieved_name, object_xpos, len(self.obstacle_name_list))
+            self.init_object_xpos_list = [object_qpos[:3].copy() for object_qpos in object_qpos_list]
+            for object_name, object_qpos in zip(self.object_name_list, object_qpos_list):
+                assert object_qpos.shape == (7,)
+                self.sim.data.set_joint_qpos(f"{object_name}:joint", object_qpos)
+            self.sim.forward()
         # DIY
-        self.init_obstacle_xpos_list = [self.sim.data.get_geom_xpos(obstacle_name).copy() for obstacle_name in self.obstacle_name_list]
+        self.init_obstacle_xpos_list = [self.sim.data.get_geom_xpos(obstacle_name).copy() for obstacle_name
+                                        in self.obstacle_name_list]
 
         return True
 

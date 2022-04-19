@@ -249,8 +249,8 @@ class ObjectGenerator:
                     obstacle_name = body_name
                     self.obstacle_name_list.append(obstacle_name)
 
-    def sample_one_qpos_on_table(self, target_qpos: np.ndarray):
-        obstacle_qpos = target_qpos.copy()
+    def sample_one_qpos_on_table(self, achieved_qpos: np.ndarray):
+        obstacle_qpos = achieved_qpos.copy()
         obstacle_xpos = obstacle_qpos[:3]
 
         delta_xy_dist = np.random.uniform(-self.xy_dist_sup_from_target, self.xy_dist_sup_from_target, 2)
@@ -265,8 +265,8 @@ class ObjectGenerator:
         obstacle_xpos[2] += delta_z_dist
         return obstacle_qpos
 
-    def sample_obstacles(self, target_xpos: np.ndarray):
-        target_qpos = np.r_[target_xpos, self.qpos_posix].copy()
+    def sample_obstacles(self, achieved_xpos: np.ndarray):
+        achieved_qpos = np.r_[achieved_xpos, self.qpos_posix].copy()
 
         obstacle_name_list = []
         obstacle_qpos_list = []
@@ -274,7 +274,7 @@ class ObjectGenerator:
             obstacle_count = np.random.randint(self.single_count_sup)
             for _ in np.arange(obstacle_count):
                 obstacle_name = np.random.choice(self.obstacle_name_list)
-                obstacle_qpos = self.sample_one_qpos_on_table(target_qpos)
+                obstacle_qpos = self.sample_one_qpos_on_table(achieved_qpos)
                 obstacle_name_list.append(obstacle_name)
                 obstacle_qpos_list.append(obstacle_qpos)
         else:
@@ -285,32 +285,51 @@ class ObjectGenerator:
             delta_obstacle_4_qpos = np.array([0.0, 0.055, 0.0, 1.0, 0.0, 0.0, 0.0])
             obstacle_name_list.extend([f'obstacle_object_{idx}' for idx in np.arange(5)])
             obstacle_qpos_list.extend([
-                target_qpos + delta_obstacle_0_qpos,
-                target_qpos + delta_obstacle_1_qpos,
-                target_qpos + delta_obstacle_2_qpos,
-                target_qpos + delta_obstacle_3_qpos,
-                target_qpos + delta_obstacle_4_qpos,
+                achieved_qpos + delta_obstacle_0_qpos,
+                achieved_qpos + delta_obstacle_1_qpos,
+                achieved_qpos + delta_obstacle_2_qpos,
+                achieved_qpos + delta_obstacle_3_qpos,
+                achieved_qpos + delta_obstacle_4_qpos,
             ])
         return dict(zip(obstacle_name_list, obstacle_qpos_list))
 
-    def sample_objects(self, target_xpos: np.ndarray):
-        target_qpos = np.r_[target_xpos, self.qpos_posix].copy()
+    def sample_objects(self, achieved_xpos: np.ndarray):
+        achieved_qpos = np.r_[achieved_xpos, self.qpos_posix].copy()
         # achieved_name = np.random.choice(self.object_name_list)
         achieved_name = 'target_object'
 
-        object_name_list = [achieved_name]
-        object_qpos_list = [target_qpos.copy()]
-
-        obstacle_name_list = self.object_name_list.copy()
-        obstacle_name_list.remove(achieved_name)
-        obstacle_xpos_list = []
         if self.is_random:
             obstacle_count = np.random.randint(self.single_count_sup)
         else:
             obstacle_count = 5
-        object_name_list += list(np.random.choice(obstacle_name_list, size=obstacle_count, replace=False))
+
+        tmp_object_name_list = self.object_name_list.copy()
+        tmp_object_name_list.remove(achieved_name)
+        object_name_list = [achieved_name]
+        object_qpos_list = [achieved_qpos.copy()]
+
+        obstacle_name_list = list(np.random.choice(tmp_object_name_list, size=obstacle_count, replace=False))
+        obstacle_xpos_list = []
+        object_name_list += obstacle_name_list.copy()
+
         for _ in np.arange(obstacle_count):
-            object_qpos = self.sample_one_qpos_on_table(target_qpos)
-            object_qpos_list.append(object_qpos)
-            obstacle_xpos_list.append(object_qpos[:3])
+            obstacle_qpos = self.sample_one_qpos_on_table(achieved_qpos)
+            object_qpos_list.append(obstacle_qpos)
+            obstacle_xpos_list.append(obstacle_qpos[:3])
+
         return achieved_name, dict(zip(object_name_list, object_qpos_list)), dict(zip(obstacle_name_list, obstacle_xpos_list))
+
+    def resample_obstacles(self, achieved_name: str, achieved_xpos: np.ndarray, obstacle_count: int):
+        assert achieved_name in self.object_name_list
+        achieved_qpos = np.r_[achieved_xpos, self.qpos_posix].copy()
+
+        object_qpos_list = [achieved_qpos.copy()]
+
+        obstacle_xpos_list = []
+
+        for _ in np.arange(obstacle_count):
+            obstacle_qpos = self.sample_one_qpos_on_table(achieved_qpos)
+            object_qpos_list.append(obstacle_qpos)
+            obstacle_xpos_list.append(obstacle_qpos[:3])
+
+        return object_qpos_list, obstacle_xpos_list
