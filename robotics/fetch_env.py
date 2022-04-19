@@ -2,7 +2,7 @@ import numpy as np
 from gym.envs.robotics import rotations, robot_env, utils
 
 
-epsilon = 1e-5
+epsilon = 1e-3
 
 
 # Used by cube space
@@ -492,6 +492,7 @@ class FetchEnv(robot_env.RobotEnv):
 
         done = False
         while True:
+            count = 0
             while not done:
                 self.sim.step()
                 curr_object_xpos_list = [self.sim.data.get_geom_xpos(object_name).copy() for object_name in
@@ -499,6 +500,7 @@ class FetchEnv(robot_env.RobotEnv):
                 done = np.linalg.norm(np.concatenate(curr_object_xpos_list) - np.concatenate(self.init_object_xpos_list)
                                       , ord=np.inf) < epsilon
                 self.init_object_xpos_list = curr_object_xpos_list.copy()
+                count += 1
             all_in_desk = np.all(np.array([object_xpos[2] for object_xpos in self.init_object_xpos_list]) > 0.4)
             if all_in_desk:
                 break
