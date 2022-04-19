@@ -278,7 +278,7 @@ class ObjectGenerator:
                 obstacle_name_list.append(obstacle_name)
                 obstacle_qpos_list.append(obstacle_qpos)
         else:
-            delta_obstacle_0_qpos = np.array([0.0, 0.0, 0.03, 1.0, 0.0, 0.0, 0.0])
+            delta_obstacle_0_qpos = np.array([0.0, 0.0, 0.05, 1.0, 0.0, 0.0, 0.0])
             delta_obstacle_1_qpos = np.array([-0.055, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0])
             delta_obstacle_2_qpos = np.array([0.055, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0])
             delta_obstacle_3_qpos = np.array([0.0, -0.055, 0.0, 1.0, 0.0, 0.0, 0.0])
@@ -301,7 +301,7 @@ class ObjectGenerator:
         if self.is_random:
             obstacle_count = np.random.randint(self.single_count_sup)
         else:
-            obstacle_count = 3
+            obstacle_count = 1
 
         tmp_object_name_list = self.object_name_list.copy()
         tmp_object_name_list.remove(achieved_name)
@@ -315,10 +315,10 @@ class ObjectGenerator:
         # DIY
         if not self.is_random:
             delta_obstacle_qpos_list = [
-                np.r_[[-0.055,  0, 0], self.qpos_posix],
-                np.r_[[0.055, 0, 0], self.qpos_posix],
-                np.r_[[0, -0.055, 0], self.qpos_posix],
-                np.r_[[0, 0.055, 0], self.qpos_posix],
+                np.r_[[-0.065,  0, 0], self.qpos_posix],
+                np.r_[[0.065, 0, 0], self.qpos_posix],
+                np.r_[[0, -0.065, 0], self.qpos_posix],
+                np.r_[[0, 0.065, 0], self.qpos_posix],
                 np.r_[[0,      0, 0.05], self.qpos_posix],
             ][: obstacle_count]
             for delta_obstacle_qpos in delta_obstacle_qpos_list:

@@ -29,7 +29,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             reward_type=reward_type,
             hrl_mode=True,
             # cube_mode=True,
-            single_count_sup=0,
+            single_count_sup=1,
             is_random=True,
         )
         utils.EzPickle.__init__(self, reward_type=reward_type)
