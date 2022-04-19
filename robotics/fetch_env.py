@@ -135,6 +135,7 @@ class FetchEnv(robot_env.RobotEnv):
         # DIY
         self.success_reward = success_reward 
         self.done_punish = done_punish
+
         self.cube_mode = cube_mode
         self.hrl_mode = hrl_mode
         self.debug_mode = debug_mode
@@ -153,9 +154,9 @@ class FetchEnv(robot_env.RobotEnv):
             is_random=is_random,
             generate_flag=generate_flag,
         )
-        self.object_name_list = self.object_generator.object_name_list.copy()
+        self.object_name_list = []
         self.init_object_xpos_list = []
-        self.obstacle_name_list = self.object_generator.obstacle_name_list.copy()
+        self.obstacle_name_list = []
         self.init_obstacle_xpos_list = []
 
         super(FetchEnv, self).__init__(
@@ -584,10 +585,15 @@ class FetchEnv(robot_env.RobotEnv):
 
         # Extract information for sampling goals.
         self.initial_gripper_xpos = self.sim.data.get_site_xpos("robot0:grip").copy()
-        # DIY
+
         if self.has_object:
+            # DIY
             if self.hrl_mode:
                 self.height_offset = 0.4 + self.object_generator.size_inf
+                self.achieved_name, object_dict, obstacle_dict \
+                    = self.object_generator.sample_objects(self.initial_gripper_xpos.copy())
+                self.object_name_list = list(object_dict.keys()).copy()
+                self.obstacle_name_list = list(obstacle_dict.keys()).copy()
             else:
                 self.height_offset = self.sim.data.get_site_xpos("object0")[2].copy()
 
