@@ -193,7 +193,7 @@ class FetchEnv(robot_env.RobotEnv):
             curr_obstacle_xpos = self.sim.data.get_geom_xpos(obstacle_name)
             delta_obstacle_xpos = goal_distance(init_obstacle_xpos, curr_obstacle_xpos)
             if delta_obstacle_xpos > self.distance_threshold:
-                reward += self.done_punish
+                reward += 0  # self.done_punish
 
         reward = np.where(1 - info['is_success'], reward, self.success_reward)
         return reward
@@ -464,11 +464,8 @@ class FetchEnv(robot_env.RobotEnv):
                         -self.obj_range, self.obj_range, size=2
                     )
 
-                """
-                    DIY
-                    object_xpos = self.initial_gripper_xpos.copy()
-                    object_xpos[2] = self.height_offset
-                """
+                object_xpos = self.initial_gripper_xpos.copy()
+                object_xpos[2] = self.height_offset
 
                 # DIY: used by obstacle generate
                 self.achieved_name, object_dict, obstacle_dict\
@@ -537,11 +534,9 @@ class FetchEnv(robot_env.RobotEnv):
                 elif self.np_random.uniform() < 0.5:
                     goal[2] += self.np_random.uniform(0, 0.3)
 
-            """
-                if self.hrl_mode:
-                    goal = self.initial_gripper_xpos.copy() + np.array([0.1, 0, 0])
-                    goal[2] = self.height_offset
-            """
+            if self.hrl_mode:
+                goal = self.initial_gripper_xpos.copy() + np.array([0.1, 0, 0])
+                goal[2] = self.height_offset
 
         else:
             goal = self.initial_gripper_xpos[:3] + self.np_random.uniform(
@@ -562,6 +557,7 @@ class FetchEnv(robot_env.RobotEnv):
 
     # DIY
     def _is_done(self):
+        return False
         for idx in np.arange(len(self.obstacle_name_list)):
             obstacle_name = self.obstacle_name_list[idx]
             init_obstacle_xpos = self.init_obstacle_xpos_list[idx]

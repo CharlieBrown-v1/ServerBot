@@ -27,9 +27,9 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             distance_threshold=0.05,
             initial_qpos=initial_qpos,
             reward_type=reward_type,
-            hrl_mode=True,
-            # cube_mode=True,
             single_count_sup=1,
+            hrl_mode=True,
             is_random=True,
+            # cube_mode=True,
         )
         utils.EzPickle.__init__(self, reward_type=reward_type)
