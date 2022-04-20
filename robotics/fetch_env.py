@@ -1,11 +1,16 @@
 import numpy as np
 from gym.envs.robotics import rotations, robot_env, utils
 
-
 epsilon = 1e-3
 
-
 # Used by cube space
+item_name = ['air', 'table', 'goal', 'achieved_goal', 'obstacle']
+item_dict = dict(zip(item_name, np.linspace(0, 1, len(item_name))))
+table_xpos = np.array([1.3, 0.75, 0.2])
+table_size = np.array([0.25, 0.35, 0.2])
+table_xpos_start = table_xpos - table_size
+table_xpos_end = table_xpos + table_size
+
 d_list = [0.01 * i for i in np.arange(5 + 1)]
 d = d_list[2]
 length_scale = 21
@@ -14,8 +19,6 @@ height_scale = 21
 length = length_scale * d
 width = width_scale * d
 height = height_scale * d
-item_name = ['air', 'goal', 'achieved_goal', 'obstacle']
-item_dict = dict(zip(item_name, np.arange(len(item_name))))
 
 
 def goal_distance(goal_a, goal_b):
@@ -133,7 +136,7 @@ class FetchEnv(robot_env.RobotEnv):
         self.reward_type = reward_type
 
         # DIY
-        self.success_reward = success_reward 
+        self.success_reward = success_reward
         self.done_punish = done_punish
 
         self.cube_mode = cube_mode
@@ -254,6 +257,9 @@ class FetchEnv(robot_env.RobotEnv):
                          ):
         starting_point_idx = np.array([length_scale // 2, width_scale // 2, height_scale // 2])
         compute_starting_point = starting_point - (d / 2)
+
+        _map_once(cube_obs, compute_starting_point, starting_point_idx,
+                  table_xpos_start, table_xpos_end, item_dict['table'])
 
         # TODO Consider rotation angle
         goal_xpos = goal_xpos_tuple[0]
@@ -468,7 +474,7 @@ class FetchEnv(robot_env.RobotEnv):
                 object_xpos[2] = self.height_offset
 
                 # DIY: used by obstacle generate
-                self.achieved_name, object_dict, obstacle_dict\
+                self.achieved_name, object_dict, obstacle_dict \
                     = self.object_generator.sample_objects(object_xpos)
 
                 self.object_name_list = list(object_dict.keys()).copy()
