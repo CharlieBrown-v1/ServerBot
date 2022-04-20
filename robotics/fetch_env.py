@@ -535,8 +535,8 @@ class FetchEnv(robot_env.RobotEnv):
                     goal[2] += self.np_random.uniform(0, 0.3)
 
             if self.hrl_mode:
-                goal = self.initial_gripper_xpos.copy() + np.array([0.1, 0, 0])
-                goal[2] = self.height_offset
+                goal = self.initial_gripper_xpos.copy()
+                goal[2] = self.height_offset + 0.15
 
         else:
             goal = self.initial_gripper_xpos[:3] + self.np_random.uniform(
