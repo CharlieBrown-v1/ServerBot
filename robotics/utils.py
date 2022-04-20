@@ -301,7 +301,7 @@ class ObjectGenerator:
         if self.is_random:
             obstacle_count = np.random.randint(self.single_count_sup)
         else:
-            obstacle_count = 2
+            obstacle_count = 0
 
         tmp_object_name_list = self.object_name_list.copy()
         tmp_object_name_list.remove(achieved_name)

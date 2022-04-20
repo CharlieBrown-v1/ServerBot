@@ -99,6 +99,7 @@ class FetchEnv(robot_env.RobotEnv):
             initial_qpos,
             reward_type,
             success_reward=100,
+            grasp_reward=1,
             done_punish=-1,
             total_obstacle_count=200,
             single_count_sup=15,
@@ -137,6 +138,7 @@ class FetchEnv(robot_env.RobotEnv):
 
         # DIY
         self.success_reward = success_reward
+        self.grasp_reward = grasp_reward
         self.done_punish = done_punish
 
         self.cube_mode = cube_mode
@@ -189,6 +191,8 @@ class FetchEnv(robot_env.RobotEnv):
         curr_achi_desi_dist = goal_distance(achieved_goal, goal)
         reward += self.prev_achi_desi_dist - curr_achi_desi_dist
         self.prev_achi_desi_dist = curr_achi_desi_dist
+
+        reward = np.where(curr_grip_achi_dist > self.distance_threshold, reward, self.grasp_reward)
 
         for idx in np.arange(len(self.obstacle_name_list)):
             obstacle_name = self.obstacle_name_list[idx]
