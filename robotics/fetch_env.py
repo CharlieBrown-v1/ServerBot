@@ -194,6 +194,9 @@ class FetchEnv(robot_env.RobotEnv):
         reward += achi_desi_reward
         self.prev_achi_desi_dist = curr_achi_desi_dist
 
+        reward = np.where(grip_achi_reward == 0, reward, 100 * grip_achi_reward)
+        reward = np.where(grip_achi_reward != 0, reward, 100 * achi_desi_reward)
+
         success_reward = self.success_reward
         for idx in np.arange(len(self.obstacle_name_list)):
             obstacle_name = self.obstacle_name_list[idx]

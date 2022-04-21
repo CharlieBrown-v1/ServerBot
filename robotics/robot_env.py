@@ -82,9 +82,8 @@ class RobotEnv(gym.GoalEnv):
         # DIY
         info = {
             "is_success": self._is_success(obs["achieved_goal"], self.goal),
-            "is_done": self._is_done(),
         }
-        done = (self.super_hrl_mode and info['is_success']) or info['is_done']
+        done = self.super_hrl_mode and info['is_success']
         reward = self.compute_reward(obs["achieved_goal"], self.goal, info)
         return obs, reward, done, info
 
@@ -153,11 +152,6 @@ class RobotEnv(gym.GoalEnv):
 
     def _is_success(self, achieved_goal, desired_goal):
         """Indicates whether not the achieved goal successfully achieved the desired goal."""
-        raise NotImplementedError()
-
-    # DIY
-    def _is_done(self):
-        """Indicates whether not the gripper touched obstacles"""
         raise NotImplementedError()
 
     def _sample_goal(self):
