@@ -99,8 +99,7 @@ class FetchEnv(robot_env.RobotEnv):
             initial_qpos,
             reward_type,
             success_reward=100,
-            grasp_reward=1,
-            done_punish=-1,
+            done_punish=-10,
             total_obstacle_count=200,
             single_count_sup=15,
             cube_mode=False,
@@ -138,7 +137,6 @@ class FetchEnv(robot_env.RobotEnv):
 
         # DIY
         self.success_reward = success_reward
-        self.grasp_reward = grasp_reward
         self.done_punish = done_punish
 
         self.cube_mode = cube_mode
@@ -185,24 +183,27 @@ class FetchEnv(robot_env.RobotEnv):
         # tar_sph: smaller -> better (prev - curr)
         # obs_tar: larger -> better (curr - prev)
         curr_grip_achi_dist = goal_distance(np.broadcast_to(grip_pos, achieved_goal.shape), achieved_goal)
-        reward += self.prev_grip_obj_dist - curr_grip_achi_dist
+        grip_achi_reward = self.prev_grip_obj_dist - curr_grip_achi_dist
+        grip_achi_reward = np.where(np.abs(grip_achi_reward) >= epsilon, grip_achi_reward, 0)
+        reward += grip_achi_reward
         self.prev_grip_obj_dist = curr_grip_achi_dist
 
         curr_achi_desi_dist = goal_distance(achieved_goal, goal)
-        reward += self.prev_achi_desi_dist - curr_achi_desi_dist
+        achi_desi_reward = self.prev_achi_desi_dist - curr_achi_desi_dist
+        achi_desi_reward = np.where(np.abs(achi_desi_reward) >= epsilon, achi_desi_reward, 0)
+        reward += achi_desi_reward
         self.prev_achi_desi_dist = curr_achi_desi_dist
 
-        reward = np.where(curr_grip_achi_dist > self.distance_threshold, reward, self.grasp_reward)
-
+        success_reward = self.success_reward
         for idx in np.arange(len(self.obstacle_name_list)):
             obstacle_name = self.obstacle_name_list[idx]
             init_obstacle_xpos = self.init_obstacle_xpos_list[idx]
             curr_obstacle_xpos = self.sim.data.get_geom_xpos(obstacle_name)
             delta_obstacle_xpos = goal_distance(init_obstacle_xpos, curr_obstacle_xpos)
             if delta_obstacle_xpos > self.distance_threshold:
-                reward += 0  # self.done_punish
+                success_reward += self.done_punish
 
-        reward = np.where(1 - info['is_success'], reward, self.success_reward)
+        reward = np.where(1 - info['is_success'], reward, success_reward)
         return reward
 
     # DIY
@@ -474,7 +475,7 @@ class FetchEnv(robot_env.RobotEnv):
                         -self.obj_range, self.obj_range, size=2
                     )
 
-                object_xpos = self.initial_gripper_xpos.copy()
+                # object_xpos = self.initial_gripper_xpos.copy()
                 object_xpos[2] = self.height_offset
 
                 # DIY: used by obstacle generate
@@ -544,9 +545,11 @@ class FetchEnv(robot_env.RobotEnv):
                 elif self.np_random.uniform() < 0.5:
                     goal[2] += self.np_random.uniform(0, 0.3)
 
+            """
             if self.hrl_mode:
                 goal = self.initial_gripper_xpos.copy()
                 goal[2] = self.height_offset + 0.15
+            """
 
         else:
             goal = self.initial_gripper_xpos[:3] + self.np_random.uniform(
