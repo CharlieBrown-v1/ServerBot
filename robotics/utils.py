@@ -265,34 +265,6 @@ class ObjectGenerator:
         obstacle_xpos[2] += delta_z_dist
         return obstacle_qpos
 
-    def sample_obstacles(self, achieved_xpos: np.ndarray):
-        achieved_qpos = np.r_[achieved_xpos, self.qpos_posix].copy()
-
-        obstacle_name_list = []
-        obstacle_qpos_list = []
-        if self.is_random:
-            obstacle_count = np.random.randint(self.single_count_sup)
-            for _ in np.arange(obstacle_count):
-                obstacle_name = np.random.choice(self.obstacle_name_list)
-                obstacle_qpos = self.sample_one_qpos_on_table(achieved_qpos)
-                obstacle_name_list.append(obstacle_name)
-                obstacle_qpos_list.append(obstacle_qpos)
-        else:
-            delta_obstacle_0_qpos = np.array([0.0, 0.0, 0.05, 1.0, 0.0, 0.0, 0.0])
-            delta_obstacle_1_qpos = np.array([-0.055, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0])
-            delta_obstacle_2_qpos = np.array([0.055, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0])
-            delta_obstacle_3_qpos = np.array([0.0, -0.055, 0.0, 1.0, 0.0, 0.0, 0.0])
-            delta_obstacle_4_qpos = np.array([0.0, 0.055, 0.0, 1.0, 0.0, 0.0, 0.0])
-            obstacle_name_list.extend([f'obstacle_object_{idx}' for idx in np.arange(5)])
-            obstacle_qpos_list.extend([
-                achieved_qpos + delta_obstacle_0_qpos,
-                achieved_qpos + delta_obstacle_1_qpos,
-                achieved_qpos + delta_obstacle_2_qpos,
-                achieved_qpos + delta_obstacle_3_qpos,
-                achieved_qpos + delta_obstacle_4_qpos,
-            ])
-        return dict(zip(obstacle_name_list, obstacle_qpos_list))
-
     def sample_objects(self, achieved_xpos: np.ndarray):
         achieved_qpos = np.r_[achieved_xpos, self.qpos_posix].copy()
         # achieved_name = np.random.choice(self.object_name_list)
@@ -313,14 +285,14 @@ class ObjectGenerator:
         object_name_list += obstacle_name_list.copy()
 
         # DIY
+        delta_obstacle_qpos_list = [
+                                       np.r_[[-0.065, 0, 0], self.qpos_posix],
+                                       np.r_[[0.065, 0, 0], self.qpos_posix],
+                                       np.r_[[0, -0.1, 0], self.qpos_posix],
+                                       np.r_[[0, 0.1, 0], self.qpos_posix],
+                                       np.r_[[0, 0, 0.05], self.qpos_posix],
+                                   ][: obstacle_count]
         if not self.is_random:
-            delta_obstacle_qpos_list = [
-                np.r_[[-0.065,  0, 0], self.qpos_posix],
-                np.r_[[0.065, 0, 0], self.qpos_posix],
-                np.r_[[0, -0.065, 0], self.qpos_posix],
-                np.r_[[0, 0.065, 0], self.qpos_posix],
-                np.r_[[0,      0, 0.05], self.qpos_posix],
-            ][: obstacle_count]
             for delta_obstacle_qpos in delta_obstacle_qpos_list:
                 object_qpos_list.append(achieved_qpos.copy() + delta_obstacle_qpos)
                 obstacle_xpos_list.append((achieved_qpos.copy() + delta_obstacle_qpos)[:3])
