@@ -99,6 +99,7 @@ class FetchEnv(robot_env.RobotEnv):
             initial_qpos,
             reward_type,
             success_reward=100,
+            learning_factor=100,
             done_punish=-10,
             total_obstacle_count=200,
             single_count_sup=15,
@@ -137,6 +138,7 @@ class FetchEnv(robot_env.RobotEnv):
 
         # DIY
         self.success_reward = success_reward
+        self.learning_factor = learning_factor
         self.done_punish = done_punish
 
         self.cube_mode = cube_mode
@@ -178,24 +180,18 @@ class FetchEnv(robot_env.RobotEnv):
         grip_pos = self.sim.data.get_site_xpos("robot0:grip")
         reward = 0
         assert self.reward_type == 'dense'
-        # grip_box: smaller -> better (prev - curr)
-        # achi_sph: smaller -> better (prev - curr)
-        # tar_sph: smaller -> better (prev - curr)
-        # obs_tar: larger -> better (curr - prev)
         curr_grip_achi_dist = goal_distance(np.broadcast_to(grip_pos, achieved_goal.shape), achieved_goal)
         grip_achi_reward = self.prev_grip_obj_dist - curr_grip_achi_dist
         grip_achi_reward = np.where(np.abs(grip_achi_reward) >= epsilon, grip_achi_reward, 0)
-        reward += grip_achi_reward
         self.prev_grip_obj_dist = curr_grip_achi_dist
 
         curr_achi_desi_dist = goal_distance(achieved_goal, goal)
         achi_desi_reward = self.prev_achi_desi_dist - curr_achi_desi_dist
         achi_desi_reward = np.where(np.abs(achi_desi_reward) >= epsilon, achi_desi_reward, 0)
-        reward += achi_desi_reward
         self.prev_achi_desi_dist = curr_achi_desi_dist
 
-        reward = np.where(grip_achi_reward == 0, reward, 100 * grip_achi_reward)
-        reward = np.where(grip_achi_reward != 0, reward, 100 * achi_desi_reward)
+        reward = np.where(grip_achi_reward == 0, reward, self.learning_factor * grip_achi_reward)
+        reward = np.where(grip_achi_reward != 0, reward, self.learning_factor * achi_desi_reward)
 
         success_reward = self.success_reward
         for idx in np.arange(len(self.obstacle_name_list)):
