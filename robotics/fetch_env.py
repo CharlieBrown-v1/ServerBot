@@ -100,7 +100,7 @@ class FetchEnv(robot_env.RobotEnv):
             reward_type,
             success_reward=100,
             learning_factor=100,
-            done_punish=-10,
+            punish_factor=-100,
             total_obstacle_count=200,
             single_count_sup=15,
             cube_mode=False,
@@ -139,7 +139,7 @@ class FetchEnv(robot_env.RobotEnv):
         # DIY
         self.success_reward = success_reward
         self.learning_factor = learning_factor
-        self.done_punish = done_punish
+        self.punish_factor = punish_factor
 
         self.cube_mode = cube_mode
         self.hrl_mode = hrl_mode
@@ -192,17 +192,17 @@ class FetchEnv(robot_env.RobotEnv):
 
         reward = np.where(grip_achi_reward == 0, reward, self.learning_factor * grip_achi_reward)
         reward = np.where(grip_achi_reward != 0, reward, self.learning_factor * achi_desi_reward)
+        reward = np.where(1 - info['is_success'], reward, self.success_reward)
 
-        success_reward = self.success_reward
+        assert reward.size == 1
         for idx in np.arange(len(self.obstacle_name_list)):
             obstacle_name = self.obstacle_name_list[idx]
             init_obstacle_xpos = self.init_obstacle_xpos_list[idx]
             curr_obstacle_xpos = self.sim.data.get_geom_xpos(obstacle_name)
             delta_obstacle_xpos = goal_distance(init_obstacle_xpos, curr_obstacle_xpos)
             if delta_obstacle_xpos > self.distance_threshold:
-                success_reward += self.done_punish
+                reward += self.punish_factor * delta_obstacle_xpos
 
-        reward = np.where(1 - info['is_success'], reward, success_reward)
         return reward
 
     # DIY
@@ -568,8 +568,7 @@ class FetchEnv(robot_env.RobotEnv):
         return d < self.distance_threshold
 
     # DIY
-    def _is_done(self):
-        return False
+    def _is_done(self, achieved_goal, desired_goal):
         for idx in np.arange(len(self.obstacle_name_list)):
             obstacle_name = self.obstacle_name_list[idx]
             init_obstacle_xpos = self.init_obstacle_xpos_list[idx]
