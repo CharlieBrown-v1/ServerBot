@@ -162,8 +162,8 @@ class ObjectGenerator:
         self.density = 1.6e4  # 2 / (0.05^3) kg/m^3
         self.size_inf = 0.02
         self.size_sup = 0.04
-        self.xy_dist_sup_from_target = 0.1
-        self.z_dist_sup_from_target = 0.05
+        self.xy_dist_sup_from_target = 0.2
+        self.z_dist_sup_from_target = 0.075
 
         table_xpos = np.array([1.3, 0.75])
         table_size = np.array([0.25, 0.35])
@@ -249,23 +249,27 @@ class ObjectGenerator:
                     obstacle_name = body_name
                     self.obstacle_name_list.append(obstacle_name)
 
-    def sample_one_qpos_on_table(self, achieved_qpos: np.ndarray):
+    def sample_one_qpos_on_table(self, achieved_qpos: np.ndarray, training_mode='easy'):
         obstacle_qpos = achieved_qpos.copy()
         obstacle_xpos = obstacle_qpos[:3]
 
-        delta_xy_dist = np.random.uniform(-self.xy_dist_sup_from_target, self.xy_dist_sup_from_target, 2)
         delta_z_dist = np.random.uniform(0, self.z_dist_sup_from_target)
-        obstacle_xpos[: 2] += delta_xy_dist
-        obstacle_xpos[: 2] = np.where(obstacle_xpos[: 2] >= self.desktop_lower_boundary,
-                                      obstacle_xpos[: 2],
-                                      self.desktop_lower_boundary)
-        obstacle_xpos[: 2] = np.where(obstacle_xpos[: 2] <= self.desktop_upper_boundary,
-                                      obstacle_xpos[: 2],
-                                      self.desktop_upper_boundary)
-        obstacle_xpos[2] += delta_z_dist
+        if training_mode == 'hard':
+            delta_xy_dist = np.random.uniform(-self.xy_dist_sup_from_target, self.xy_dist_sup_from_target, 2)
+            obstacle_xpos[: 2] += delta_xy_dist
+            obstacle_xpos[: 2] = np.where(obstacle_xpos[: 2] >= self.desktop_lower_boundary,
+                                          obstacle_xpos[: 2],
+                                          self.desktop_lower_boundary)
+            obstacle_xpos[: 2] = np.where(obstacle_xpos[: 2] <= self.desktop_upper_boundary,
+                                          obstacle_xpos[: 2],
+                                          self.desktop_upper_boundary)
+            obstacle_xpos[2] += delta_z_dist
+        elif training_mode == 'easy':
+            obstacle_xpos[: 2] = np.random.uniform(self.desktop_lower_boundary, self.desktop_upper_boundary)
+            obstacle_xpos[2] += delta_z_dist
         return obstacle_qpos
 
-    def sample_objects(self, achieved_xpos: np.ndarray):
+    def sample_objects(self, achieved_xpos: np.ndarray, training_mode='easy'):
         achieved_qpos = np.r_[achieved_xpos, self.qpos_posix].copy()
         # achieved_name = np.random.choice(self.object_name_list)
         achieved_name = 'target_object'
@@ -300,7 +304,7 @@ class ObjectGenerator:
             return achieved_name, dict(zip(object_name_list, object_qpos_list)), dict(zip(obstacle_name_list, obstacle_xpos_list))
 
         for _ in np.arange(obstacle_count):
-            obstacle_qpos = self.sample_one_qpos_on_table(achieved_qpos)
+            obstacle_qpos = self.sample_one_qpos_on_table(achieved_qpos, training_mode=training_mode)
             object_qpos_list.append(obstacle_qpos)
             obstacle_xpos_list.append(obstacle_qpos[:3])
 

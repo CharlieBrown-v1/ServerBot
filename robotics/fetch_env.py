@@ -107,6 +107,7 @@ class FetchEnv(robot_env.RobotEnv):
             hrl_mode=False,
             debug_mode=False,
             demo_mode=False,
+            training_mode='easy',
             is_random=False,
             generate_flag=False,
     ):
@@ -145,6 +146,7 @@ class FetchEnv(robot_env.RobotEnv):
         self.hrl_mode = hrl_mode
         self.debug_mode = debug_mode
         self.demo_mode = demo_mode
+        self.training_mode = training_mode
 
         self.prev_grip_obj_dist = None
         self.prev_achi_desi_dist = None
@@ -474,12 +476,11 @@ class FetchEnv(robot_env.RobotEnv):
                         -self.obj_range, self.obj_range, size=2
                     )
 
-                # object_xpos = self.initial_gripper_xpos.copy()
                 object_xpos[2] = self.height_offset
 
                 # DIY: used by obstacle generate
                 self.achieved_name, object_dict, obstacle_dict \
-                    = self.object_generator.sample_objects(object_xpos)
+                    = self.object_generator.sample_objects(object_xpos, training_mode=self.training_mode)
 
                 self.object_name_list = list(object_dict.keys()).copy()
                 self.init_object_xpos_list = [object_qpos[:3].copy() for object_qpos in object_dict.values()]
@@ -602,7 +603,7 @@ class FetchEnv(robot_env.RobotEnv):
             if self.hrl_mode:
                 self.height_offset = 0.4 + self.object_generator.size_inf
                 self.achieved_name, object_dict, obstacle_dict \
-                    = self.object_generator.sample_objects(self.initial_gripper_xpos.copy())
+                    = self.object_generator.sample_objects(self.initial_gripper_xpos.copy(), training_mode=self.training_mode)
                 self.object_name_list = list(object_dict.keys()).copy()
                 self.obstacle_name_list = list(obstacle_dict.keys()).copy()
             else:
