@@ -423,8 +423,10 @@ class FetchEnv(robot_env.RobotEnv):
     def _render_callback(self):
         # Visualize target.
         sites_offset = (self.sim.data.site_xpos - self.sim.model.site_pos).copy()
-        site_id = self.sim.model.site_name2id("target0")
-        self.sim.model.site_pos[site_id] = self.goal - sites_offset[0]
+        target_site_id = self.sim.model.site_name2id("target0")
+        achieved_site_id = self.sim.model.site_name2id("achieved_site")
+        self.sim.model.site_pos[target_site_id] = self.goal - sites_offset[target_site_id]
+        self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(self.achieved_name) - sites_offset[achieved_site_id]
         self.sim.forward()
 
     def _set_hrl_initial_state(self, resample_mode=False):
