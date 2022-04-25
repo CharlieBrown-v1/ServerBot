@@ -103,13 +103,12 @@ class FetchEnv(robot_env.RobotEnv):
             punish_factor=-100,
             total_obstacle_count=200,
             single_count_sup=15,
-            cube_mode=False,
+            generate_flag=False,
             hrl_mode=False,
+            random_mode=False,
             debug_mode=False,
             demo_mode=False,
             training_mode='easy',
-            is_random=False,
-            generate_flag=False,
     ):
         """Initializes a new Fetch environment.
 
@@ -142,7 +141,6 @@ class FetchEnv(robot_env.RobotEnv):
         self.learning_factor = learning_factor
         self.punish_factor = punish_factor
 
-        self.cube_mode = cube_mode
         self.hrl_mode = hrl_mode
         self.debug_mode = debug_mode
         self.demo_mode = demo_mode
@@ -153,12 +151,10 @@ class FetchEnv(robot_env.RobotEnv):
 
         self.achieved_name = "target_object"
 
-        if not self.cube_mode:
-            is_random = False
         self.object_generator = utils.ObjectGenerator(
             total_obstacle_count=total_obstacle_count,
             single_count_sup=single_count_sup,
-            is_random=is_random,
+            random_mode=random_mode,
             generate_flag=generate_flag,
         )
         self.object_name_list = []
@@ -309,7 +305,7 @@ class FetchEnv(robot_env.RobotEnv):
 
         if self.has_object:
             # DIY
-            if self.cube_mode:
+            if self.hrl_mode:
                 # TODO: how to generalize size
                 goal_size = 0.02
                 achieved_goal_size = 0.025
@@ -362,22 +358,6 @@ class FetchEnv(robot_env.RobotEnv):
                 physical_obs.append(achieved_goal_velp.flatten().copy())
                 physical_obs.append(achieved_goal_velr.flatten().copy())
                 physical_obs.append(achieved_goal_rel_pos.flatten().copy())
-            elif self.hrl_mode:
-                achieved_goal_pos = self.sim.data.get_geom_xpos(self.achieved_name)
-                hrl_achieved_pos = np.squeeze(achieved_goal_pos.copy())
-                object_pos = []
-                object_rot = []
-                object_velp = []
-                object_velr = []
-                object_rel_pos = []
-                for idx in range(len(self.object_name_list)):
-                    object_pos.append(self.sim.data.get_geom_xpos(self.object_name_list[idx]).copy())
-                    object_rot.append(
-                        rotations.mat2euler(self.sim.data.get_geom_xmat(self.object_name_list[idx])).copy())
-                    object_velp.append(self.sim.data.get_geom_xvelp(self.object_name_list[idx]).copy() * dt)
-                    object_velr.append(self.sim.data.get_geom_xvelr(self.object_name_list[idx]).copy() * dt)
-                    object_rel_pos.append(object_pos[idx] - grip_pos)
-                    object_velp[idx] -= grip_velp
             else:
                 object_pos = self.sim.data.get_site_xpos("object0")
                 # rotations
@@ -397,33 +377,17 @@ class FetchEnv(robot_env.RobotEnv):
         if not self.has_object:
             achieved_goal = grip_pos.copy()
         else:
-            if self.cube_mode:
+            if self.hrl_mode:
                 achieved_goal = cube_achieved_pos.copy()
-            elif self.hrl_mode:
-                achieved_goal = hrl_achieved_pos.copy()
             else:
                 achieved_goal = np.squeeze(object_pos.copy())
 
         # DIY
-        if self.cube_mode:
+        if self.hrl_mode:
             obs = np.concatenate(
                 [
                     cube_obs.flatten(),
                     np.concatenate(physical_obs),
-                ]
-            )
-        elif self.hrl_mode:
-            obs = np.concatenate(
-                [
-                    grip_pos,
-                    np.concatenate(object_pos).ravel(),
-                    np.concatenate(object_rel_pos).ravel(),
-                    gripper_state,
-                    np.concatenate(object_rot).ravel(),
-                    np.concatenate(object_velp).ravel(),
-                    np.concatenate(object_velr).ravel(),
-                    grip_velp,
-                    gripper_vel,
                 ]
             )
         else:
@@ -463,6 +427,26 @@ class FetchEnv(robot_env.RobotEnv):
         self.sim.model.site_pos[site_id] = self.goal - sites_offset[0]
         self.sim.forward()
 
+    def _set_hrl_initial_state(self, resample_mode=False):
+        if resample_mode:
+            assert len(self.object_name_list) >= 1
+            object_dict = self.object_generator.resample_obstacles(object_name_list=self.object_name_list,
+                                                                   obstacle_count=len(self.obstacle_name_list),
+                                                                   training_mode=self.training_mode)
+            self.init_object_xpos_list = [object_qpos[:3].copy() for object_qpos in object_dict.values()]
+            return object_dict.copy()
+        else:
+            self.achieved_name, object_dict, obstacle_dict \
+                = self.object_generator.sample_objects(training_mode=self.training_mode)
+
+        self.object_name_list = list(object_dict.keys()).copy()
+        self.init_object_xpos_list = [object_qpos[:3].copy() for object_qpos in object_dict.values()]
+
+        self.obstacle_name_list = list(obstacle_dict.keys()).copy()
+        self.init_obstacle_xpos_list = list(obstacle_dict.values()).copy()
+
+        return object_dict.copy()
+
     def _reset_sim(self):
         self.sim.set_state(self.initial_state)
 
@@ -471,23 +455,8 @@ class FetchEnv(robot_env.RobotEnv):
         if self.has_object:
             # DIY
             if self.hrl_mode:
-                while np.linalg.norm(object_xpos[:2] - self.initial_gripper_xpos[:2]) < 0.1:
-                    object_xpos[:2] = self.initial_gripper_xpos[:2] + self.np_random.uniform(
-                        -self.obj_range, self.obj_range, size=2
-                    )
-
-                object_xpos[2] = self.height_offset
-
                 # DIY: used by obstacle generate
-                self.achieved_name, object_dict, obstacle_dict \
-                    = self.object_generator.sample_objects(object_xpos, training_mode=self.training_mode)
-
-                self.object_name_list = list(object_dict.keys()).copy()
-                self.init_object_xpos_list = [object_qpos[:3].copy() for object_qpos in object_dict.values()]
-
-                self.obstacle_name_list = list(obstacle_dict.keys()).copy()
-                self.init_obstacle_xpos_list = list(obstacle_dict.values()).copy()
-
+                object_dict = self._set_hrl_initial_state()
                 for object_name, object_qpos in object_dict.items():
                     assert object_qpos.shape == (7,)
                     self.sim.data.set_joint_qpos(f"{object_name}:joint", object_qpos)
@@ -504,9 +473,9 @@ class FetchEnv(robot_env.RobotEnv):
         self.sim.forward()
 
         from PIL import Image
-        done = False
         while True:
             count = 0
+            done = False
             while not done:
                 self.sim.step()
                 curr_object_xpos_list = [self.sim.data.get_geom_xpos(object_name).copy() for object_name in
@@ -518,17 +487,14 @@ class FetchEnv(robot_env.RobotEnv):
             all_in_desk = np.all(np.array([object_xpos[2] for object_xpos in self.init_object_xpos_list]) > 0.4)
             if all_in_desk:
                 break
-            object_qpos_list, obstacle_xpos_list = self.object_generator.resample_obstacles(
-                self.achieved_name, object_xpos, len(self.obstacle_name_list))
-            self.init_object_xpos_list = [object_qpos[:3].copy() for object_qpos in object_qpos_list]
-            for object_name, object_qpos in zip(self.object_name_list, object_qpos_list):
+            object_dict = self._set_hrl_initial_state(resample_mode=True)
+            for object_name, object_qpos in object_dict.items():
                 assert object_qpos.shape == (7,)
                 self.sim.data.set_joint_qpos(f"{object_name}:joint", object_qpos)
             self.sim.forward()
         # DIY
         self.init_obstacle_xpos_list = [self.sim.data.get_geom_xpos(obstacle_name).copy() for obstacle_name
                                         in self.obstacle_name_list]
-
         return True
 
     def _sample_goal(self):
@@ -547,8 +513,7 @@ class FetchEnv(robot_env.RobotEnv):
 
             """
             if self.hrl_mode:
-                goal = self.initial_gripper_xpos.copy()
-                goal[2] = self.height_offset + 0.15
+                goal = np.array([1.4, 0.65, 0.62])
             """
 
         else:
@@ -602,10 +567,7 @@ class FetchEnv(robot_env.RobotEnv):
             # DIY
             if self.hrl_mode:
                 self.height_offset = 0.4 + self.object_generator.size_inf
-                self.achieved_name, object_dict, obstacle_dict \
-                    = self.object_generator.sample_objects(self.initial_gripper_xpos.copy(), training_mode=self.training_mode)
-                self.object_name_list = list(object_dict.keys()).copy()
-                self.obstacle_name_list = list(obstacle_dict.keys()).copy()
+                self._set_hrl_initial_state()
             else:
                 self.height_offset = self.sim.data.get_site_xpos("object0")[2].copy()
 

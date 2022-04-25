@@ -9,7 +9,8 @@ try:
     import mujoco_py
 except ImportError as e:
     raise error.DependencyNotInstalled(
-        "{}. (HINT: you need to install mujoco_py, and also perform the setup instructions here: https://github.com/openai/mujoco-py/.)".format(
+        "{}. (HINT: you need to install mujoco_py, and also perform the setup instructions here: "
+        "https://github.com/openai/mujoco-py/.)".format(
             e
         )
     )
@@ -141,8 +142,6 @@ def compute_volume(geom_type: str, geom_size: np.ndarray):
         geom_radius = geom_size[0]
         geom_half_length = geom_size[1]
         volume += np.pi * np.power(geom_radius, 2) * 2 * geom_half_length
-        if geom_type == 'capsule':
-            volume += compute_ellipsoid_volume(np.ones(3) * geom_radius)
     elif geom_size.size == 3:
         if geom_type == 'ellipsoid':
             volume += compute_ellipsoid_volume(geom_size)
@@ -156,29 +155,33 @@ class ObjectGenerator:
     def __init__(self,
                  total_obstacle_count=200,
                  single_count_sup=15,
-                 is_random=False,
+                 random_mode=False,
                  generate_flag=False,
                  ):
         self.density = 1.6e4  # 2 / (0.05^3) kg/m^3
         self.size_inf = 0.02
         self.size_sup = 0.04
-        self.xy_dist_sup_from_target = 0.2
-        self.z_dist_sup_from_target = 0.075
+        self.xy_dist_sup = 0.2
+        self.z_dist_sup = 0.075
 
-        table_xpos = np.array([1.3, 0.75])
-        table_size = np.array([0.25, 0.35])
+        table_xpos = np.array([1.3, 0.75, 0.2])
+        table_size = np.array([0.25, 0.35, 0.2])
         self.desktop_lower_boundary = table_xpos - table_size + self.size_sup
         self.desktop_upper_boundary = table_xpos + table_size - self.size_sup
+        self.desktop_lower_boundary[2] = 0.2 + 0.2 + self.size_sup
+        self.desktop_upper_boundary[2] = 0.2 + 0.2 + self.size_sup + (2 * self.z_dist_sup)
+
         self.initial_xpos_origin = np.array([20.0, 20.0, 0.0])
         self.initial_xpos_size = np.array([5.0, 5.0, 0])
+
         self.qpos_posix = np.array([1.0, 0.0, 0.0, 0.0])
 
-        self.obstacle_type_list = ['sphere', 'capsule', 'cylinder', 'ellipsoid', 'box']
-        self.size_dim_list = [['sphere'], ['capsule', 'cylinder'], ['ellipsoid', 'box']]
+        self.obstacle_type_list = ['sphere', 'cylinder', 'ellipsoid', 'box']
+        self.size_dim_list = [['sphere'], ['cylinder'], ['ellipsoid', 'box']]
 
         self.total_obstacle_count = total_obstacle_count
         self.single_count_sup = single_count_sup + 1
-        self.is_random = is_random
+        self.random_mode = random_mode
 
         self.object_name_list = []
         self.obstacle_name_list = []
@@ -229,7 +232,7 @@ class ObjectGenerator:
             worldbody = tree.find('./worldbody')
             assert worldbody is not None
 
-            assert self.is_random
+            assert self.random_mode
             for idx in np.arange(self.total_obstacle_count):
                 obstacle_name = f'obstacle_object_{idx}'
                 self.generate_one_obstacle(worldbody=worldbody, idx=idx)
@@ -249,35 +252,35 @@ class ObjectGenerator:
                     obstacle_name = body_name
                     self.obstacle_name_list.append(obstacle_name)
 
-    def sample_one_qpos_on_table(self, achieved_qpos: np.ndarray, training_mode='easy'):
-        obstacle_qpos = achieved_qpos.copy()
-        obstacle_xpos = obstacle_qpos[:3]
+    def sample_one_qpos_on_table(self, training_mode='easy'):
+        object_qpos = np.zeros(3 + self.qpos_posix.size)
+        object_xpos = object_qpos[:3]
 
-        delta_z_dist = np.random.uniform(0, self.z_dist_sup_from_target)
         if training_mode == 'hard':
-            delta_xy_dist = np.random.uniform(-self.xy_dist_sup_from_target, self.xy_dist_sup_from_target, 2)
-            obstacle_xpos[: 2] += delta_xy_dist
-            obstacle_xpos[: 2] = np.where(obstacle_xpos[: 2] >= self.desktop_lower_boundary,
-                                          obstacle_xpos[: 2],
-                                          self.desktop_lower_boundary)
-            obstacle_xpos[: 2] = np.where(obstacle_xpos[: 2] <= self.desktop_upper_boundary,
-                                          obstacle_xpos[: 2],
-                                          self.desktop_upper_boundary)
-            obstacle_xpos[2] += delta_z_dist
+            delta_xy_dist = np.random.uniform(-self.xy_dist_sup, self.xy_dist_sup, 2)
+            delta_z_dist = np.random.uniform(0, self.z_dist_sup)
+            object_xpos[: 2] += delta_xy_dist
+            object_xpos[: 2] = np.where(object_xpos[: 2] >= self.desktop_lower_boundary[: 2],
+                                        object_xpos[: 2],
+                                        self.desktop_lower_boundary[: 2])
+            object_xpos[: 2] = np.where(object_xpos[: 2] <= self.desktop_upper_boundary[: 2],
+                                        object_xpos[: 2],
+                                        self.desktop_upper_boundary[: 2])
+            object_xpos[2] += delta_z_dist
         elif training_mode == 'easy':
-            obstacle_xpos[: 2] = np.random.uniform(self.desktop_lower_boundary, self.desktop_upper_boundary)
-            obstacle_xpos[2] += delta_z_dist
-        return obstacle_qpos
+            object_xpos[:] = np.random.uniform(self.desktop_lower_boundary, self.desktop_upper_boundary)
+        return object_qpos
 
-    def sample_objects(self, achieved_xpos: np.ndarray, training_mode='easy'):
-        achieved_qpos = np.r_[achieved_xpos, self.qpos_posix].copy()
+    def sample_objects(self, training_mode='easy'):
         # achieved_name = np.random.choice(self.object_name_list)
         achieved_name = 'target_object'
 
-        if self.is_random:
+        if self.random_mode:
             obstacle_count = np.random.randint(self.single_count_sup)
+            achieved_qpos = self.sample_one_qpos_on_table(training_mode=training_mode).copy()
         else:
-            obstacle_count = 0
+            obstacle_count = 3
+            achieved_qpos = np.r_[[1.4, 0.75, 0.45 + 0.05 * obstacle_count], self.qpos_posix]
 
         tmp_object_name_list = self.object_name_list.copy()
         tmp_object_name_list.remove(achieved_name)
@@ -290,37 +293,57 @@ class ObjectGenerator:
 
         # DIY
         delta_obstacle_qpos_list = [
+                                       np.r_[[0, 0, -0.07], self.qpos_posix],
+                                       np.r_[[0, 0, -0.14], self.qpos_posix],
+                                       np.r_[[0, 0, -0.21], self.qpos_posix],
                                        np.r_[[-0.065, 0, 0], self.qpos_posix],
                                        np.r_[[0.065, 0, 0], self.qpos_posix],
                                        np.r_[[0, -0.1, 0], self.qpos_posix],
                                        np.r_[[0, 0.1, 0], self.qpos_posix],
                                        np.r_[[0, 0, 0.05], self.qpos_posix],
                                    ][: obstacle_count]
-        if not self.is_random:
+        if not self.random_mode:
             for delta_obstacle_qpos in delta_obstacle_qpos_list:
                 object_qpos_list.append(achieved_qpos.copy() + delta_obstacle_qpos)
                 obstacle_xpos_list.append((achieved_qpos.copy() + delta_obstacle_qpos)[:3])
 
-            return achieved_name, dict(zip(object_name_list, object_qpos_list)), dict(zip(obstacle_name_list, obstacle_xpos_list))
+            return achieved_name, dict(zip(object_name_list, object_qpos_list)), dict(
+                zip(obstacle_name_list, obstacle_xpos_list))
 
         for _ in np.arange(obstacle_count):
-            obstacle_qpos = self.sample_one_qpos_on_table(achieved_qpos, training_mode=training_mode)
+            obstacle_qpos = self.sample_one_qpos_on_table(training_mode=training_mode)
             object_qpos_list.append(obstacle_qpos)
             obstacle_xpos_list.append(obstacle_qpos[:3])
 
-        return achieved_name, dict(zip(object_name_list, object_qpos_list)), dict(zip(obstacle_name_list, obstacle_xpos_list))
+        return achieved_name, dict(zip(object_name_list, object_qpos_list)), dict(
+            zip(obstacle_name_list, obstacle_xpos_list))
 
-    def resample_obstacles(self, achieved_name: str, achieved_xpos: np.ndarray, obstacle_count: int):
-        assert achieved_name in self.object_name_list
-        achieved_qpos = np.r_[achieved_xpos, self.qpos_posix].copy()
+    def resample_obstacles(self, object_name_list: list, obstacle_count: int, training_mode='easy'):
+        if self.random_mode:
+            achieved_qpos = self.sample_one_qpos_on_table(training_mode=training_mode)
+        else:
+            achieved_qpos = np.r_[[1.4, 0.75, 0.45 + 0.05 * obstacle_count], self.qpos_posix]
 
         object_qpos_list = [achieved_qpos.copy()]
 
-        obstacle_xpos_list = []
+        delta_obstacle_qpos_list = [
+                                       np.r_[[0, 0, -0.07], self.qpos_posix],
+                                       np.r_[[0, 0, -0.14], self.qpos_posix],
+                                       np.r_[[0, 0, -0.21], self.qpos_posix],
+                                       np.r_[[-0.065, 0, 0], self.qpos_posix],
+                                       np.r_[[0.065, 0, 0], self.qpos_posix],
+                                       np.r_[[0, -0.1, 0], self.qpos_posix],
+                                       np.r_[[0, 0.1, 0], self.qpos_posix],
+                                       np.r_[[0, 0, 0.05], self.qpos_posix],
+                                   ][: obstacle_count]
+
+        if not self.random_mode:
+            for delta_obstacle_qpos in delta_obstacle_qpos_list:
+                object_qpos_list.append(achieved_qpos.copy() + delta_obstacle_qpos)
+            return dict(zip(object_name_list, object_qpos_list))
 
         for _ in np.arange(obstacle_count):
-            obstacle_qpos = self.sample_one_qpos_on_table(achieved_qpos)
+            obstacle_qpos = self.sample_one_qpos_on_table(training_mode=training_mode)
             object_qpos_list.append(obstacle_qpos)
-            obstacle_xpos_list.append(obstacle_qpos[:3])
 
-        return object_qpos_list, obstacle_xpos_list
+        return dict(zip(object_name_list, object_qpos_list))
