@@ -160,7 +160,8 @@ class ObjectGenerator:
                  ):
         self.density = 1.6e4  # 2 / (0.05^3) kg/m^3
         self.size_inf = 0.02
-        self.size_sup = 0.04
+        # self.size_sup = 0.04
+        self.size_sup = 0.025
         self.xy_dist_sup = 0.2
         self.z_dist_sup = 0.075
 

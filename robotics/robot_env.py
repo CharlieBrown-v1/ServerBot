@@ -102,6 +102,10 @@ class RobotEnv(gym.GoalEnv):
         obs = self._get_obs()
         return obs
 
+    # DIY
+    def get_obs(self, achieved_name=None, goal=None):
+        raise NotImplementedError()
+
     def close(self):
         if self.viewer is not None:
             # self.viewer.finish()

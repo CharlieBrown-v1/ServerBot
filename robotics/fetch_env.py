@@ -1,3 +1,5 @@
+import copy
+
 import numpy as np
 from gym.envs.robotics import rotations, robot_env, utils
 
@@ -411,14 +413,24 @@ class FetchEnv(robot_env.RobotEnv):
             "desired_goal": self.goal.copy(),
         }
 
+    # DIY
+    def get_obs(self, achieved_name=None, goal=None):
+        if achieved_name is not None:
+            self.achieved_name = copy.deepcopy(achieved_name)
+        if goal is not None:
+            self.goal = goal.copy()
+        return self._get_obs()
+
     def _viewer_setup(self):
+        """"
         body_id = self.sim.model.body_name2id("robot0:gripper_link")
         lookat = self.sim.data.body_xpos[body_id]
         for idx, value in enumerate(lookat):
             self.viewer.cam.lookat[idx] = value
-        self.viewer.cam.distance = 1.5
-        self.viewer.cam.azimuth = 132.0
-        self.viewer.cam.elevation = -14.0
+        """
+        self.viewer.cam.distance = 1.2
+        self.viewer.cam.azimuth = 180  # 132.0
+        self.viewer.cam.elevation = -25.0
 
     def _render_callback(self):
         # Visualize target.
