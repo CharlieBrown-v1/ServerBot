@@ -162,8 +162,9 @@ class ObjectGenerator:
         self.size_inf = 0.02
         # self.size_sup = 0.04
         self.size_sup = 0.025
-        self.xy_dist_sup = 0.2
+        self.xy_dist_sup = 0.15
         self.z_dist_sup = 0.075
+        self.easy_probability = 0.7
 
         table_xpos = np.array([1.3, 0.75, 0.2])
         table_size = np.array([0.25, 0.35, 0.2])
@@ -188,6 +189,14 @@ class ObjectGenerator:
         self.obstacle_name_list = []
         self.base_obstacle_body = init_base_obstacle_body(base_obstacle_xml_path='hrl/base_obstacle.xml')
         self.init_total_obstacle(generate_flag=generate_flag)
+
+        self.delta_obstacle_qpos_list = [
+                                        np.r_[[0, 0, 0.05], self.qpos_posix],
+                                        np.r_[[0, -0.065, 0], self.qpos_posix],
+                                        np.r_[[0, 0.065, 0], self.qpos_posix],
+                                        np.r_[[-0.065, 0, 0], self.qpos_posix],
+                                        np.r_[[0.065, 0, 0], self.qpos_posix],
+                                   ]
 
     def generate_one_obstacle(self, worldbody: ET.Element, idx):
         new_obstacle_body = copy.deepcopy(self.base_obstacle_body)
@@ -253,9 +262,14 @@ class ObjectGenerator:
                     obstacle_name = body_name
                     self.obstacle_name_list.append(obstacle_name)
 
-    def sample_one_qpos_on_table(self, training_mode='easy'):
-        object_qpos = np.zeros(3 + self.qpos_posix.size)
+    def sample_one_qpos_on_table(self, achieved_xpos: np.ndarray):
+        object_qpos = np.r_[achieved_xpos, self.qpos_posix]
         object_xpos = object_qpos[:3]
+
+        if np.random.uniform() < self.easy_probability:
+            training_mode = 'easy'
+        else:
+            training_mode = 'hard'
 
         if training_mode == 'hard':
             delta_xy_dist = np.random.uniform(-self.xy_dist_sup, self.xy_dist_sup, 2)
@@ -272,16 +286,16 @@ class ObjectGenerator:
             object_xpos[:] = np.random.uniform(self.desktop_lower_boundary, self.desktop_upper_boundary)
         return object_qpos
 
-    def sample_objects(self, training_mode='easy'):
+    def sample_objects(self):
         # achieved_name = np.random.choice(self.object_name_list)
         achieved_name = 'target_object'
 
         if self.random_mode:
             obstacle_count = np.random.randint(self.single_count_sup)
-            achieved_qpos = self.sample_one_qpos_on_table(training_mode=training_mode).copy()
+            achieved_qpos = np.r_[np.random.uniform(self.desktop_lower_boundary, self.desktop_upper_boundary), self.qpos_posix]
         else:
             obstacle_count = 3
-            achieved_qpos = np.r_[[1.4, 0.75, 0.45 + 0.05 * obstacle_count], self.qpos_posix]
+            achieved_qpos = np.r_[[1.4, 0.75, 0.42], self.qpos_posix]
 
         tmp_object_name_list = self.object_name_list.copy()
         tmp_object_name_list.remove(achieved_name)
@@ -293,16 +307,7 @@ class ObjectGenerator:
         object_name_list += obstacle_name_list.copy()
 
         # DIY
-        delta_obstacle_qpos_list = [
-                                       np.r_[[0, 0, -0.07], self.qpos_posix],
-                                       np.r_[[0, 0, -0.14], self.qpos_posix],
-                                       np.r_[[0, 0, -0.21], self.qpos_posix],
-                                       np.r_[[-0.065, 0, 0], self.qpos_posix],
-                                       np.r_[[0.065, 0, 0], self.qpos_posix],
-                                       np.r_[[0, -0.1, 0], self.qpos_posix],
-                                       np.r_[[0, 0.1, 0], self.qpos_posix],
-                                       np.r_[[0, 0, 0.05], self.qpos_posix],
-                                   ][: obstacle_count]
+        delta_obstacle_qpos_list = self.delta_obstacle_qpos_list[: obstacle_count].copy()
         if not self.random_mode:
             for delta_obstacle_qpos in delta_obstacle_qpos_list:
                 object_qpos_list.append(achieved_qpos.copy() + delta_obstacle_qpos)
@@ -312,31 +317,19 @@ class ObjectGenerator:
                 zip(obstacle_name_list, obstacle_xpos_list))
 
         for _ in np.arange(obstacle_count):
-            obstacle_qpos = self.sample_one_qpos_on_table(training_mode=training_mode)
+            obstacle_qpos = self.sample_one_qpos_on_table(achieved_xpos=achieved_qpos[:3])
             object_qpos_list.append(obstacle_qpos)
             obstacle_xpos_list.append(obstacle_qpos[:3])
 
         return achieved_name, dict(zip(object_name_list, object_qpos_list)), dict(
             zip(obstacle_name_list, obstacle_xpos_list))
 
-    def resample_obstacles(self, object_name_list: list, obstacle_count: int, training_mode='easy'):
-        if self.random_mode:
-            achieved_qpos = self.sample_one_qpos_on_table(training_mode=training_mode)
-        else:
-            achieved_qpos = np.r_[[1.4, 0.75, 0.45 + 0.05 * obstacle_count], self.qpos_posix]
-
+    def resample_obstacles(self, object_name_list: list, obstacle_count: int):
+        achieved_xpos = np.random.uniform(self.desktop_lower_boundary, self.desktop_upper_boundary)
+        achieved_qpos = np.r_[achieved_xpos, self.qpos_posix]
         object_qpos_list = [achieved_qpos.copy()]
 
-        delta_obstacle_qpos_list = [
-                                       np.r_[[0, 0, -0.07], self.qpos_posix],
-                                       np.r_[[0, 0, -0.14], self.qpos_posix],
-                                       np.r_[[0, 0, -0.21], self.qpos_posix],
-                                       np.r_[[-0.065, 0, 0], self.qpos_posix],
-                                       np.r_[[0.065, 0, 0], self.qpos_posix],
-                                       np.r_[[0, -0.1, 0], self.qpos_posix],
-                                       np.r_[[0, 0.1, 0], self.qpos_posix],
-                                       np.r_[[0, 0, 0.05], self.qpos_posix],
-                                   ][: obstacle_count]
+        delta_obstacle_qpos_list = self.delta_obstacle_qpos_list[: obstacle_count].copy()
 
         if not self.random_mode:
             for delta_obstacle_qpos in delta_obstacle_qpos_list:
@@ -344,7 +337,7 @@ class ObjectGenerator:
             return dict(zip(object_name_list, object_qpos_list))
 
         for _ in np.arange(obstacle_count):
-            obstacle_qpos = self.sample_one_qpos_on_table(training_mode=training_mode)
+            obstacle_qpos = self.sample_one_qpos_on_table(achieved_xpos=achieved_xpos.copy())
             object_qpos_list.append(obstacle_qpos)
 
         return dict(zip(object_name_list, object_qpos_list))

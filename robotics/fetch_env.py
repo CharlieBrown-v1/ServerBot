@@ -110,7 +110,6 @@ class FetchEnv(robot_env.RobotEnv):
             random_mode=False,
             debug_mode=False,
             demo_mode=False,
-            training_mode='easy',
     ):
         """Initializes a new Fetch environment.
 
@@ -146,7 +145,6 @@ class FetchEnv(robot_env.RobotEnv):
         self.hrl_mode = hrl_mode
         self.debug_mode = debug_mode
         self.demo_mode = demo_mode
-        self.training_mode = training_mode
 
         self.prev_grip_obj_dist = None
         self.prev_achi_desi_dist = None
@@ -446,12 +444,12 @@ class FetchEnv(robot_env.RobotEnv):
             assert len(self.object_name_list) >= 1
             object_dict = self.object_generator.resample_obstacles(object_name_list=self.object_name_list,
                                                                    obstacle_count=len(self.obstacle_name_list),
-                                                                   training_mode=self.training_mode)
+                                                                   )
             self.init_object_xpos_list = [object_qpos[:3].copy() for object_qpos in object_dict.values()]
             return object_dict.copy()
         else:
             self.achieved_name, object_dict, obstacle_dict \
-                = self.object_generator.sample_objects(training_mode=self.training_mode)
+                = self.object_generator.sample_objects()
 
         self.object_name_list = list(object_dict.keys()).copy()
         self.init_object_xpos_list = [object_qpos[:3].copy() for object_qpos in object_dict.values()]
@@ -486,7 +484,6 @@ class FetchEnv(robot_env.RobotEnv):
 
         self.sim.forward()
 
-        from PIL import Image
         while True:
             count = 0
             done = False
@@ -525,10 +522,10 @@ class FetchEnv(robot_env.RobotEnv):
                 elif self.np_random.uniform() < 0.5:
                     goal[2] += self.np_random.uniform(0, 0.3)
 
-            """
+            # """
             if self.hrl_mode:
-                goal = np.array([1.4, 0.65, 0.62])
-            """
+                goal = np.array([1.45, 0.64, 0.52])
+            # """
 
         else:
             goal = self.initial_gripper_xpos[:3] + self.np_random.uniform(
