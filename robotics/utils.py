@@ -153,6 +153,7 @@ def compute_volume(geom_type: str, geom_size: np.ndarray):
 
 class ObjectGenerator:
     def __init__(self,
+                 easy_probability=0.7,
                  total_obstacle_count=200,
                  single_count_sup=15,
                  random_mode=False,
@@ -164,7 +165,7 @@ class ObjectGenerator:
         self.size_sup = 0.025
         self.xy_dist_sup = 0.15
         self.z_dist_sup = 0.075
-        self.easy_probability = 0.7
+        self.easy_probability = easy_probability
 
         table_xpos = np.array([1.3, 0.75, 0.2])
         table_size = np.array([0.25, 0.35, 0.2])

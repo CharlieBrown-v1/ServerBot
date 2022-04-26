@@ -103,6 +103,7 @@ class FetchEnv(robot_env.RobotEnv):
             success_reward=100,
             learning_factor=100,
             punish_factor=-100,
+            easy_probability=0.7,
             total_obstacle_count=200,
             single_count_sup=15,
             generate_flag=False,
@@ -152,6 +153,7 @@ class FetchEnv(robot_env.RobotEnv):
         self.achieved_name = "target_object"
 
         self.object_generator = utils.ObjectGenerator(
+            easy_probability=easy_probability,
             total_obstacle_count=total_obstacle_count,
             single_count_sup=single_count_sup,
             random_mode=random_mode,
