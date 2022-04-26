@@ -348,31 +348,10 @@ for reward_type in ["sparse", "dense"]:
 
     # Fetch
     register(
-        id="Grasp{}-v0".format(suffix),
-        entry_point="gym.envs.robotics:GraspEnv",
-        kwargs=kwargs,
-        max_episode_steps=50,
-    )
-
-    register(
-        id="ObstacleRemoval{}-v0".format(suffix),
-        entry_point="gym.envs.robotics:ObstacleRemovalEnv",
-        kwargs=kwargs,
-        max_episode_steps=50,
-    )
-
-    register(
-        id="Combine{}-v0".format(suffix),
-        entry_point="gym.envs.robotics:CombineEnv",
-        kwargs=kwargs,
-        max_episode_steps=50,
-    )
-
-    register(
         id="Final{}-v0".format(suffix),
         entry_point="gym.envs.robotics:FinalEnv",
         kwargs=kwargs,
-        max_episode_steps=50,
+        max_episode_steps=64,
     )
 
     register(

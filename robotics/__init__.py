@@ -14,3 +14,4 @@ from gym.envs.robotics.hand.manipulate_touch_sensors import HandEggTouchSensorsE
 from gym.envs.robotics.hand.manipulate_touch_sensors import HandPenTouchSensorsEnv
 
 from gym.envs.robotics.hrl.hrl import HrlEnv
+from gym.envs.robotics.hrl.final import FinalEnv
