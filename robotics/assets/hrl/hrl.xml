@@ -3,7 +3,7 @@
 	<option timestep="0.002">
 		<flag warmstart="enable" />
 	</option>
-	<size nconmax="3000" njmax="3000" />
+	<size nconmax="5000" njmax="5000" />
 
 	<include file="shared.xml" />
 
@@ -27,7 +27,7 @@
 
 		<body name="target_object" pos="20 20 0.025">
 			<joint name="target_object:joint" type="free" damping="0.01"></joint>
-			<geom size="0.025 0.025 0.025" type="box" condim="3" name="target_object" material="block_mat" mass="2" rgba="0 1 0 1"/>
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="target_object" material="block_mat" mass="2" rgba="0 1 1 1"/>
 			<site name="target_object" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
 		</body>
 
@@ -89,6 +89,60 @@
 			<joint name="obstacle_object_9:joint" type="free" damping="0.01" />
 			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_9" material="block_mat" mass="2"/>
 			<site name="obstacle_object_9" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
+		</body>
+
+		<body name="obstacle_object_10" pos="20 20 0.025">
+			<joint name="obstacle_object_10:joint" type="free" damping="0.01" />
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_10" material="block_mat" mass="2"/>
+			<site name="obstacle_object_10" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
+		</body>
+
+		<body name="obstacle_object_11" pos="20 20 0.025">
+			<joint name="obstacle_object_11:joint" type="free" damping="0.01" />
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_11" material="block_mat" mass="2"/>
+			<site name="obstacle_object_11" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
+		</body>
+
+		<body name="obstacle_object_12" pos="20 20 0.025">
+			<joint name="obstacle_object_12:joint" type="free" damping="0.01" />
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_12" material="block_mat" mass="2"/>
+			<site name="obstacle_object_12" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
+		</body>
+
+		<body name="obstacle_object_13" pos="20 20 0.025">
+			<joint name="obstacle_object_13:joint" type="free" damping="0.01" />
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_13" material="block_mat" mass="2"/>
+			<site name="obstacle_object_13" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
+		</body>
+
+		<body name="obstacle_object_14" pos="20 20 0.025">
+			<joint name="obstacle_object_14:joint" type="free" damping="0.01" />
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_14" material="block_mat" mass="2"/>
+			<site name="obstacle_object_14" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
+		</body>
+
+		<body name="obstacle_object_15" pos="20 20 0.025">
+			<joint name="obstacle_object_15:joint" type="free" damping="0.01" />
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_15" material="block_mat" mass="2"/>
+			<site name="obstacle_object_15" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
+		</body>
+
+		<body name="obstacle_object_16" pos="20 20 0.025">
+			<joint name="obstacle_object_16:joint" type="free" damping="0.01" />
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_16" material="block_mat" mass="2"/>
+			<site name="obstacle_object_16" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
+		</body>
+
+		<body name="obstacle_object_17" pos="20 20 0.025">
+			<joint name="obstacle_object_17:joint" type="free" damping="0.01" />
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_17" material="block_mat" mass="2"/>
+			<site name="obstacle_object_17" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
+		</body>
+
+		<body name="obstacle_object_18" pos="20 20 0.025">
+			<joint name="obstacle_object_18:joint" type="free" damping="0.01" />
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_18" material="block_mat" mass="2"/>
+			<site name="obstacle_object_18" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
 		</body>
 
 		</worldbody>

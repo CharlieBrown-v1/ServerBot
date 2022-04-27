@@ -161,7 +161,6 @@ class ObjectGenerator:
                  ):
         self.density = 1.6e4  # 2 / (0.05^3) kg/m^3
         self.size_inf = 0.02
-        # self.size_sup = 0.04
         self.size_sup = 0.025
         self.xy_dist_sup = 0.15
         self.z_dist_sup = 0.075
@@ -191,13 +190,26 @@ class ObjectGenerator:
         self.base_obstacle_body = init_base_obstacle_body(base_obstacle_xml_path='hrl/base_obstacle.xml')
         self.init_total_obstacle(generate_flag=generate_flag)
 
+        step = 0.065
         self.delta_obstacle_qpos_list = [
-                                        np.r_[[0, 0, 0.05], self.qpos_posix],
-                                        np.r_[[0, -0.065, 0], self.qpos_posix],
-                                        np.r_[[0, 0.065, 0], self.qpos_posix],
-                                        np.r_[[-0.065, 0, 0], self.qpos_posix],
-                                        np.r_[[0.065, 0, 0], self.qpos_posix],
-                                   ]
+            np.r_[[-step, 0, 0], self.qpos_posix],
+            np.r_[[step, 0, 0], self.qpos_posix],
+            np.r_[[0, -step, 0], self.qpos_posix],
+            np.r_[[0, step, 0], self.qpos_posix],
+            np.r_[[-step, -step, 0], self.qpos_posix],
+            np.r_[[-step, step, 0], self.qpos_posix],
+            np.r_[[step, -step, 0], self.qpos_posix],
+            np.r_[[step, step, 0], self.qpos_posix],
+            np.r_[[0, 0, step], self.qpos_posix],
+            np.r_[[-step, 0, step], self.qpos_posix],
+            np.r_[[step, 0, step], self.qpos_posix],
+            np.r_[[0, -step, step], self.qpos_posix],
+            np.r_[[0, step, step], self.qpos_posix],
+            np.r_[[-step, -step, step], self.qpos_posix],
+            np.r_[[-step, step, step], self.qpos_posix],
+            np.r_[[step, -step, step], self.qpos_posix],
+            np.r_[[step, step, step], self.qpos_posix],
+        ]
 
     def generate_one_obstacle(self, worldbody: ET.Element, idx):
         new_obstacle_body = copy.deepcopy(self.base_obstacle_body)
@@ -295,8 +307,8 @@ class ObjectGenerator:
             obstacle_count = np.random.randint(self.single_count_sup)
             achieved_qpos = np.r_[np.random.uniform(self.desktop_lower_boundary, self.desktop_upper_boundary), self.qpos_posix]
         else:
-            obstacle_count = 3
-            achieved_qpos = np.r_[[1.4, 0.75, 0.42], self.qpos_posix]
+            obstacle_count = 9
+            achieved_qpos = np.r_[[1.34, 0.52, 0.425], self.qpos_posix]
 
         tmp_object_name_list = self.object_name_list.copy()
         tmp_object_name_list.remove(achieved_name)
@@ -326,7 +338,11 @@ class ObjectGenerator:
             zip(obstacle_name_list, obstacle_xpos_list))
 
     def resample_obstacles(self, object_name_list: list, obstacle_count: int):
-        achieved_xpos = np.random.uniform(self.desktop_lower_boundary, self.desktop_upper_boundary)
+        if self.random_mode:
+            achieved_xpos = np.random.uniform(self.desktop_lower_boundary, self.desktop_upper_boundary)
+        else:
+            achieved_xpos = np.r_[[1.34, 0.52, 0.425], self.qpos_posix]
+
         achieved_qpos = np.r_[achieved_xpos, self.qpos_posix]
         object_qpos_list = [achieved_qpos.copy()]
 
