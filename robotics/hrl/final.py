@@ -28,7 +28,7 @@ class FinalEnv(fetch_env.FetchEnv, utils.EzPickle):
             initial_qpos=initial_qpos,
             reward_type=reward_type,
             easy_probability=0.5,
-            single_count_sup=8,
+            single_count_sup=5,
             hrl_mode=True,
             random_mode=True,
         )

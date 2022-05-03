@@ -323,7 +323,7 @@ class FetchEnv(robot_env.RobotEnv):
                     cube_achieved_pos = np.squeeze(object_pos.copy())
 
                 cube_obs = np.zeros((length_scale, width_scale, height_scale), dtype=np.uint8)
-                goal_xpos = self.goal.copy()
+                goal_xpos = self.goal.copy() if self.goal is not None else self.global_goal.copy()
                 goal_xpos_tuple = (goal_xpos, goal_xpos - goal_size, goal_xpos + goal_size)
                 achieved_goal_xpos = cube_achieved_pos.copy()
                 achieved_goal_xpos_tuple = (
@@ -410,15 +410,17 @@ class FetchEnv(robot_env.RobotEnv):
         return {
             "observation": obs.copy(),
             "achieved_goal": achieved_goal.copy(),
-            "desired_goal": self.goal.copy(),
+            "desired_goal": self.goal.copy() if self.goal is not None else self.global_goal.copy(),
         }
 
     # DIY
     def get_obs(self, achieved_name=None, goal=None):
         if achieved_name is not None:
             self.achieved_name = copy.deepcopy(achieved_name)
-        if goal is not None:
+        if goal is not None and np.any(goal != self.global_goal):
             self.goal = goal.copy()
+        else:
+            self.goal = None
         return self._get_obs()
 
     def _viewer_setup(self):
@@ -435,9 +437,14 @@ class FetchEnv(robot_env.RobotEnv):
     def _render_callback(self):
         # Visualize target.
         sites_offset = (self.sim.data.site_xpos - self.sim.model.site_pos).copy()
-        target_site_id = self.sim.model.site_name2id("target0")
+        global_target_site_id = self.sim.model.site_name2id("global_target")
+        target_site_id = self.sim.model.site_name2id("target")
         achieved_site_id = self.sim.model.site_name2id("achieved_site")
-        self.sim.model.site_pos[target_site_id] = self.goal - sites_offset[target_site_id]
+        self.sim.model.site_pos[global_target_site_id] = self.global_goal - sites_offset[global_target_site_id]
+        if self.goal is not None:
+            self.sim.model.site_pos[target_site_id] = self.goal - sites_offset[target_site_id]
+        else:
+            self.sim.model.site_pos[target_site_id] = np.array([20, 20, 0.5])
         self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(self.achieved_name) - sites_offset[achieved_site_id]
         self.sim.forward()
 

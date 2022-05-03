@@ -192,15 +192,9 @@ class ObjectGenerator:
 
         step = 0.065
         self.delta_obstacle_qpos_list = [
-            np.r_[[-step, 0, 0], self.qpos_posix],
-            np.r_[[step, 0, 0], self.qpos_posix],
+            np.r_[[0, 0, step], self.qpos_posix],
             np.r_[[0, -step, 0], self.qpos_posix],
             np.r_[[0, step, 0], self.qpos_posix],
-            np.r_[[-step, -step, 0], self.qpos_posix],
-            np.r_[[-step, step, 0], self.qpos_posix],
-            np.r_[[step, -step, 0], self.qpos_posix],
-            np.r_[[step, step, 0], self.qpos_posix],
-            np.r_[[0, 0, step], self.qpos_posix],
             np.r_[[-step, 0, step], self.qpos_posix],
             np.r_[[step, 0, step], self.qpos_posix],
             np.r_[[0, -step, step], self.qpos_posix],
@@ -307,8 +301,8 @@ class ObjectGenerator:
             obstacle_count = np.random.randint(self.single_count_sup)
             achieved_qpos = np.r_[np.random.uniform(self.desktop_lower_boundary, self.desktop_upper_boundary), self.qpos_posix]
         else:
-            obstacle_count = 9
-            achieved_qpos = np.r_[[1.34, 0.52, 0.425], self.qpos_posix]
+            obstacle_count = 3
+            achieved_qpos = np.r_[[1.34, 0.88, 0.425], self.qpos_posix]
 
         tmp_object_name_list = self.object_name_list.copy()
         tmp_object_name_list.remove(achieved_name)
@@ -341,7 +335,7 @@ class ObjectGenerator:
         if self.random_mode:
             achieved_xpos = np.random.uniform(self.desktop_lower_boundary, self.desktop_upper_boundary)
         else:
-            achieved_xpos = np.r_[[1.34, 0.52, 0.425], self.qpos_posix]
+            achieved_xpos = [1.34, 0.88, 0.425]
 
         achieved_qpos = np.r_[achieved_xpos, self.qpos_posix]
         object_qpos_list = [achieved_qpos.copy()]
