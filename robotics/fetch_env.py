@@ -219,7 +219,7 @@ class FetchEnv(robot_env.RobotEnv):
 
             reward = self.learning_factor * delta_grip_reward
 
-        reward = np.where(1 - info['is_return_success'], reward, self.success_reward)
+        reward = np.where(1 - info['is_success'], reward, self.success_reward)
 
         assert reward.size == 1
         if info['is_grasp_success']:

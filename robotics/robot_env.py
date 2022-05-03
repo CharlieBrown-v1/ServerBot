@@ -89,9 +89,10 @@ class RobotEnv(gym.GoalEnv):
         }
 
         # DIY
-        info["is_return_success"] = self._is_return_success(info)
+        if self.super_hrl_mode:
+            info['is_success'] = self._is_return_success(info)
         info["is_done"] = self._is_done(info)
-        done = info['is_done'] or (self.super_hrl_mode and info['is_return_success'])
+        done = info['is_done'] or (self.super_hrl_mode and info['is_success'])
 
         reward = self.compute_reward(obs["achieved_goal"], goal, info)
         return obs, reward, done, info
