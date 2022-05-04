@@ -186,6 +186,7 @@ class FetchEnv(robot_env.RobotEnv):
             delta_xpos = goal_distance(init_xpos, curr_xpos)
             if delta_xpos > self.distance_threshold:
                 count += 1
+
         if mode == 'done':
             return count > 0
         elif mode == 'punish':
@@ -578,6 +579,9 @@ class FetchEnv(robot_env.RobotEnv):
         if flag:
             grip_xpos = self.sim.data.get_site_xpos("robot0:grip")
             self.prev_delta_grip_dist = goal_distance(grip_xpos, self.initial_gripper_xpos)
+            assert self.achieved_name in self.object_name_list
+            achieved_goal_idx = self.object_name_list.index(self.achieved_name)
+            self.init_object_xpos_list[achieved_goal_idx] = self.sim.data.get_geom_xpos(self.achieved_name).copy()
         return flag
 
     def _is_return_success(self, info) -> bool:
