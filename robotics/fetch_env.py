@@ -6,7 +6,7 @@ from gym.envs.robotics import rotations, robot_env, utils
 epsilon = 1e-3
 
 # Used by cube space
-item_name = ['air', 'table', 'goal', 'achieved_goal', 'obstacle']
+item_name = ['air', 'table', 'goal', 'plate', 'achieved_goal', 'obstacle']
 item_dict = dict(zip(item_name, np.linspace(0, 1, len(item_name))))
 table_xpos = np.array([1.3, 0.75, 0.2])
 table_size = np.array([0.25, 0.35, 0.2])
@@ -49,6 +49,13 @@ def _map_once(cube_obs: np.ndarray,
     idx_start = np.floor((xpos_start - compute_starting_point) / d).astype(int)
     idx_end = np.ceil((xpos_end - compute_starting_point) / d).astype(int)
     idx_end = np.where(idx_start < idx_end, idx_end, idx_end + 1)
+    # start < end !!!
+    start_out_of_range_flag = np.any(np.array([x_starting_idx, y_starting_idx, z_starting_idx]) + idx_start >= np.array([length_scale, width_scale, height_scale]))
+    end_out_of_range_flag = np.any(np.array([x_starting_idx, y_starting_idx, z_starting_idx]) + idx_end <= np.array([0, 0, 0]))
+
+    if start_out_of_range_flag or end_out_of_range_flag:
+        return
+
     cube_obs[
     max(x_starting_idx + idx_start[0], 0): min(x_starting_idx + idx_end[0], length_scale),
     max(y_starting_idx + idx_start[1], 0): min(y_starting_idx + idx_end[1], width_scale),
@@ -67,6 +74,8 @@ def _verify_cube(cube_obs: np.ndarray,
     starting_point_start = starting_point - (d / 2)
     starting_point_end = starting_point + (d / 2)
     x, y, z = np.where(cube_obs == item_dict[verify_name])
+    if x.size == 0 or y.size == 0 or z.size == 0:
+        return
     x_starting_idx = starting_point_idx[0]
     y_starting_idx = starting_point_idx[1]
     z_starting_idx = starting_point_idx[2]
@@ -178,6 +187,7 @@ class FetchEnv(robot_env.RobotEnv):
 
     def judge(self, name_list: list, xpos_list: list, mode: str):
         count = 0
+        delta_xpos_sum = 0.0
         assert len(name_list) == len(xpos_list)
         for idx in np.arange(len(name_list)):
             name = name_list[idx]
@@ -186,11 +196,12 @@ class FetchEnv(robot_env.RobotEnv):
             delta_xpos = goal_distance(init_xpos, curr_xpos)
             if delta_xpos > self.distance_threshold:
                 count += 1
+                delta_xpos_sum += delta_xpos
 
         if mode == 'done':
             return count > 0
         elif mode == 'punish':
-            return count * self.punish_factor
+            return delta_xpos_sum * self.punish_factor
 
     # DIY
     def hrl_reward(self, achieved_goal, goal, info):
@@ -278,6 +289,7 @@ class FetchEnv(robot_env.RobotEnv):
 
     def _map_object2cube(self, cube_obs: np.ndarray, starting_point: np.ndarray,
                          goal_xpos_tuple: tuple,
+                         plate_xpos_tuple: tuple,
                          achieved_goal_xpos_tuple: tuple,
                          obstacle_xpos_tuple_list: list,
                          goal_size: np.float,
@@ -298,6 +310,14 @@ class FetchEnv(robot_env.RobotEnv):
                   goal_xpos_start, goal_xpos_end, item_dict['goal'])
         if self.debug_mode:
             _verify_cube(cube_obs, starting_point, starting_point_idx, 'goal', goal_xpos_start, goal_xpos_end)
+
+        plate_xpos = plate_xpos_tuple[0]
+        plate_xpos_start = plate_xpos_tuple[1]
+        plate_xpos_end = plate_xpos_tuple[2]
+        _map_once(cube_obs, compute_starting_point, starting_point_idx,
+                  plate_xpos_start, plate_xpos_end, item_dict['plate'])
+        if self.debug_mode:
+            _verify_cube(cube_obs, starting_point, starting_point_idx, 'plate', plate_xpos_start, plate_xpos_end)
 
         achieved_goal_xpos = achieved_goal_xpos_tuple[0]
         achieved_goal_xpos_start = achieved_goal_xpos_tuple[1]
@@ -335,8 +355,9 @@ class FetchEnv(robot_env.RobotEnv):
             if self.hrl_mode:
                 # TODO: how to generalize size
                 goal_size = 0.02
+                plate_size = np.array([0.05, 0.05, d / 2])
                 achieved_goal_size = 0.025
-                obstacle_size = self.object_generator.size_sup  # TODO: 2 for capsule
+                obstacle_size = self.object_generator.size_sup
 
                 starting_point = grip_pos.copy()
 
@@ -347,9 +368,11 @@ class FetchEnv(robot_env.RobotEnv):
                     object_pos = self.sim.data.get_site_xpos("object0")
                     cube_achieved_pos = np.squeeze(object_pos.copy())
 
-                cube_obs = np.zeros((length_scale, width_scale, height_scale), dtype=np.uint8)
+                cube_obs = np.zeros((length_scale, width_scale, height_scale))
                 goal_xpos = self.goal.copy() if self.goal is not None else self.global_goal.copy()
                 goal_xpos_tuple = (goal_xpos, goal_xpos - goal_size, goal_xpos + goal_size)
+                plate_xpos = self.sim.data.get_geom_xpos('plate')
+                plate_xpos_tuple = (plate_xpos, plate_xpos - plate_size, plate_xpos + plate_size)
                 achieved_goal_xpos = cube_achieved_pos.copy()
                 achieved_goal_xpos_tuple = (
                     achieved_goal_xpos, achieved_goal_xpos - achieved_goal_size,
@@ -361,6 +384,7 @@ class FetchEnv(robot_env.RobotEnv):
                     obstacle_xpos_list]
                 self._map_object2cube(cube_obs, starting_point,
                                       goal_xpos_tuple,
+                                      plate_xpos_tuple,
                                       achieved_goal_xpos_tuple,
                                       obstacle_xpos_tuple_list,
                                       goal_size,
