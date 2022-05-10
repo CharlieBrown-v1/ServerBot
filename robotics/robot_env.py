@@ -41,13 +41,15 @@ class RobotEnv(gym.GoalEnv):
         self._env_setup(initial_qpos=initial_qpos)
         self.initial_state = copy.deepcopy(self.sim.get_state())
 
-        self.global_goal = self._sample_goal()
-        self.goal = None
-        obs = self._get_obs()
-        self.action_space = spaces.Box(-1.0, 1.0, shape=(n_actions,), dtype="float32")
-
         # DIY
         self.super_hrl_mode = super_hrl_mode
+
+        self.is_removal_success = False
+        self.removal_goal = None
+        self.global_goal = self._sample_goal()
+
+        obs = self._get_obs()
+        self.action_space = spaces.Box(-1.0, 1.0, shape=(n_actions,), dtype="float32")
 
         self.observation_space = spaces.Dict(
             dict(
@@ -82,17 +84,27 @@ class RobotEnv(gym.GoalEnv):
         obs = self._get_obs()
 
         # DIY
-        goal = self.goal.copy() if self.goal is not None else self.global_goal.copy()
         info = {
-            "is_success": self._is_success(obs["achieved_goal"], goal),
-            "is_grasp_success": self._is_grasp_success(obs["achieved_goal"], goal),
+            "is_removal_success": False,
+            "is_success": self._is_success(obs["achieved_goal"], self.global_goal),
+            "is_done": self._is_done(),
         }
 
-        # DIY
-        if self.super_hrl_mode:
-            info['is_success'] = self._is_return_success(info)
-        info["is_done"] = self._is_done(info)
+        if self.removal_goal is not None and not self.is_removal_success:
+            self.is_removal_success = self._is_success(obs["achieved_goal"], self.removal_goal)
+
+            if self.is_removal_success:
+                self._reset_after_removal()
+                info['is_removal_success'] = True
+                self.removal_goal = None
+
         done = info['is_done'] or (self.super_hrl_mode and info['is_success'])
+
+        # DIY
+        if self.removal_goal is None or self.is_removal_success:
+            goal = self.global_goal.copy()
+        else:
+            goal = self.removal_goal.copy()
 
         reward = self.compute_reward(obs["achieved_goal"], goal, info)
         return obs, reward, done, info
@@ -156,6 +168,10 @@ class RobotEnv(gym.GoalEnv):
         self.sim.forward()
         return True
 
+    # DIY
+    def _reset_after_removal(self):
+        raise NotImplementedError()
+
     def _get_obs(self):
         """Returns the observation."""
         raise NotImplementedError()
@@ -169,17 +185,7 @@ class RobotEnv(gym.GoalEnv):
         raise NotImplementedError()
 
     # DIY
-    def _is_grasp_success(self, achieved_goal, desired_goal):
-        """Indicates whether not the achieved goal successfully achieved the desired goal."""
-        raise NotImplementedError()
-
-    # DIY
-    def _is_return_success(self, info):
-        """Indicates whether not the achieved goal successfully achieved the desired goal."""
-        raise NotImplementedError()
-
-    # DIY
-    def _is_done(self, info):
+    def _is_done(self):
         """Indicates whether not the achieved goal moved the obstacles."""
         raise NotImplementedError()
 

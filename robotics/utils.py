@@ -352,3 +352,13 @@ class ObjectGenerator:
             object_qpos_list.append(obstacle_qpos)
 
         return dict(zip(object_name_list, object_qpos_list))
+
+    def sample_after_removal(self, object_name_list: list, achieved_name: str):
+        new_obstacle_name_list = object_name_list.copy()
+        new_obstacle_name_list.remove(achieved_name)
+
+        new_achieved_name = np.random.choice(new_obstacle_name_list, replace=False)
+        new_obstacle_name_list.remove(new_achieved_name)
+        new_obstacle_name_list.append(achieved_name)
+
+        return new_achieved_name, new_obstacle_name_list
