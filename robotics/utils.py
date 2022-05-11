@@ -162,8 +162,8 @@ class ObjectGenerator:
         self.density = 1.6e4  # 2 / (0.05^3) kg/m^3
         self.size_inf = 0.02
         self.size_sup = 0.025
-        self.xy_dist_sup = 0.15
-        self.z_dist_sup = 0.075
+        self.xy_dist_sup = 0.1
+        self.z_dist_sup = 0.05
         self.easy_probability = easy_probability
 
         table_xpos = np.array([1.3, 0.75, 0.2])
@@ -193,16 +193,10 @@ class ObjectGenerator:
         step = 0.065
         self.delta_obstacle_qpos_list = [
             np.r_[[0, 0, step], self.qpos_posix],
+            np.r_[[-step, 0, 0], self.qpos_posix],
+            np.r_[[step, 0, 0], self.qpos_posix],
             np.r_[[0, -step, 0], self.qpos_posix],
             np.r_[[0, step, 0], self.qpos_posix],
-            np.r_[[-step, 0, step], self.qpos_posix],
-            np.r_[[step, 0, step], self.qpos_posix],
-            np.r_[[0, -step, step], self.qpos_posix],
-            np.r_[[0, step, step], self.qpos_posix],
-            np.r_[[-step, -step, step], self.qpos_posix],
-            np.r_[[-step, step, step], self.qpos_posix],
-            np.r_[[step, -step, step], self.qpos_posix],
-            np.r_[[step, step, step], self.qpos_posix],
         ]
 
     def generate_one_obstacle(self, worldbody: ET.Element, idx):
@@ -309,7 +303,10 @@ class ObjectGenerator:
         object_name_list = [achieved_name]
         object_qpos_list = [achieved_qpos.copy()]
 
-        obstacle_name_list = list(np.random.choice(tmp_object_name_list, size=obstacle_count, replace=False))
+        if self.random_mode:
+            obstacle_name_list = list(np.random.choice(tmp_object_name_list, size=obstacle_count, replace=False))
+        else:
+            obstacle_name_list = tmp_object_name_list[:obstacle_count].copy()
         obstacle_xpos_list = []
         object_name_list += obstacle_name_list.copy()
 

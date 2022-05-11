@@ -447,12 +447,21 @@ class FetchEnv(robot_env.RobotEnv):
 
     # DIY
     def get_obs(self, achieved_name=None, goal=None):
+        self.is_removal_success = False
         if achieved_name is not None:
             self.achieved_name = copy.deepcopy(achieved_name)
+
+            tmp_obstacle_name_list = self.object_name_list.copy()
+            tmp_obstacle_name_list.remove(self.achieved_name)
+            self.obstacle_name_list = tmp_obstacle_name_list.copy()
+            self.init_obstacle_xpos_list = [self.sim.data.get_geom_xpos(name) for name in self.obstacle_name_list]
         if goal is not None and np.any(goal != self.global_goal):
             self.removal_goal = goal.copy()
         else:
+            self.achieved_name = 'target_object'
             self.removal_goal = None
+            goal = self.global_goal.copy()
+        self._state_init(goal.copy())
         return self._get_obs()
 
     def _viewer_setup(self):
@@ -546,8 +555,29 @@ class FetchEnv(robot_env.RobotEnv):
         return True
 
     # DIY
-    def _reset_after_removal(self):
+    def reset_removal(self, goal: np.ndarray, removal_goal=None):
+        if removal_goal is None:
+            removal_goal = self.initial_gripper_xpos[:3] + self.np_random.uniform(
+                -self.target_range, self.target_range, size=3
+            )
+            removal_goal += self.target_offset
+            removal_goal[2] = self.height_offset
+
+        self.is_removal_success = False
+        if self.train_estimate_flag or len(self.object_name_list) == 1:  # only achieved_goal
+            self.removal_goal = None
+            self._state_init(goal.copy())
+        else:
+            self.removal_goal = removal_goal.copy()
+            self._state_init(self.removal_goal.copy())
+
+    # DIY
+    def reset_after_removal(self, goal=None):
         assert self.is_removal_success
+
+        if goal is None:
+            goal = self.global_goal.copy()
+
         new_achieved_name, new_obstacle_name_list = self.object_generator.\
             sample_after_removal(self.object_name_list.copy(), copy.deepcopy(self.achieved_name))
         
@@ -556,7 +586,7 @@ class FetchEnv(robot_env.RobotEnv):
         self.init_obstacle_xpos_list = [self.sim.data.get_geom_xpos(obstacle_name).copy() for obstacle_name
                                         in self.obstacle_name_list]
 
-        self._state_init(self.global_goal.copy())
+        self._state_init(goal.copy())
 
     def _sample_goal(self):
         if self.has_object:
@@ -572,10 +602,10 @@ class FetchEnv(robot_env.RobotEnv):
                 elif self.np_random.uniform() < 0.5:
                     goal[2] += self.np_random.uniform(0, 0.3)
 
-            """
+            # """
             if self.hrl_mode:
                 goal = np.array([1.45, 0.64, 0.54])
-            """
+            # """
 
         else:
             goal = self.initial_gripper_xpos[:3] + self.np_random.uniform(
@@ -583,19 +613,7 @@ class FetchEnv(robot_env.RobotEnv):
             )
 
         # DIY
-        removal_goal = self.initial_gripper_xpos[:3] + self.np_random.uniform(
-            -self.target_range, self.target_range, size=3
-        )
-        removal_goal += self.target_offset
-        removal_goal[2] = self.height_offset
-
-        self.is_removal_success = False
-        if self.train_estimate_flag or len(self.object_name_list) == 1:  # only achieved_goal
-            self.removal_goal = None
-            self._state_init(goal.copy())
-        else:
-            self.removal_goal = removal_goal.copy()
-            self._state_init(self.removal_goal.copy())
+        self.reset_removal(goal=goal.copy())
 
         return goal.copy()
 

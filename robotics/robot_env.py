@@ -94,7 +94,7 @@ class RobotEnv(gym.GoalEnv):
             self.is_removal_success = self._is_success(obs["achieved_goal"], self.removal_goal)
 
             if self.is_removal_success:
-                self._reset_after_removal()
+                self.reset_after_removal()
                 info['is_removal_success'] = True
                 self.removal_goal = None
 
@@ -169,7 +169,7 @@ class RobotEnv(gym.GoalEnv):
         return True
 
     # DIY
-    def _reset_after_removal(self):
+    def reset_after_removal(self):
         raise NotImplementedError()
 
     def _get_obs(self):
