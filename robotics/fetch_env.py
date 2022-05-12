@@ -628,7 +628,7 @@ class FetchEnv(robot_env.RobotEnv):
         return d < self.distance_threshold
 
     # DIY
-    def _is_done(self) -> bool:
+    def _is_fail(self) -> bool:
         return self.judge(self.obstacle_name_list.copy(), self.init_obstacle_xpos_list.copy(), mode='done')
 
     def _env_setup(self, initial_qpos: dict):

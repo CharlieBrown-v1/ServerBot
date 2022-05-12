@@ -87,9 +87,10 @@ class RobotEnv(gym.GoalEnv):
         info = {
             "is_removal_success": False,
             "is_success": self._is_success(obs["achieved_goal"], self.global_goal),
-            "is_done": self._is_done(),
+            "is_fail": self._is_fail(),
         }
 
+        # DIY
         if self.removal_goal is not None and not self.is_removal_success:
             self.is_removal_success = self._is_success(obs["achieved_goal"], self.removal_goal)
 
@@ -98,8 +99,13 @@ class RobotEnv(gym.GoalEnv):
                 info['is_removal_success'] = True
                 self.removal_goal = None
 
+        # DIY
         removal_done = self.removal_goal is None or self.is_removal_success
-        done = info['is_done'] or (self.super_hrl_mode and info['is_success'] and removal_done)
+        # done for reset sim
+        done = info['is_fail'] or (self.super_hrl_mode and info['is_success'] and removal_done)
+        # train_* for train a new trial
+        info['train_done'] = info['is_fail'] or info['is_success'] or info['is_removal_success']
+        info['train_is_success'] = info['is_success'] or info['is_removal_success']
 
         # DIY
         if self.removal_goal is None or self.is_removal_success:
@@ -186,7 +192,7 @@ class RobotEnv(gym.GoalEnv):
         raise NotImplementedError()
 
     # DIY
-    def _is_done(self):
+    def _is_fail(self):
         """Indicates whether not the achieved goal moved the obstacles."""
         raise NotImplementedError()
 
