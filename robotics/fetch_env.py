@@ -571,7 +571,7 @@ class FetchEnv(robot_env.RobotEnv):
             removal_goal[2] = self.height_offset
 
         self.is_removal_success = False
-        if self.train_estimate_flag or len(self.object_name_list) == 1:  # only achieved_goal
+        if len(self.object_name_list) == 1:  # only achieved_goal
             self.removal_goal = None
             self._state_init(goal.copy())
         else:
