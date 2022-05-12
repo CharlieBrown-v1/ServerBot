@@ -98,7 +98,8 @@ class RobotEnv(gym.GoalEnv):
                 info['is_removal_success'] = True
                 self.removal_goal = None
 
-        done = info['is_done'] or (self.super_hrl_mode and info['is_success'])
+        removal_done = self.removal_goal is None or self.is_removal_success
+        done = info['is_done'] or (self.super_hrl_mode and info['is_success'] and removal_done)
 
         # DIY
         if self.removal_goal is None or self.is_removal_success:

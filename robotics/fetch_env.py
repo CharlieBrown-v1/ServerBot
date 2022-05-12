@@ -118,7 +118,6 @@ class FetchEnv(robot_env.RobotEnv):
             total_obstacle_count=200,
             single_count_sup=15,
             generate_flag=False,
-            train_estimate_flag=False,
             hrl_mode=False,
             random_mode=False,
             debug_mode=False,
@@ -155,7 +154,6 @@ class FetchEnv(robot_env.RobotEnv):
         self.learning_factor = learning_factor
         self.punish_factor = punish_factor
 
-        self.train_estimate_flag = train_estimate_flag
         self.hrl_mode = hrl_mode
         self.debug_mode = debug_mode
         self.demo_mode = demo_mode
@@ -226,7 +224,8 @@ class FetchEnv(robot_env.RobotEnv):
         reward = np.where(grip_achi_reward == 0, reward, self.learning_factor * grip_achi_reward)
         reward = np.where(grip_achi_reward != 0, reward, self.learning_factor * achi_desi_reward)
 
-        reward = np.where(1 - info['is_success'], reward, self.success_reward)
+        is_success = info['is_success'] or info['is_removal_success']
+        reward = np.where(1 - is_success, reward, self.success_reward)
 
         assert reward.size == 1
         reward += self.judge(self.obstacle_name_list, self.init_obstacle_xpos_list, mode='punish')

@@ -31,6 +31,5 @@ class FinalEnv(fetch_env.FetchEnv, utils.EzPickle):
             single_count_sup=5,
             hrl_mode=True,
             random_mode=True,
-            train_estimate_flag=True,
         )
         utils.EzPickle.__init__(self, reward_type=reward_type)
