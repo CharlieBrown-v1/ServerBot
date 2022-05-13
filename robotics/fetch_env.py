@@ -608,10 +608,10 @@ class FetchEnv(robot_env.RobotEnv):
                 elif self.np_random.uniform() < 0.5:
                     goal[2] += self.np_random.uniform(0, 0.3)
 
-            # """
+            """
             if self.hrl_mode:
                 goal = np.array([1.45, 0.64, 0.54])
-            # """
+            """
 
         else:
             goal = self.initial_gripper_xpos[:3] + self.np_random.uniform(
