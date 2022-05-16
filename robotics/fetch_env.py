@@ -202,7 +202,7 @@ class FetchEnv(robot_env.RobotEnv):
         if mode == 'done':
             return count > 0
         elif mode == 'punish':
-            return delta_xpos_sum * self.punish_factor
+            return count * self.punish_factor
 
     # DIY
     def hrl_reward(self, achieved_goal, goal, info):
@@ -490,6 +490,7 @@ class FetchEnv(robot_env.RobotEnv):
         else:
             self.sim.model.site_pos[removal_target_site_id] = np.array([20, 20, 0.5])
         self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(self.achieved_name).copy() - sites_offset[achieved_site_id]
+        # self.sim.model.site_pos[achieved_site_id] = np.array([20, 20, 0.5])
         self.sim.forward()
 
     def _set_hrl_initial_state(self, resample_mode=False):
