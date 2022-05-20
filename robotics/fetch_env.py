@@ -339,7 +339,7 @@ class FetchEnv(robot_env.RobotEnv):
                 achieved_goal_size = 0.025
                 obstacle_size = self.object_generator.size_sup
 
-                starting_point = grip_pos.copy()
+                starting_point = self.initial_gripper_xpos.copy()
 
                 achieved_goal_pos = self.sim.data.get_geom_xpos(self.achieved_name).copy()
                 cube_achieved_pos = np.squeeze(achieved_goal_pos.copy())
