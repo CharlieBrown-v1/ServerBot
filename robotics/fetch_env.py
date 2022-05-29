@@ -15,9 +15,9 @@ table_xpos_end = table_xpos + table_size
 
 d_list = [0.01 * i for i in np.arange(5 + 1)]
 d = d_list[2]
-length_scale = 21
-width_scale = 21
-height_scale = 21
+length_scale = 25
+width_scale = 35
+height_scale = 17
 length = length_scale * d
 width = width_scale * d
 height = height_scale * d
@@ -112,7 +112,6 @@ class FetchEnv(robot_env.RobotEnv):
             initial_qpos,
             reward_type,
             success_reward=100,
-            learning_factor=100,
             punish_factor=-100,
             easy_probability=0.5,
             total_obstacle_count=200,
@@ -151,7 +150,6 @@ class FetchEnv(robot_env.RobotEnv):
 
         # DIY
         self.success_reward = success_reward
-        self.learning_factor = learning_factor
         self.punish_factor = punish_factor
 
         self.hrl_mode = hrl_mode
@@ -202,11 +200,10 @@ class FetchEnv(robot_env.RobotEnv):
         if mode == 'done':
             return count > 0
         elif mode == 'punish':
-            return count * self.punish_factor
+            return delta_xpos_sum * self.punish_factor
 
     # DIY
     def hrl_reward(self, achieved_goal, goal, info):
-        reward = 0
         assert self.reward_type == 'dense'
 
         grip_pos = self.sim.data.get_site_xpos("robot0:grip").copy()
@@ -221,13 +218,12 @@ class FetchEnv(robot_env.RobotEnv):
         achi_desi_reward = np.where(np.abs(achi_desi_reward) >= epsilon, achi_desi_reward, 0)
         self.prev_achi_desi_dist = curr_achi_desi_dist
 
-        reward = np.where(grip_achi_reward == 0, reward, self.learning_factor * grip_achi_reward)
-        reward = np.where(grip_achi_reward != 0, reward, self.learning_factor * achi_desi_reward)
+        reward = grip_achi_reward + achi_desi_reward
+
+        assert reward.size == 1
 
         is_success = info['is_success'] or info['is_removal_success']
         reward = np.where(1 - is_success, reward, self.success_reward)
-
-        assert reward.size == 1
         reward += self.judge(self.obstacle_name_list, self.init_obstacle_xpos_list, mode='punish')
 
         return reward
@@ -339,7 +335,7 @@ class FetchEnv(robot_env.RobotEnv):
                 achieved_goal_size = 0.025
                 obstacle_size = self.object_generator.size_sup
 
-                starting_point = self.initial_gripper_xpos.copy()
+                starting_point = self.cube_starting_point.copy()
 
                 achieved_goal_pos = self.sim.data.get_geom_xpos(self.achieved_name).copy()
                 cube_achieved_pos = np.squeeze(achieved_goal_pos.copy())
@@ -484,12 +480,14 @@ class FetchEnv(robot_env.RobotEnv):
         global_target_site_id = self.sim.model.site_name2id("global_target")
         removal_target_site_id = self.sim.model.site_name2id("removal_target")
         achieved_site_id = self.sim.model.site_name2id("achieved_site")
+        cube_site_id = self.sim.model.site_name2id("cube_site")
         self.sim.model.site_pos[global_target_site_id] = self.global_goal - sites_offset[global_target_site_id]
         if self.removal_goal is not None:
             self.sim.model.site_pos[removal_target_site_id] = self.removal_goal - sites_offset[removal_target_site_id]
         else:
             self.sim.model.site_pos[removal_target_site_id] = np.array([20, 20, 0.5])
         self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(self.achieved_name).copy() - sites_offset[achieved_site_id]
+        self.sim.model.site_pos[cube_site_id] = self.cube_starting_point.copy() - sites_offset[cube_site_id]
         # self.sim.model.site_pos[achieved_site_id] = np.array([20, 20, 0.5])
         self.sim.forward()
 
@@ -650,6 +648,10 @@ class FetchEnv(robot_env.RobotEnv):
 
         # Extract information for sampling goals.
         self.initial_gripper_xpos = self.sim.data.get_site_xpos("robot0:grip").copy()
+
+        # DIY
+        if self.hrl_mode:
+            self.cube_starting_point = table_xpos.copy() + np.array([0, 0, 0.2 + 0.17])
 
         if self.has_object:
             # DIY
