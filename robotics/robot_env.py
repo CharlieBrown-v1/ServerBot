@@ -44,6 +44,7 @@ class RobotEnv(gym.GoalEnv):
         # DIY
         self.super_hrl_mode = super_hrl_mode
 
+        self.is_grasp = False
         self.is_removal_success = False
         self.removal_goal = None
         self.global_goal = self._sample_goal()
@@ -85,10 +86,18 @@ class RobotEnv(gym.GoalEnv):
 
         # DIY
         info = {
+            "is_grasp": False,
             "is_removal_success": False,
             "is_success": False,
             "is_fail": self._is_fail(),
         }
+
+        # DIY
+        if not self.is_grasp:
+            self.is_grasp = self._judge_is_grasp(obs['achieved_goal'].copy(), action.copy())
+
+            if self.is_grasp:
+                info['is_grasp'] = True
 
         # DIY
         if self.removal_goal is not None and not self.is_removal_success:
@@ -176,6 +185,10 @@ class RobotEnv(gym.GoalEnv):
         self.sim.set_state(self.initial_state)
         self.sim.forward()
         return True
+
+    # DIY
+    def _judge_is_grasp(self, achieved_goal: np.array, action: np.array):
+        raise NotImplementedError()
 
     # DIY
     def reset_after_removal(self):

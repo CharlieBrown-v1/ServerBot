@@ -28,14 +28,6 @@ def goal_distance(goal_a, goal_b):
     return np.linalg.norm(goal_a - goal_b, axis=-1)
 
 
-# DIY
-def distance_xy(obstacle_xpos, target_xpos):
-    if len(obstacle_xpos.shape) <= 1:
-        return goal_distance(obstacle_xpos[:2], target_xpos[:2])
-    else:
-        return goal_distance(obstacle_xpos[:, :2], target_xpos[:, :2])
-
-
 def _map_once(cube_obs: np.ndarray,
               compute_starting_point: np.ndarray,
               starting_point_idx: np.ndarray,
@@ -112,6 +104,7 @@ class FetchEnv(robot_env.RobotEnv):
             initial_qpos,
             reward_type,
             success_reward=100,
+            grasp_reward=10,
             punish_factor=-100,
             easy_probability=0.5,
             total_obstacle_count=200,
@@ -150,6 +143,7 @@ class FetchEnv(robot_env.RobotEnv):
 
         # DIY
         self.success_reward = success_reward
+        self.grasp_reward = grasp_reward
         self.punish_factor = punish_factor
 
         self.hrl_mode = hrl_mode
@@ -203,6 +197,13 @@ class FetchEnv(robot_env.RobotEnv):
             return delta_xpos_sum * self.punish_factor
 
     # DIY
+    def _judge_is_grasp(self, achieved_goal: np.array, action: np.array):
+        grip_site_xpos = self.sim.data.get_site_xpos("robot0:grip").copy()
+        grip_ctrl = action[-1]
+        flag = (grip_ctrl < epsilon) and (goal_distance(achieved_goal, grip_site_xpos) < self.distance_threshold)
+        return flag
+
+    # DIY
     def hrl_reward(self, achieved_goal, goal, info):
         assert self.reward_type == 'dense'
 
@@ -218,11 +219,13 @@ class FetchEnv(robot_env.RobotEnv):
         achi_desi_reward = np.where(np.abs(achi_desi_reward) >= epsilon, achi_desi_reward, 0)
         self.prev_achi_desi_dist = curr_achi_desi_dist
 
-        reward = -(curr_grip_achi_dist + curr_achi_desi_dist)
+        reward = grip_achi_reward + achi_desi_reward
 
-        # assert reward.size == 1
+        is_grasp = info['is_grasp']
+        if is_grasp:
+            reward += self.grasp_reward
 
-        is_success = info['is_success'] or info['is_removal_success']
+        is_success = info['train_is_success']
         reward = np.where(1 - is_success, reward, self.success_reward)
         reward += self.judge(self.obstacle_name_list, self.init_obstacle_xpos_list, mode='punish')
 
@@ -444,6 +447,7 @@ class FetchEnv(robot_env.RobotEnv):
 
     # DIY
     def get_obs(self, achieved_name=None, goal=None):
+        self.is_grasp = False
         self.is_removal_success = False
 
         if achieved_name is not None:
@@ -568,6 +572,7 @@ class FetchEnv(robot_env.RobotEnv):
             removal_goal += self.target_offset
             removal_goal[2] = self.height_offset
 
+        self.is_grasp = False
         self.is_removal_success = False
         if len(self.object_name_list) == 1:  # only achieved_goal
             self.removal_goal = None
