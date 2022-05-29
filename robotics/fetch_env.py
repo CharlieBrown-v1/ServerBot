@@ -218,9 +218,9 @@ class FetchEnv(robot_env.RobotEnv):
         achi_desi_reward = np.where(np.abs(achi_desi_reward) >= epsilon, achi_desi_reward, 0)
         self.prev_achi_desi_dist = curr_achi_desi_dist
 
-        reward = grip_achi_reward + achi_desi_reward
+        reward = -(curr_grip_achi_dist + curr_achi_desi_dist)
 
-        assert reward.size == 1
+        # assert reward.size == 1
 
         is_success = info['is_success'] or info['is_removal_success']
         reward = np.where(1 - is_success, reward, self.success_reward)
