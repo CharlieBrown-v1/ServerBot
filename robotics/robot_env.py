@@ -86,7 +86,7 @@ class RobotEnv(gym.GoalEnv):
         # DIY
         info = {
             "is_removal_success": False,
-            "is_success": self._is_success(obs["achieved_goal"], self.global_goal),
+            "is_success": False,
             "is_fail": self._is_fail(),
         }
 
@@ -102,7 +102,9 @@ class RobotEnv(gym.GoalEnv):
         # DIY
         removal_done = self.removal_goal is None or self.is_removal_success
         # done for reset sim
-        done = info['is_fail'] or (self.super_hrl_mode and info['is_success'] and removal_done)
+        if removal_done:
+            info['is_success'] = self._is_success(obs["achieved_goal"], self.global_goal)
+        done = info['is_fail'] or (self.super_hrl_mode and info['is_success'])
         # train_* for train a new trial
         info['train_done'] = info['is_fail'] or info['is_success'] or info['is_removal_success']
         info['train_is_success'] = info['is_success'] or info['is_removal_success']
