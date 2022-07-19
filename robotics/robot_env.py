@@ -204,10 +204,6 @@ class RobotEnv(gym.GoalEnv):
     def reset_after_removal(self):
         raise NotImplementedError()
 
-    # DIY
-    def unset_removal(self):
-        raise NotImplementedError()
-
     def _get_obs(self):
         """Returns the observation."""
         raise NotImplementedError()

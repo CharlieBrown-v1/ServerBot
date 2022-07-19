@@ -15,9 +15,9 @@ table_xpos_end = table_xpos + table_size
 
 d_list = [0.01 * i for i in np.arange(5 + 1)]
 d = d_list[2]
-length_scale = 25
-width_scale = 35
-height_scale = 17
+length_scale = 21 # 25
+width_scale = 21 # 35
+height_scale = 21 # 17
 length = length_scale * d
 width = width_scale * d
 height = height_scale * d
@@ -475,8 +475,7 @@ class FetchEnv(robot_env.RobotEnv):
                 min_dist = dist
                 achieved_name = name
         assert achieved_name is not None or len(self.obstacle_name_list) == 0
-        obs = self.get_obs(achieved_name=achieved_name, goal=removal_goal)
-        return obs
+        return achieved_name, removal_goal
 
     # DIY
     def get_obs(self, achieved_name=None, goal=None):
@@ -632,11 +631,6 @@ class FetchEnv(robot_env.RobotEnv):
                                         in self.obstacle_name_list]
 
         self._state_init(goal.copy())
-
-    # DIY
-    def unset_removal(self):
-        self.removal_goal = None
-        self.is_removal_success = False
 
     def _sample_goal(self):
         if self.has_object:
