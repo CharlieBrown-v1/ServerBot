@@ -59,6 +59,7 @@ class PlanningEnv(gym.Env):
 
         obs = self.model.macro_step_setup(planning_action)
         prev_success_rate = self.agent.policy.predict_observation(obs)
+        print(f'Previous success rate: {prev_success_rate}')
 
         start_grasp_flag = False
         if prev_success_rate > self.success_rate_threshold:
