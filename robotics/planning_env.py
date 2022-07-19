@@ -88,4 +88,3 @@ class PlanningEnv(gym.Env):
 
     def render(self, mode="human", width=500, height=500):
         self.model.render()
-
