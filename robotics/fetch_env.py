@@ -23,7 +23,17 @@ width = width_scale * d
 height = height_scale * d
 
 
-def goal_distance(goal_a, goal_b):
+# Used for PlanningEnv
+desk_x = 0
+desk_y = 1
+pos_x = 2
+pos_y = 3
+pos_z = 4
+
+action_list = [desk_x, desk_y, pos_x, pos_y, pos_z]
+
+
+def xpos_distance(goal_a, goal_b):
     assert goal_a.shape == goal_b.shape
     return np.linalg.norm(goal_a - goal_b, axis=-1)
 
@@ -181,13 +191,14 @@ class FetchEnv(robot_env.RobotEnv):
     def judge(self, name_list: list, xpos_list: list, mode: str):
         assert len(name_list) == len(xpos_list)
         move_count = 0
-        fall_count = 0
-        not_in_desk_count = 0
+        achieved_xpos = self.sim.data.get_geom_xpos(self.achieved_name).copy()
+        fall_count = int(achieved_xpos[2] <= 0.4 + self.object_generator.size_sup)
+        not_in_desk_count = int(achieved_xpos[2] <= 0.4 - epsilon)
         for idx in np.arange(len(name_list)):
             name = name_list[idx]
             init_xpos = xpos_list[idx]
             curr_xpos = self.sim.data.get_geom_xpos(name).copy()
-            delta_xpos = goal_distance(init_xpos, curr_xpos)
+            delta_xpos = xpos_distance(init_xpos, curr_xpos)
 
             if delta_xpos > self.distance_threshold:
                 move_count += 1
@@ -206,7 +217,7 @@ class FetchEnv(robot_env.RobotEnv):
     def _judge_is_grasp(self, achieved_goal: np.array, action: np.array):
         grip_site_xpos = self.sim.data.get_site_xpos("robot0:grip").copy()
         grip_ctrl = action[-1]
-        flag = (grip_ctrl < epsilon) and (goal_distance(achieved_goal, grip_site_xpos) < self.distance_threshold)
+        flag = (grip_ctrl < epsilon) and (xpos_distance(achieved_goal, grip_site_xpos) < self.distance_threshold)
         return flag
 
     # DIY
@@ -215,12 +226,12 @@ class FetchEnv(robot_env.RobotEnv):
 
         grip_pos = self.sim.data.get_site_xpos("robot0:grip").copy()
 
-        curr_grip_achi_dist = goal_distance(np.broadcast_to(grip_pos, achieved_goal.shape), achieved_goal)
+        curr_grip_achi_dist = xpos_distance(np.broadcast_to(grip_pos, achieved_goal.shape), achieved_goal)
         grip_achi_reward = self.prev_grip_achi_dist - curr_grip_achi_dist
         grip_achi_reward = np.where(np.abs(grip_achi_reward) >= epsilon, grip_achi_reward, 0)
         self.prev_grip_achi_dist = curr_grip_achi_dist
 
-        curr_achi_desi_dist = goal_distance(achieved_goal, goal)
+        curr_achi_desi_dist = xpos_distance(achieved_goal, goal)
         achi_desi_reward = self.prev_achi_desi_dist - curr_achi_desi_dist
         achi_desi_reward = np.where(np.abs(achi_desi_reward) >= epsilon, achi_desi_reward, 0)
         self.prev_achi_desi_dist = curr_achi_desi_dist
@@ -233,7 +244,7 @@ class FetchEnv(robot_env.RobotEnv):
 
         is_success = info['train_is_success']
         reward = np.where(1 - is_success, reward, self.success_reward)
-        reward += self.judge(self.obstacle_name_list, self.init_obstacle_xpos_list, mode='punish')
+        reward += self.judge(self.obstacle_name_list.copy(), self.init_obstacle_xpos_list.copy(), mode='punish')
 
         return reward
 
@@ -243,7 +254,7 @@ class FetchEnv(robot_env.RobotEnv):
         if self.hrl_mode:
             return self.hrl_reward(achieved_goal, goal, info)
         else:
-            d = goal_distance(achieved_goal, goal)
+            d = xpos_distance(achieved_goal, goal)
             if self.reward_type == "sparse":
                 return -(d > self.distance_threshold).astype(np.float32)
             else:
@@ -451,6 +462,22 @@ class FetchEnv(robot_env.RobotEnv):
             "desired_goal": goal.copy(),
         }
 
+    def macro_step_setup(self, macro_action):
+        removal_goal = np.array([macro_action[desk_x], macro_action[desk_y], self.height_offset])
+        action_xpos = np.array([macro_action[pos_x], macro_action[pos_y], macro_action[pos_z]])
+
+        achieved_name = None
+        min_dist = np.inf
+        for name in self.obstacle_name_list:
+            xpos = self.sim.data.get_geom_xpos(name).copy()
+            dist = xpos_distance(action_xpos, xpos)
+            if dist < min_dist:
+                min_dist = dist
+                achieved_name = name
+        assert achieved_name is not None or len(self.obstacle_name_list) == 0
+        obs = self.get_obs(achieved_name=achieved_name, goal=removal_goal)
+        return obs
+
     # DIY
     def get_obs(self, achieved_name=None, goal=None):
         self.is_grasp = False
@@ -606,6 +633,11 @@ class FetchEnv(robot_env.RobotEnv):
 
         self._state_init(goal.copy())
 
+    # DIY
+    def unset_removal(self):
+        self.removal_goal = None
+        self.is_removal_success = False
+
     def _sample_goal(self):
         if self.has_object:
             goal = self.initial_gripper_xpos[:3] + self.np_random.uniform(
@@ -636,7 +668,7 @@ class FetchEnv(robot_env.RobotEnv):
         return goal.copy()
 
     def _is_success(self, achieved_goal, desired_goal):
-        d = goal_distance(achieved_goal, desired_goal)
+        d = xpos_distance(achieved_goal, desired_goal)
         return d < self.distance_threshold
 
     # DIY
@@ -669,7 +701,8 @@ class FetchEnv(robot_env.RobotEnv):
         if self.has_object:
             # DIY
             if self.hrl_mode:
-                self.height_offset = 0.4 + self.object_generator.size_inf
+                # self.height_offset = 0.4 + self.object_generator.height_inf
+                self.height_offset = self.sim.data.get_geom_xpos("target_object")[2].copy()
                 self._set_hrl_initial_state()
             else:
                 self.height_offset = self.sim.data.get_site_xpos("object0")[2].copy()
@@ -679,8 +712,8 @@ class FetchEnv(robot_env.RobotEnv):
         if self.hrl_mode:
             grip_xpos = self.sim.data.get_site_xpos("robot0:grip").copy()
             achieved_xpos = self.sim.data.get_geom_xpos(self.achieved_name).copy()
-            self.prev_grip_achi_dist = goal_distance(grip_xpos, achieved_xpos)
-            self.prev_achi_desi_dist = goal_distance(achieved_xpos, goal_xpos)
+            self.prev_grip_achi_dist = xpos_distance(grip_xpos, achieved_xpos)
+            self.prev_achi_desi_dist = xpos_distance(achieved_xpos, goal_xpos)
 
     def render(self, mode="human", width=500, height=500):
         return super(FetchEnv, self).render(mode, width, height)

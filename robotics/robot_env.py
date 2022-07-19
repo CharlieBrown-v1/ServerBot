@@ -17,6 +17,12 @@ except ImportError as e:
 
 DEFAULT_SIZE = 500
 
+desk_x = 0
+desk_y = 1
+pos_x = 2
+pos_y = 3
+pos_z = 4
+
 
 class RobotEnv(gym.GoalEnv):
     def __init__(self, model_path, initial_qpos, n_actions, n_substeps, super_hrl_mode=False):
@@ -127,6 +133,10 @@ class RobotEnv(gym.GoalEnv):
         reward = self.compute_reward(obs["achieved_goal"], goal, info)
         return obs, reward, done, info
 
+    # DIY
+    def macro_step_setup(self, macro_action):
+        raise NotImplementedError()
+
     def reset(self):
         # Attempt to reset the simulator. Since we randomize initial conditions, it
         # is possible to get into a state with numerical issues (e.g. due to penetration or
@@ -192,6 +202,10 @@ class RobotEnv(gym.GoalEnv):
 
     # DIY
     def reset_after_removal(self):
+        raise NotImplementedError()
+
+    # DIY
+    def unset_removal(self):
         raise NotImplementedError()
 
     def _get_obs(self):

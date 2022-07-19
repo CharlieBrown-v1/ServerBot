@@ -339,6 +339,16 @@ def _merge(a, b):
     a.update(b)
     return a
 
+# DIY
+register(
+        id="Planning-v0",
+        entry_point="gym.envs.robotics:PlanningEnv",
+        max_episode_steps=16,
+        kwargs={
+            'model_path': '/home/stalin/LAMDA5/ServerBot/model.zip'
+        },
+)
+
 
 for reward_type in ["sparse", "dense"]:
     suffix = "Dense" if reward_type == "dense" else ""
@@ -347,13 +357,14 @@ for reward_type in ["sparse", "dense"]:
     }
 
     # Fetch
+    # DIY
     register(
         id="Final{}-v0".format(suffix),
         entry_point="gym.envs.robotics:FinalEnv",
         kwargs=kwargs,
         max_episode_steps=128,
     )
-
+    # DIY
     register(
         id="Hrl{}-v0".format(suffix),
         entry_point="gym.envs.robotics:HrlEnv",
