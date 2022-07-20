@@ -176,6 +176,8 @@ class FetchEnv(robot_env.RobotEnv):
         self.object_name_list = []
         self.init_object_xpos_list = []
 
+        # DIY
+        self.initial_qpos = initial_qpos.copy()
         super(FetchEnv, self).__init__(
             model_path=model_path,
             n_substeps=n_substeps,
@@ -549,6 +551,16 @@ class FetchEnv(robot_env.RobotEnv):
         return object_dict.copy()
 
     def _reset_sim(self):
+        # Move end effector into position.
+        gripper_target = np.array(
+            [-0.1, 0.0, 0.1]
+        ) + self.initial_gripper_xpos.copy()
+        gripper_rotation = np.array([1.0, 0.0, 1.0, 0.0])
+        self.sim.data.set_mocap_pos("robot0:mocap", gripper_target)
+        self.sim.data.set_mocap_quat("robot0:mocap", gripper_rotation)
+        for _ in range(10):
+            self.sim.step()
+
         self.sim.set_state(self.initial_state)
         # Randomize start position of object.
         object_xpos = self.initial_gripper_xpos.copy()
@@ -693,7 +705,7 @@ class FetchEnv(robot_env.RobotEnv):
 
         # DIY
         if self.hrl_mode:
-            self.cube_starting_point = table_xpos.copy() + np.array([0, 0, 0.2 + 0.17])
+            self.cube_starting_point = table_xpos.copy() + np.array([0, 0, 0.2 + 0.01 * height_scale])
 
         if self.has_object:
             # DIY

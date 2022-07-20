@@ -6,7 +6,6 @@ from gym import error, spaces
 from gym.envs.robotics import FinalEnv
 from stable_baselines3 import PPO
 
-
 desk_x = 0
 desk_y = 1
 target_x = 2
@@ -41,20 +40,21 @@ class PlanningEnv(gym.Env):
 
         self.success_reward = 100
         self.success_rate_threshold = 0.8
+        self.fail_reward = -10
 
     def reset(self):
         obs = self.model.reset()
         return obs
 
-    def step(self, action):
+    def step(self, action: np.ndarray):
         planning_action = action.copy()
 
         # action for choosing desk's position
-        planning_action[:2] = (self.table_end_xyz[:2] - self.table_start_xyz[:2]) * planning_action[:2] / 2\
-                            + (self.table_start_xyz[:2] + self.table_end_xyz[:2]) / 2
+        planning_action[:2] = (self.table_end_xyz[:2] - self.table_start_xyz[:2]) * planning_action[:2] / 2 \
+                              + (self.table_start_xyz[:2] + self.table_end_xyz[:2]) / 2
         # action for choosing obstacle's position
-        planning_action[2:] = (self.table_end_xyz - self.table_start_xyz) * planning_action[2:] / 2\
-                            + (self.table_start_xyz + self.table_end_xyz) / 2
+        planning_action[2:] = (self.table_end_xyz - self.table_start_xyz) * planning_action[2:] / 2 \
+                              + (self.table_start_xyz + self.table_end_xyz) / 2
 
         achieved_name, removal_goal = self.model.macro_step_setup(planning_action)
         prev_obs = self.model.get_obs()
@@ -70,11 +70,12 @@ class PlanningEnv(gym.Env):
         curr_success_rate = self.agent.policy.predict_observation(obs)
         # print(f'Current success rate: {curr_success_rate}')
 
-        done = False
+        done = self.model._is_fail()
         info = {
             'is_success': False,
             'train_done': False,
             'train_is_success': False,
+            'is_fail': self.model._is_fail(),
         }
 
         if curr_success_rate > self.success_rate_threshold:
@@ -83,7 +84,8 @@ class PlanningEnv(gym.Env):
             info['train_done'] = True
             info['train_is_success'] = True
             return obs, self.success_reward, done, info
-
+        elif info['is_fail']:
+            return obs, self.fail_reward, done, info
         return obs, curr_success_rate - prev_success_rate, done, info
 
     def render(self, mode="human", width=500, height=500):

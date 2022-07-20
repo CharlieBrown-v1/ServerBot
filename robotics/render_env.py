@@ -56,7 +56,7 @@ class RenderEnv(gym.Env):
 
         obs = self.model.get_obs()
         prev_success_rate = self.agent.policy.predict_observation(obs)
-        print(f'Previous success rate: {prev_success_rate}')
+        # print(f'Previous success rate: {prev_success_rate}')
 
         if prev_success_rate <= self.success_rate_threshold:
             achieved_name, removal_goal = self.model.macro_step_setup(planning_action, set_flag=True)
@@ -66,7 +66,7 @@ class RenderEnv(gym.Env):
             self.model.macro_step_setup(planning_action)
         obs, _, done, info = self.macro_step(obs)
         curr_success_rate = self.agent.policy.predict_observation(self.model.get_obs())
-        print(f'Current success rate: {curr_success_rate}')
+        # print(f'Current success rate: {curr_success_rate}')
 
         return obs, curr_success_rate - prev_success_rate, done, info
 
@@ -81,10 +81,10 @@ class RenderEnv(gym.Env):
             self.model.render()
             if info['train_done']:
                 break
-        if info['is_success'] or i == self.model.spec.max_episode_steps:
-            return obs, 0, True, info
-        else:
+        if info['is_removal_success']:
             return obs, 0, False, info
+        else:
+            return obs, 0, True, info
 
     def render(self, mode="human", width=500, height=500):
         self.model.render()
