@@ -294,7 +294,7 @@ class ObjectGenerator:
         achieved_name = 'target_object'
 
         if self.random_mode:
-            obstacle_count = np.random.randint(self.single_count_sup)
+            obstacle_count = np.random.randint(1, self.single_count_sup)
             achieved_qpos = np.r_[np.random.uniform(self.desktop_lower_boundary, self.desktop_upper_boundary), self.qpos_posix]
         else:
             obstacle_count = 3

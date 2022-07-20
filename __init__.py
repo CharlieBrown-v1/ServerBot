@@ -344,9 +344,12 @@ register(
         id="Planning-v0",
         entry_point="gym.envs.robotics:PlanningEnv",
         max_episode_steps=16,
-        kwargs={
-            'model_path': '/home/stalin/LAMDA5/ServerBot/model.zip'
-        },
+)
+
+register(
+        id="Render-v0",
+        entry_point="gym.envs.robotics:RenderEnv",
+        max_episode_steps=16,
 )
 
 
@@ -357,6 +360,14 @@ for reward_type in ["sparse", "dense"]:
     }
 
     # Fetch
+    # DIY
+    register(
+        id="RenderFinal{}-v0".format(suffix),
+        entry_point="gym.envs.robotics:RenderFinalEnv",
+        kwargs=kwargs,
+        max_episode_steps=128,
+    )
+
     # DIY
     register(
         id="Final{}-v0".format(suffix),

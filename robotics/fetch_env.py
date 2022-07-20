@@ -15,15 +15,14 @@ table_xpos_end = table_xpos + table_size
 
 d_list = [0.01 * i for i in np.arange(5 + 1)]
 d = d_list[2]
-length_scale = 21 # 25
-width_scale = 21 # 35
-height_scale = 21 # 17
+length_scale = 21  # 25
+width_scale = 21  # 35
+height_scale = 21  # 17
 length = length_scale * d
 width = width_scale * d
 height = height_scale * d
 
-
-# Used for PlanningEnv
+# Used for planning
 desk_x = 0
 desk_y = 1
 pos_x = 2
@@ -355,7 +354,8 @@ class FetchEnv(robot_env.RobotEnv):
                 achieved_goal_size = 0.025
                 obstacle_size = self.object_generator.size_sup
 
-                starting_point = self.cube_starting_point.copy()
+                # starting_point = self.cube_starting_point.copy()
+                starting_point = self.sim.data.get_site_xpos("robot0:grip").copy()
 
                 achieved_goal_pos = self.sim.data.get_geom_xpos(self.achieved_name).copy()
                 cube_achieved_pos = np.squeeze(achieved_goal_pos.copy())
@@ -522,7 +522,8 @@ class FetchEnv(robot_env.RobotEnv):
             self.sim.model.site_pos[removal_target_site_id] = self.removal_goal - sites_offset[removal_target_site_id]
         else:
             self.sim.model.site_pos[removal_target_site_id] = np.array([20, 20, 0.5])
-        self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(self.achieved_name).copy() - sites_offset[achieved_site_id]
+        self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(self.achieved_name).copy() - \
+                                                    sites_offset[achieved_site_id]
         self.sim.model.site_pos[cube_site_id] = self.cube_starting_point.copy() - sites_offset[cube_site_id]
         # self.sim.model.site_pos[achieved_site_id] = np.array([20, 20, 0.5])
         self.sim.forward()
@@ -583,8 +584,10 @@ class FetchEnv(robot_env.RobotEnv):
                 self.init_object_xpos_list = curr_object_xpos_list.copy()
                 count += 1
                 # self.render()
-            not_fall_off = np.all(np.array([object_xpos[2] for object_xpos in self.init_object_xpos_list]) > self.height_offset - epsilon)
-            all_in_desk = np.all(np.array([object_xpos[2] for object_xpos in self.init_object_xpos_list]) > 0.4 - epsilon)
+            not_fall_off = np.all(
+                np.array([object_xpos[2] for object_xpos in self.init_object_xpos_list]) > self.height_offset - epsilon)
+            all_in_desk = np.all(
+                np.array([object_xpos[2] for object_xpos in self.init_object_xpos_list]) > 0.4 - epsilon)
             if not_fall_off and all_in_desk:
                 break
             object_dict = self._set_hrl_initial_state(resample_mode=True)

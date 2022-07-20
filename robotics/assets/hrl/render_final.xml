@@ -14,8 +14,12 @@
 			<site name="global_target" pos="0 0 0.5" size="0.025 0.025 0.025" rgba="1 0 0 1" type="sphere" />
 		</body>
 
-		<body name="floor1" pos="-0.8 -0.75 0">
+		<body name="floor1" pos="-8 -7.5 0">
 			<site name="removal_target" pos="0 0 0.5" size="0.025 0.025 0.025" rgba="1 0 0 1" type="box" />
+		</body>
+
+        <body name="floor2" pos="-8 -7.5 0">
+			<site name="removal_indicate" pos="0 0 0.5" size="0.025 0.025 0.025" rgba="0 0 1 1" type="box" />
 		</body>
 
 		<include file="robot.xml" />
@@ -28,7 +32,7 @@
 			<site name="achieved_site" pos="0 0 1" rgba="1 1 0 0.32" size="0.032 0.032 0.032" type="box" />
 		</body>
 
-		<body name="cube_site" pos="-100 0 0">
+		<body name="cube_site" pos="0 0 0">
 			<site name="cube_site" pos="0 0 1" rgba="0 0.5 0 0.32" size="0.25 0.35 0.17" type="box" />
 		</body>
 
