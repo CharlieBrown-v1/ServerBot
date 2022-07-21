@@ -193,8 +193,8 @@ class FetchEnv(robot_env.RobotEnv):
         assert len(name_list) == len(xpos_list)
         move_count = 0
         achieved_xpos = self.sim.data.get_geom_xpos(self.achieved_name).copy()
-        fall_count = int(achieved_xpos[2] <= self.height_offset)
-        not_in_desk_count = int(achieved_xpos[2] <= 0.4 - epsilon)
+        fall_count = int(achieved_xpos[2] <= self.height_offset - 0.01)
+        not_in_desk_count = int(achieved_xpos[2] <= 0.4 - 0.01)
         for idx in np.arange(len(name_list)):
             name = name_list[idx]
             init_xpos = xpos_list[idx]
@@ -204,9 +204,9 @@ class FetchEnv(robot_env.RobotEnv):
             if delta_xpos > self.distance_threshold:
                 move_count += 1
 
-            if curr_xpos[2] <= 0.4 - epsilon:
+            if curr_xpos[2] <= 0.4 - 0.01:
                 not_in_desk_count += 1
-            elif curr_xpos[2] <= self.height_offset - epsilon:
+            elif curr_xpos[2] <= self.height_offset - 0.01:
                 fall_count += 1
 
         if mode == 'done':
@@ -597,9 +597,9 @@ class FetchEnv(robot_env.RobotEnv):
                 count += 1
                 # self.render()
             not_fall_off = np.all(
-                np.array([object_xpos[2] for object_xpos in self.init_object_xpos_list]) > self.height_offset - epsilon)
+                np.array([object_xpos[2] for object_xpos in self.init_object_xpos_list]) > self.height_offset - 0.01)
             all_in_desk = np.all(
-                np.array([object_xpos[2] for object_xpos in self.init_object_xpos_list]) > 0.4 - epsilon)
+                np.array([object_xpos[2] for object_xpos in self.init_object_xpos_list]) > 0.4 - 0.01)
             if not_fall_off and all_in_desk:
                 break
             object_dict = self._set_hrl_initial_state(resample_mode=True)

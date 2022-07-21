@@ -99,6 +99,8 @@ class RenderFinalEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         if self.removal_goal_indicate is not None:
             self.sim.model.site_pos[removal_target_site_id] = self.removal_goal_indicate - sites_offset[removal_target_site_id]
+        elif self.removal_goal is not None:
+            self.sim.model.site_pos[removal_target_site_id] = self.removal_goal - sites_offset[removal_target_site_id]
         else:
             self.sim.model.site_pos[removal_target_site_id] = np.array([20, 20, 0.5])
 
