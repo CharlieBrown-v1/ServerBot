@@ -82,7 +82,10 @@ class RenderFinalEnv(fetch_env.FetchEnv, utils.EzPickle):
             self.removal_goal_indicate = None
             self.removal_xpos_indicate = None
 
-        return achieved_name, removal_goal
+        return achieved_name, removal_goal, min_dist
+
+    def is_fail(self):
+        return self.judge(self.obstacle_name_list.copy(), self.init_obstacle_xpos_list.copy(), mode='done')
 
     def _render_callback(self):
         # Visualize target.

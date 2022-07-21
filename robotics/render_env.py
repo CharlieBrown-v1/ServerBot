@@ -2,7 +2,7 @@ import gym
 import copy
 
 import numpy as np
-from gym import error, spaces
+from gym import spaces
 from gym.envs.robotics import RenderFinalEnv
 from stable_baselines3 import PPO
 
@@ -59,7 +59,7 @@ class RenderEnv(gym.Env):
         # print(f'Previous success rate: {prev_success_rate}')
 
         if prev_success_rate <= self.success_rate_threshold:
-            achieved_name, removal_goal = self.model.macro_step_setup(planning_action, set_flag=True)
+            achieved_name, removal_goal, _ = self.model.macro_step_setup(planning_action, set_flag=True)
             assert achieved_name is not None
             obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal)
         else:
