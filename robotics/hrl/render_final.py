@@ -48,13 +48,13 @@ class RenderFinalEnv(fetch_env.FetchEnv, utils.EzPickle):
         )
         utils.EzPickle.__init__(self, reward_type=reward_type)
 
-        self.achieved_name_indicate = 'target_object'
+        self.achieved_name_indicate = None
         self.removal_goal_indicate = None
         self.removal_xpos_indicate = None
 
     def reset(self):
         obs = super(RenderFinalEnv, self).reset()
-        self.achieved_name_indicate = 'target_object'
+        self.achieved_name_indicate = None
         self.removal_goal_indicate = None
         self.removal_xpos_indicate = None
         return obs
@@ -65,7 +65,8 @@ class RenderFinalEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         achieved_name = None
         min_dist = np.inf
-        for name in self.obstacle_name_list:
+        name_list = self.obstacle_name_list
+        for name in name_list:
             xpos = self.sim.data.get_geom_xpos(name).copy()
             dist = xpos_distance(action_xpos, xpos)
             if dist < min_dist:
@@ -73,12 +74,12 @@ class RenderFinalEnv(fetch_env.FetchEnv, utils.EzPickle):
                 achieved_name = name
         assert achieved_name is not None
 
-        if set_flag:
+        if set_flag and np.any(removal_goal != self.global_goal):
+            self.achieved_name_indicate = achieved_name
             self.removal_goal_indicate = removal_goal.copy()
             self.removal_xpos_indicate = action_xpos.copy()
-            self.achieved_name_indicate = achieved_name
         else:
-            self.achieved_name_indicate = 'target_object'
+            self.achieved_name_indicate = None
             self.removal_goal_indicate = None
             self.removal_xpos_indicate = None
 
@@ -109,8 +110,10 @@ class RenderFinalEnv(fetch_env.FetchEnv, utils.EzPickle):
         else:
             self.sim.model.site_pos[removal_indicate_site_id] = np.array([20, 20, 0.5])
 
-        self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(self.achieved_name_indicate).copy() - \
-                                                    sites_offset[achieved_site_id]
+        if self.achieved_name_indicate is not None:
+            self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(self.achieved_name_indicate).copy() - sites_offset[achieved_site_id]
+        else:
+            self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(self.achieved_name).copy() - sites_offset[achieved_site_id]
         # self.sim.model.site_pos[cube_site_id] = self.cube_starting_point.copy() - sites_offset[cube_site_id]
         self.sim.model.site_pos[cube_site_id] = np.array([20, 20, 0.5])
         self.sim.forward()

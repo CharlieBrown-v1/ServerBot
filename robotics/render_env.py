@@ -45,25 +45,27 @@ class RenderEnv(gym.Env):
         return obs
 
     def step(self, action: np.ndarray):
-        planning_action = action.copy()
-
-        # action for choosing desk's position
-        planning_action[:2] = (self.table_end_xyz[:2] - self.table_start_xyz[:2]) * planning_action[:2] / 2 \
-                              + (self.table_start_xyz[:2] + self.table_end_xyz[:2]) / 2
-        # action for choosing obstacle's position
-        planning_action[2:] = (self.table_end_xyz - self.table_start_xyz) * planning_action[2:] / 2 \
-                              + (self.table_start_xyz + self.table_end_xyz) / 2
-
         obs = self.model.get_obs()
         prev_success_rate = self.agent.policy.predict_observation(obs)
         # print(f'Previous success rate: {prev_success_rate}')
 
-        if prev_success_rate <= self.success_rate_threshold:
-            achieved_name, removal_goal, _ = self.model.macro_step_setup(planning_action, set_flag=True)
-            assert achieved_name is not None
-            obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal)
-        else:
-            self.model.macro_step_setup(planning_action)
+        if action is not None:
+            planning_action = action.copy()
+
+            # action for choosing desk's position
+            planning_action[:2] = (self.table_end_xyz[:2] - self.table_start_xyz[:2]) * planning_action[:2] / 2 \
+                                  + (self.table_start_xyz[:2] + self.table_end_xyz[:2]) / 2
+            # action for choosing obstacle's position
+            planning_action[2:] = (self.table_end_xyz - self.table_start_xyz) * planning_action[2:] / 2 \
+                                  + (self.table_start_xyz + self.table_end_xyz) / 2
+
+            if prev_success_rate <= self.success_rate_threshold:
+                achieved_name, removal_goal, _ = self.model.macro_step_setup(planning_action, set_flag=True)
+                assert achieved_name is not None
+                if np.any(removal_goal != self.model.global_goal):
+                    obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal.copy())
+            else:
+                self.model.macro_step_setup(planning_action)
         obs, _, done, info = self.macro_step(obs)
         curr_success_rate = self.agent.policy.predict_observation(self.model.get_obs())
         # print(f'Current success rate: {curr_success_rate}')
@@ -75,7 +77,7 @@ class RenderEnv(gym.Env):
         info = {'is_success': False}
         while i < self.model.spec.max_episode_steps:
             i += 1
-            agent_action = self.agent.predict(observation=obs)[0]
+            agent_action = self.agent.predict(observation=obs, deterministic=True)[0]
             next_obs, reward, done, info = self.model.step(agent_action)
             obs = next_obs
             self.model.render()

@@ -8,11 +8,11 @@ from stable_baselines3 import PPO
 
 desk_x = 0
 desk_y = 1
-target_x = 2
-target_y = 3
-target_z = 4
+pos_x = 2
+pos_y = 3
+pos_z = 4
 
-action_list = [desk_x, desk_y, target_x, target_y, target_z]
+action_list = [desk_x, desk_y, pos_x, pos_y, pos_z]
 
 
 class PlanningEnv(gym.Env):

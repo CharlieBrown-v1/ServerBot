@@ -114,7 +114,8 @@ class FetchEnv(robot_env.RobotEnv):
             reward_type,
             success_reward=100,
             grasp_reward=10,
-            punish_factor=-5,
+            reward_factor=100,
+            punish_factor=-1,
             easy_probability=0.5,
             total_obstacle_count=200,
             single_count_sup=15,
@@ -153,6 +154,7 @@ class FetchEnv(robot_env.RobotEnv):
         # DIY
         self.success_reward = success_reward
         self.grasp_reward = grasp_reward
+        self.reward_factor = reward_factor
         self.punish_factor = punish_factor
 
         self.hrl_mode = hrl_mode
@@ -237,7 +239,7 @@ class FetchEnv(robot_env.RobotEnv):
         achi_desi_reward = np.where(np.abs(achi_desi_reward) >= epsilon, achi_desi_reward, 0)
         self.prev_achi_desi_dist = curr_achi_desi_dist
 
-        reward = grip_achi_reward + achi_desi_reward
+        reward = self.reward_factor * (grip_achi_reward + achi_desi_reward)
 
         is_grasp = info['is_grasp']
         if is_grasp:
