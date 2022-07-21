@@ -197,6 +197,7 @@ class ObjectGenerator:
             np.r_[[0, 0, step], self.qpos_posix],
             np.r_[[-step, 0, 0], self.qpos_posix],
             np.r_[[step, 0, 0], self.qpos_posix],
+            np.r_[[0, 0, 2 * step], self.qpos_posix],
             np.r_[[0, -step, 0], self.qpos_posix],
             np.r_[[0, step, 0], self.qpos_posix],
         ]

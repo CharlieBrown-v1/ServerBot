@@ -49,7 +49,9 @@ class RenderEnv(gym.Env):
         prev_success_rate = self.agent.policy.predict_observation(obs)
         # print(f'Previous success rate: {prev_success_rate}')
 
-        if action is not None:
+        if action is None:
+            self.model.reset_indicate()
+        else:
             planning_action = action.copy()
 
             # action for choosing desk's position

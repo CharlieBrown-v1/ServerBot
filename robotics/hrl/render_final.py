@@ -54,10 +54,13 @@ class RenderFinalEnv(fetch_env.FetchEnv, utils.EzPickle):
 
     def reset(self):
         obs = super(RenderFinalEnv, self).reset()
+        self.reset_indicate()
+        return obs
+
+    def reset_indicate(self):
         self.achieved_name_indicate = None
         self.removal_goal_indicate = None
         self.removal_xpos_indicate = None
-        return obs
 
     def macro_step_setup(self, macro_action, set_flag=False):
         removal_goal = np.array([macro_action[desk_x], macro_action[desk_y], self.height_offset])
