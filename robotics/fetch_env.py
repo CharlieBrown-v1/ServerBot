@@ -615,7 +615,7 @@ class FetchEnv(robot_env.RobotEnv):
         return True
 
     # DIY
-    def reset_removal(self, goal: np.ndarray, removal_goal=None):
+    def reset_removal(self, goal: np.ndarray, removal_goal=None, set_flag=True):
         if removal_goal is None:
             removal_goal = self.initial_gripper_xpos[:3] + self.np_random.uniform(
                 -self.target_range, self.target_range, size=3
@@ -625,7 +625,7 @@ class FetchEnv(robot_env.RobotEnv):
 
         self.is_grasp = False
         self.is_removal_success = False
-        if len(self.object_name_list) == 1:  # only achieved_goal
+        if len(self.object_name_list) == 1 or not set_flag:  # only achieved_goal
             self.removal_goal = None
             self._state_init(goal.copy())
         else:

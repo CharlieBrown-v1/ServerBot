@@ -77,14 +77,17 @@ class RenderEnv(gym.Env):
     def macro_step(self, obs):
         i = 0
         info = {'is_success': False}
+        frames = []
         while i < self.model.spec.max_episode_steps:
             i += 1
             agent_action = self.agent.predict(observation=obs, deterministic=True)[0]
             next_obs, reward, done, info = self.model.step(agent_action)
             obs = next_obs
+            # frames.append(self.model.render(mode='rgb_array'))
             self.model.render()
             if info['train_done']:
                 break
+        info['frames'] = frames
         if info['is_removal_success']:
             return obs, 0, False, info
         else:
