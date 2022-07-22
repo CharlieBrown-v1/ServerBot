@@ -39,7 +39,7 @@ class PlanningEnv(gym.Env):
         self.table_end_xyz = np.r_[table_end_xy, table_end_z]
 
         self.success_reward = 100
-        self.success_rate_threshold = 0.8
+        self.success_rate_threshold = 0.7
         self.fail_reward = -10
         self.distance_threshold = 0.1
 
@@ -57,6 +57,11 @@ class PlanningEnv(gym.Env):
         planning_action[2:] = (self.table_end_xyz - self.table_start_xyz) * planning_action[2:] / 2 \
                               + (self.table_start_xyz + self.table_end_xyz) / 2
 
+        achieved_name, removal_goal, min_dist = self.model.macro_step_setup(planning_action, True)
+        prev_obs = self.model.get_obs()
+        prev_success_rate = self.agent.policy.predict_observation(prev_obs)
+        # print(f'Previous success rate: {prev_success_rate}')
+
         done = self.model.is_fail()
         info = {
             'is_success': False,
@@ -65,11 +70,8 @@ class PlanningEnv(gym.Env):
             'is_fail': self.model.is_fail(),
         }
 
-        achieved_name, removal_goal, min_dist = self.model.macro_step_setup(planning_action)
-        prev_obs = self.model.get_obs()
-        prev_success_rate = self.agent.policy.predict_observation(prev_obs)
-        # print(f'Previous success rate: {prev_success_rate}')
         if min_dist > self.distance_threshold:
+            # print(f'Out of control')
             return prev_obs, -(min_dist - self.distance_threshold), done, info
 
         self.model.sim.data.set_joint_qpos(achieved_name + ':joint' if achieved_name is not None
