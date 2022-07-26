@@ -15,9 +15,9 @@ table_xpos_end = table_xpos + table_size
 
 d_list = [0.01 * i for i in np.arange(5 + 1)]
 d = d_list[2]
-length_scale = 21  # 25
-width_scale = 21  # 35
-height_scale = 21  # 17
+length_scale = 25
+width_scale = 35
+height_scale = 17
 length = length_scale * d
 width = width_scale * d
 height = height_scale * d
@@ -115,7 +115,7 @@ class FetchEnv(robot_env.RobotEnv):
             success_reward=100,
             grasp_reward=10,
             reward_factor=100,
-            punish_factor=-1,
+            punish_factor=-0.1,
             easy_probability=0.5,
             total_obstacle_count=200,
             single_count_sup=15,

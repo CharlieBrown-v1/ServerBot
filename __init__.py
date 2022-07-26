@@ -362,6 +362,14 @@ for reward_type in ["sparse", "dense"]:
     # Fetch
     # DIY
     register(
+        id="Attn{}-v0".format(suffix),
+        entry_point="gym.envs.robotics:AttnEnv",
+        kwargs=kwargs,
+        max_episode_steps=128,
+    )
+
+    # DIY
+    register(
         id="RenderFinal{}-v0".format(suffix),
         entry_point="gym.envs.robotics:RenderFinalEnv",
         kwargs=kwargs,
