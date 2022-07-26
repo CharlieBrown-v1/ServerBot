@@ -19,7 +19,7 @@ def distance(pos_a, pos_b):
 
 class AttnEnv(fetch_env.FetchEnv, utils.EzPickle):
     def __init__(self, reward_type="dense"):
-        self.max_horizon_dist = 0.35
+        self.max_horizon_dist = 0.5
         self.max_horizon_count = 8
 
         self.sing_obstacle_feature_size = 18
