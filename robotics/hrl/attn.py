@@ -114,18 +114,18 @@ class AttnEnv(fetch_env.FetchEnv, utils.EzPickle):
                 break
 
         sorted_object_dist_list = dict(sorted(object_dist_dict.items(), key=lambda item: item[1]))
-        print(f'before: {obs}')
+        # print(f'before: {obs}')
         i_count = 0
         for name, _ in sorted_object_dist_list.items():
             obs.append(self.append_physical_feature(name))
             i_count += 1
-            print(f'{i_count}: {obs}')
+            # print(f'{i_count}: {obs}')
 
         for _ in range(count):
             obs.append(self.pad_obs)
 
         assert self.self_feature_size is not None
-        print(f'final: {obs}')
+        # print(f'final: {obs}')
 
         return {
             "achieved_goal": achieved_goal.copy(),
