@@ -19,7 +19,8 @@ def distance(pos_a, pos_b):
 
 class AttnEnv(fetch_env.FetchEnv, utils.EzPickle):
     def __init__(self, reward_type="dense"):
-        self.max_horizon_dist = 0.5
+        # self.max_horizon_dist = 0.5
+        self.max_horizon_dist = 0.15
         self.max_horizon_count = 8
 
         self.sing_obstacle_feature_size = 18
@@ -99,19 +100,33 @@ class AttnEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.self_feature_size = np.concatenate(gripper_obs).size + achieved_goal.size + goal.size
 
         obs = gripper_obs.copy()
-        origin_point = self.cube_starting_point.copy()
+        origin_point = achieved_goal.copy()
         count = self.max_horizon_count
+
+        object_dist_dict = {}
         for object_name in self.object_name_list:
             obstacle_pos = self.sim.data.get_geom_xpos(object_name).copy()
-            if distance(origin_point, obstacle_pos) < self.max_horizon_dist:
-                obs.append(self.append_physical_feature(object_name))
+            dist = distance(origin_point, obstacle_pos)
+            if dist < self.max_horizon_dist:
+                object_dist_dict[object_name] = dist
                 count -= 1
             if count == 0:
                 break
+
+        sorted_object_dist_list = dict(sorted(object_dist_dict.items(), key=lambda item: item[1]))
+        print(f'before: {obs}')
+        i_count = 0
+        for name, _ in sorted_object_dist_list.items():
+            obs.append(self.append_physical_feature(name))
+            i_count += 1
+            print(f'{i_count}: {obs}')
+
         for _ in range(count):
             obs.append(self.pad_obs)
 
         assert self.self_feature_size is not None
+        print(f'final: {obs}')
+
         return {
             "achieved_goal": achieved_goal.copy(),
             "desired_goal": goal.copy(),
