@@ -231,12 +231,12 @@ class FetchEnv(robot_env.RobotEnv):
 
         curr_grip_achi_dist = xpos_distance(np.broadcast_to(grip_pos, achieved_goal.shape), achieved_goal)
         grip_achi_reward = self.prev_grip_achi_dist - curr_grip_achi_dist
-        grip_achi_reward = np.where(np.abs(grip_achi_reward) >= epsilon, grip_achi_reward, 0)
+        # grip_achi_reward = np.where(np.abs(grip_achi_reward) >= epsilon, grip_achi_reward, 0)
         self.prev_grip_achi_dist = curr_grip_achi_dist
 
         curr_achi_desi_dist = xpos_distance(achieved_goal, goal)
         achi_desi_reward = self.prev_achi_desi_dist - curr_achi_desi_dist
-        achi_desi_reward = np.where(np.abs(achi_desi_reward) >= epsilon, achi_desi_reward, 0)
+        # achi_desi_reward = np.where(np.abs(achi_desi_reward) >= epsilon, achi_desi_reward, 0)
         self.prev_achi_desi_dist = curr_achi_desi_dist
 
         reward = self.reward_factor * (grip_achi_reward + achi_desi_reward)
