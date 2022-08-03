@@ -4,7 +4,7 @@ import copy
 import numpy as np
 from gym import spaces
 from gym.envs.robotics import RenderFinalEnv
-from stable_baselines3 import HybridPPO
+from stable_baselines3 import PPO, HybridPPO
 
 desk_x = 0
 desk_y = 1
@@ -16,11 +16,14 @@ action_list = [desk_x, desk_y, pos_x, pos_y, pos_z]
 
 
 class PlanningEnv(gym.Env):
-    def __init__(self, model_path: str):
-        assert model_path is not None
+    def __init__(self, model_path=None):
         super(PlanningEnv, self).__init__()
 
-        self.agent = HybridPPO.load(model_path)
+        if model_path is None:
+            self.agent = None
+        else:
+            self.agent = HybridPPO.load(path=model_path)
+
         self.model = gym.make('RenderFinalDense-v0')
 
         self.action_space = spaces.Box(-1.0, 1.0, shape=(len(action_list),), dtype="float32")
@@ -49,6 +52,7 @@ class PlanningEnv(gym.Env):
         return obs
 
     def step(self, action: np.ndarray):
+        assert self.agent is not None, "You must load agent before step in upper env!"
         planning_action = action.copy()
 
         # action for choosing desk's position
