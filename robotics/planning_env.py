@@ -4,7 +4,7 @@ import copy
 import numpy as np
 from gym import spaces
 from gym.envs.robotics import RenderFinalEnv
-from stable_baselines3 import PPO
+from stable_baselines3 import HybridPPO
 
 desk_x = 0
 desk_y = 1
@@ -16,10 +16,11 @@ action_list = [desk_x, desk_y, pos_x, pos_y, pos_z]
 
 
 class PlanningEnv(gym.Env):
-    def __init__(self, model_path='/home/stalin/LAMDA5/ServerBot/model.zip'):
+    def __init__(self, model_path: str):
+        assert model_path is not None
         super(PlanningEnv, self).__init__()
 
-        self.agent = PPO.load(path=model_path)
+        self.agent = HybridPPO.load(model_path)
         self.model = gym.make('RenderFinalDense-v0')
 
         self.action_space = spaces.Box(-1.0, 1.0, shape=(len(action_list),), dtype="float32")
