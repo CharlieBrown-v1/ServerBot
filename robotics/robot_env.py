@@ -125,6 +125,12 @@ class RobotEnv(gym.GoalEnv):
         info['train_is_success'] = info['is_success'] or info['is_removal_success']
 
         # DIY
+        info['removal_done'] = (not removal_done and info['is_fail']) or info['is_removal_success']
+        info['removal_success'] = info['is_removal_success']
+        info['global_done'] = (removal_done and info['is_fail']) or info['is_success']
+        info['global_success'] = info['is_success']
+
+        # DIY
         if self.removal_goal is None or self.is_removal_success:
             goal = self.global_goal.copy()
         else:
