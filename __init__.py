@@ -370,8 +370,8 @@ for reward_type in ["sparse", "dense"]:
 
     # DIY
     register(
-        id="Attn{}-v0".format(suffix),
-        entry_point="gym.envs.robotics:AttnEnv",
+        id="Naive{}-v0".format(suffix),
+        entry_point="gym.envs.robotics:NaiveEnv",
         kwargs=kwargs,
         max_episode_steps=128,
     )

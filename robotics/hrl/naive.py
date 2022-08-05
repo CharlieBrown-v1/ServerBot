@@ -17,7 +17,7 @@ def distance(pos_a, pos_b):
     return np.linalg.norm(pos_a - pos_b, axis=-1)
 
 
-class AttnEnv(fetch_env.FetchEnv, utils.EzPickle):
+class NaiveEnv(fetch_env.FetchEnv, utils.EzPickle):
     def __init__(self, reward_type="dense"):
         self.max_horizon_count = 8
 
