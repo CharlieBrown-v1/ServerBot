@@ -12,7 +12,7 @@ pos_y = 3
 pos_z = 4
 
 action_list = [desk_x, desk_y, pos_x, pos_y, pos_z]
-MODEL_XML_PATH = os.path.join("hrl", "render_final.xml")
+MODEL_XML_PATH = os.path.join("hrl", "render_hrl.xml")
 
 
 def xpos_distance(goal_a, goal_b):
@@ -20,7 +20,7 @@ def xpos_distance(goal_a, goal_b):
     return np.linalg.norm(goal_a - goal_b, axis=-1)
 
 
-class RenderFinalEnv(fetch_env.FetchEnv, utils.EzPickle):
+class RenderHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
     def __init__(self, reward_type="dense"):
         initial_qpos = {
             "robot0:slide0": 0.405,
@@ -41,8 +41,8 @@ class RenderFinalEnv(fetch_env.FetchEnv, utils.EzPickle):
             distance_threshold=0.05,
             initial_qpos=initial_qpos,
             reward_type=reward_type,
-            easy_probability=0,
-            single_count_sup=5,
+            single_count_sup=7,
+            target_in_air_probability=0.5,
             hrl_mode=True,
             random_mode=True,
         )
@@ -53,7 +53,7 @@ class RenderFinalEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.removal_xpos_indicate = None
 
     def reset(self):
-        obs = super(RenderFinalEnv, self).reset()
+        obs = super(RenderHrlEnv, self).reset()
         self.reset_indicate()
         return obs
 

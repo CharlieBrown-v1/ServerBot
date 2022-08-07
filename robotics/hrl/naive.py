@@ -45,8 +45,8 @@ class NaiveEnv(fetch_env.FetchEnv, utils.EzPickle):
             distance_threshold=0.05,
             initial_qpos=initial_qpos,
             reward_type=reward_type,
-            easy_probability=1,
-            single_count_sup=5,
+            single_count_sup=7,
+            target_in_air_probability=0.5,
             hrl_mode=True,
             random_mode=True,
         )

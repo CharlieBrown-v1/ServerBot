@@ -70,6 +70,19 @@
 			<site name="obstacle_object_4" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
 		</body>
 
+		<body name="obstacle_object_5" pos="20 20 0.025">
+			<joint name="obstacle_object_5:joint" type="free" damping="0.01"/>
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_5" material="block_mat" mass="2"/>
+			<site name="obstacle_object_5" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
+		</body>
+
+		<body name="obstacle_object_6" pos="20 20 0.025">
+			<joint name="obstacle_object_6:joint" type="free" damping="0.01"/>
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_6" material="block_mat" mass="2"/>
+			<site name="obstacle_object_6" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
+		</body>
+
+
 		</worldbody>
 
 	<actuator>

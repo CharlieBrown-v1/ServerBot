@@ -3,8 +3,8 @@ import copy
 
 import numpy as np
 from gym import spaces
-from gym.envs.robotics import RenderFinalEnv
-from stable_baselines3 import PPO
+from gym.envs.robotics import RenderHrlEnv
+from stable_baselines3 import HybridPPO
 
 desk_x = 0
 desk_y = 1
@@ -16,11 +16,15 @@ action_list = [desk_x, desk_y, pos_x, pos_y, pos_z]
 
 
 class RenderEnv(gym.Env):
-    def __init__(self, model_path='/home/stalin/LAMDA5/ServerBot/model.zip'):
+    def __init__(self, model_path=None):
         super(RenderEnv, self).__init__()
 
-        self.agent = PPO.load(path=model_path)
-        self.model = gym.make('RenderFinalDense-v0')
+        if model_path is None:
+            self.agent = None
+        else:
+            self.agent = HybridPPO.load(path=model_path)
+
+        self.model = gym.make('RenderHrlDense-v0')
 
         self.action_space = spaces.Box(-1.0, 1.0, shape=(len(action_list),), dtype="float32")
         self.observation_space = copy.deepcopy(self.model.observation_space)

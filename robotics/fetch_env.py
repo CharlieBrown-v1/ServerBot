@@ -116,10 +116,8 @@ class FetchEnv(robot_env.RobotEnv):
             grasp_reward=10,
             reward_factor=100,
             punish_factor=-0.1,
-            easy_probability=0.5,
-            total_obstacle_count=200,
-            single_count_sup=15,
-            generate_flag=False,
+            target_in_air_probability=0.5,
+            single_count_sup=7,
             hrl_mode=False,
             random_mode=False,
             debug_mode=False,
@@ -152,6 +150,8 @@ class FetchEnv(robot_env.RobotEnv):
         self.reward_type = reward_type
 
         # DIY
+        self.target_in_air_probability = target_in_air_probability
+
         self.success_reward = success_reward
         self.grasp_reward = grasp_reward
         self.reward_factor = reward_factor
@@ -162,11 +162,8 @@ class FetchEnv(robot_env.RobotEnv):
         self.demo_mode = demo_mode
 
         self.object_generator = utils.ObjectGenerator(
-            easy_probability=easy_probability,
-            total_obstacle_count=total_obstacle_count,
             single_count_sup=single_count_sup,
             random_mode=random_mode,
-            generate_flag=generate_flag,
         )
 
         self.prev_grip_achi_dist = None
@@ -615,7 +612,7 @@ class FetchEnv(robot_env.RobotEnv):
         return True
 
     # DIY
-    def reset_removal(self, goal: np.ndarray, removal_goal=None, set_flag=True):
+    def reset_removal(self, goal: np.ndarray, removal_goal=None, is_removal=True):
         if removal_goal is None:
             removal_goal = self.initial_gripper_xpos[:3] + self.np_random.uniform(
                 -self.target_range, self.target_range, size=3
@@ -625,7 +622,7 @@ class FetchEnv(robot_env.RobotEnv):
 
         self.is_grasp = False
         self.is_removal_success = False
-        if len(self.object_name_list) == 1 or not set_flag:  # only achieved_goal
+        if len(self.object_name_list) == 1 or not is_removal:  # only achieved_goal
             self.removal_goal = None
             self._state_init(goal.copy())
         else:
@@ -639,8 +636,11 @@ class FetchEnv(robot_env.RobotEnv):
         if goal is None:
             goal = self.global_goal.copy()
 
+        object_xpos_list = [self.sim.data.get_geom_xpos(object_name) for object_name in self.object_name_list]
         new_achieved_name, new_obstacle_name_list = self.object_generator. \
-            sample_after_removal(self.object_name_list.copy(), copy.deepcopy(self.achieved_name))
+            sample_after_removal(object_name_list=self.object_name_list.copy(),
+                                 object_xpos_list=object_xpos_list.copy(),
+                                 achieved_name=copy.deepcopy(self.achieved_name))
 
         self.achieved_name = copy.deepcopy(new_achieved_name)
         self.obstacle_name_list = new_obstacle_name_list.copy()
@@ -650,6 +650,9 @@ class FetchEnv(robot_env.RobotEnv):
         self._state_init(goal.copy())
 
     def _sample_goal(self):
+        # DIY
+        is_removal = True
+
         if self.has_object:
             goal = self.initial_gripper_xpos[:3] + self.np_random.uniform(
                 -self.target_range, self.target_range, size=3
@@ -660,8 +663,9 @@ class FetchEnv(robot_env.RobotEnv):
             if self.target_in_the_air:
                 if self.demo_mode:
                     goal[2] += self.np_random.uniform(0.1, 0.2)
-                elif self.np_random.uniform() < 0.5:
-                    goal[2] += self.np_random.uniform(0, 0.3)
+                elif self.np_random.uniform() < self.target_in_air_probability:
+                    goal[2] += self.np_random.uniform(self.distance_threshold, 0.3)
+                    is_removal = False
 
             """
             if self.hrl_mode:
@@ -674,7 +678,7 @@ class FetchEnv(robot_env.RobotEnv):
             )
 
         # DIY
-        self.reset_removal(goal=goal.copy())
+        self.reset_removal(goal=goal.copy(), is_removal=is_removal)
 
         return goal.copy()
 
@@ -712,8 +716,7 @@ class FetchEnv(robot_env.RobotEnv):
         if self.has_object:
             # DIY
             if self.hrl_mode:
-                # self.height_offset = 0.4 + self.object_generator.height_inf
-                self.height_offset = self.sim.data.get_geom_xpos("target_object")[2].copy()
+                self.height_offset = 0.42
                 self._set_hrl_initial_state()
             else:
                 self.height_offset = self.sim.data.get_site_xpos("object0")[2].copy()

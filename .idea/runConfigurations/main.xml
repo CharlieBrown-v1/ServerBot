@@ -4,13 +4,13 @@
     <option name="INTERPRETER_OPTIONS" value="" />
     <option name="PARENT_ENVS" value="true" />
     <envs>
-      <env name="LD_LIBRARY_PATH" value="$LD_LIBRARY_PATH:/usr/lib/nvidia:/home/stalin/.mujoco/mujoco210/bin" />
-      <env name="LD_PRELOAD" value=":/usr/lib/x86_64-linux-gnu/libGLEW.so" />
       <env name="PYTHONUNBUFFERED" value="1" />
+      <env name="LD_LIBRARY_PATH" value="$LD_LIBRARY_PATH:/usr/lib/nvidia:$USER_HOME$/.mujoco/mujoco210/bin" />
+      <env name="LD_PRELOAD" value=":/usr/lib/x86_64-linux-gnu/libGLEW.so" />
     </envs>
-    <option name="SDK_HOME" value="\\wsl$\Ubuntu/home/stalin/anaconda3/envs/robot/bin/python" />
+    <option name="SDK_HOME" value="" />
     <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/../../../../../../../../robot" />
-    <option name="IS_MODULE_SDK" value="false" />
+    <option name="IS_MODULE_SDK" value="true" />
     <option name="ADD_CONTENT_ROOTS" value="true" />
     <option name="ADD_SOURCE_ROOTS" value="true" />
     <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />

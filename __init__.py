@@ -339,6 +339,7 @@ def _merge(a, b):
     a.update(b)
     return a
 
+
 # DIY
 register(
         id="Planning-v0",
@@ -362,14 +363,6 @@ for reward_type in ["sparse", "dense"]:
     # Fetch
     # DIY
     register(
-        id="Grasp{}-v0".format(suffix),
-        entry_point="gym.envs.robotics:GraspEnv",
-        kwargs=kwargs,
-        max_episode_steps=64,
-    )
-
-    # DIY
-    register(
         id="Naive{}-v0".format(suffix),
         entry_point="gym.envs.robotics:NaiveEnv",
         kwargs=kwargs,
@@ -378,25 +371,18 @@ for reward_type in ["sparse", "dense"]:
 
     # DIY
     register(
-        id="RenderFinal{}-v0".format(suffix),
-        entry_point="gym.envs.robotics:RenderFinalEnv",
+        id="RenderHrl{}-v0".format(suffix),
+        entry_point="gym.envs.robotics:RenderHrlEnv",
         kwargs=kwargs,
         max_episode_steps=128,
     )
 
     # DIY
     register(
-        id="Final{}-v0".format(suffix),
-        entry_point="gym.envs.robotics:FinalEnv",
-        kwargs=kwargs,
-        max_episode_steps=128,
-    )
-    # DIY
-    register(
         id="Hrl{}-v0".format(suffix),
         entry_point="gym.envs.robotics:HrlEnv",
         kwargs=kwargs,
-        max_episode_steps=128,
+        max_episode_steps=32,
     )
 
     register(

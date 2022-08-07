@@ -3,8 +3,8 @@ import copy
 
 import numpy as np
 from gym import spaces
-from gym.envs.robotics import RenderFinalEnv
-from stable_baselines3 import PPO, HybridPPO
+from gym.envs.robotics import RenderHrlEnv
+from stable_baselines3 import HybridPPO
 
 desk_x = 0
 desk_y = 1
@@ -24,7 +24,7 @@ class PlanningEnv(gym.Env):
         else:
             self.agent = HybridPPO.load(path=model_path)
 
-        self.model = gym.make('RenderFinalDense-v0')
+        self.model = gym.make('RenderHrlDense-v0')
 
         self.action_space = spaces.Box(-1.0, 1.0, shape=(len(action_list),), dtype="float32")
         self.observation_space = copy.deepcopy(self.model.observation_space)
