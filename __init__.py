@@ -382,7 +382,7 @@ for reward_type in ["sparse", "dense"]:
         id="Hrl{}-v0".format(suffix),
         entry_point="gym.envs.robotics:HrlEnv",
         kwargs=kwargs,
-        max_episode_steps=32,
+        max_episode_steps=128,
     )
 
     register(
