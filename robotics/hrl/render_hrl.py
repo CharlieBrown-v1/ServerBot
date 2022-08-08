@@ -43,6 +43,7 @@ class RenderHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             reward_type=reward_type,
             single_count_sup=7,
             target_in_air_probability=0.5,
+            object_stacked_probability=0.5,
             hrl_mode=True,
             random_mode=True,
         )

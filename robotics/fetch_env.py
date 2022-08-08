@@ -117,6 +117,7 @@ class FetchEnv(robot_env.RobotEnv):
             reward_factor=100,
             punish_factor=-0.1,
             target_in_air_probability=0.5,
+            object_stacked_probability=0.5,
             single_count_sup=7,
             hrl_mode=False,
             random_mode=False,
@@ -163,6 +164,7 @@ class FetchEnv(robot_env.RobotEnv):
 
         self.object_generator = utils.ObjectGenerator(
             single_count_sup=single_count_sup,
+            object_stacked_probability=object_stacked_probability,
             random_mode=random_mode,
         )
 

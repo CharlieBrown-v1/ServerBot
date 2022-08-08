@@ -4,9 +4,9 @@
     <option name="INTERPRETER_OPTIONS" value="" />
     <option name="PARENT_ENVS" value="true" />
     <envs>
+      <env name="LD_LIBRARY_PATH" value="$LD_LIBRARY_PATH:/usr/lib/nvidia:/home/stalin/.mujoco/mujoco210/bin" />
       <env name="PYTHONUNBUFFERED" value="1" />
-      <env name="LD_LIBRARY_PATH" value="$LD_LIBRARY_PATH:/usr/lib/nvidia:$USER_HOME$/.mujoco/mujoco210/bin" />
-      <env name="LD_PRELOAD" value=":/usr/lib/x86_64-linux-gnu/libGLEW.so" />
+      <env name="LD_PRELOAD" value="/usr/lib/x86_64-linux-gnu/libGLEW.so" />
     </envs>
     <option name="SDK_HOME" value="" />
     <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/../../../../../../../../robot" />

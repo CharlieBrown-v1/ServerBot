@@ -117,6 +117,7 @@ def get_full_path(path: str):
 class ObjectGenerator:
     def __init__(self,
                  single_count_sup=7,
+                 object_stacked_probability=0.5,
                  random_mode=False,
                  ):
         self.size_sup = 0.025
@@ -125,7 +126,7 @@ class ObjectGenerator:
         self.xy_dist_sup = 0.16
         self.z_dist_sup = 0.064
 
-        self.object_stacked_probability = 0.5
+        self.object_stacked_probability = object_stacked_probability
 
         table_xpos = np.array([1.3, 0.75, 0.2])
         table_size = np.array([0.25, 0.35, 0.2])
