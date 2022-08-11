@@ -719,7 +719,7 @@ class FetchEnv(robot_env.RobotEnv):
 
         # DIY
         if self.hrl_mode:
-            self.cube_starting_point = table_xpos.copy() + np.array([0, 0, 0.2 + 0.01 * height_scale])
+            self.cube_starting_point = table_xpos.copy() + np.array([0, 0, 0.2 + 0.17])
 
         if self.has_object:
             # DIY
