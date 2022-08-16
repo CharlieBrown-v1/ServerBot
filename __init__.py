@@ -361,6 +361,15 @@ for reward_type in ["sparse", "dense"]:
     }
 
     # Fetch
+
+    # DIY
+    register(
+        id="Grasp{}-v0".format(suffix),
+        entry_point="gym.envs.robotics:GraspEnv",
+        kwargs=kwargs,
+        max_episode_steps=64,
+    )
+
     # DIY
     register(
         id="Naive{}-v0".format(suffix),
