@@ -53,6 +53,7 @@ class PlanningEnv(gym.Env):
 
     def step(self, action: np.ndarray):
         assert self.agent is not None, "You must load agent before step in upper env!"
+
         planning_action = action.copy()
 
         # action for choosing desk's position

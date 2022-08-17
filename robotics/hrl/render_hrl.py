@@ -42,7 +42,8 @@ class RenderHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             initial_qpos=initial_qpos,
             reward_type=reward_type,
             single_count_sup=7,
-            target_in_air_probability=0.5,
+            # target_in_air_probability=0.5,
+            target_in_air_probability=1,
             object_stacked_probability=0.5,
             hrl_mode=True,
             random_mode=True,
@@ -118,6 +119,5 @@ class RenderHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(self.achieved_name_indicate).copy() - sites_offset[achieved_site_id]
         else:
             self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(self.achieved_name).copy() - sites_offset[achieved_site_id]
-        # self.sim.model.site_pos[cube_site_id] = self.cube_starting_point.copy() - sites_offset[cube_site_id]
-        self.sim.model.site_pos[cube_site_id] = np.array([20, 20, 0.5])
+        self.sim.model.site_pos[cube_site_id] = self.cube_starting_point.copy() - sites_offset[cube_site_id]
         self.sim.forward()

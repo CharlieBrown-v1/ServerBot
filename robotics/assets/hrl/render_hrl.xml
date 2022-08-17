@@ -22,7 +22,7 @@
 			<site name="removal_indicate" pos="0 0 0.5" size="0.016 0.016 0.016" rgba="0 1 1 1" type="sphere" />
 		</body>
 
-		<include file="render_robot.xml" />
+		<include file="robot.xml" />
 
 		<body pos="1.3 0.75 0.2" name="table0">
 			<geom name="table" size="0.25 0.35 0.2" type="box" mass="2000" material="table_mat" />

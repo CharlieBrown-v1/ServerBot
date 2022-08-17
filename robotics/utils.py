@@ -153,6 +153,7 @@ class ObjectGenerator:
             np.r_[[-self.step, 0, 0], self.qpos_posix],
             np.r_[[self.step, 0, 0], self.qpos_posix],
             np.r_[[0, 0, 2 * self.step], self.qpos_posix],
+            np.r_[[0, 0, 3 * self.step], self.qpos_posix],
             np.r_[[0, -self.step, 0], self.qpos_posix],
             np.r_[[0, self.step, 0], self.qpos_posix],
         ]
@@ -242,7 +243,7 @@ class ObjectGenerator:
                 obstacle_count = np.random.randint(1, self.single_count_sup)
                 achieved_qpos = np.r_[np.random.uniform(self.desktop_lower_boundary, self.desktop_upper_boundary), self.qpos_posix]
         else:
-            obstacle_count = 3
+            obstacle_count = 4
             achieved_qpos = np.r_[[1.34, 0.88, 0.425], self.qpos_posix]
 
         object_name_list.insert(0, achieved_name)
@@ -283,7 +284,7 @@ class ObjectGenerator:
                 self.desktop_lower_boundary[2],
             ]
         else:
-            achieved_xpos = [1.34, 0.88, 0.425]
+            achieved_xpos = np.array([1.34, 0.88, 0.425])
 
         achieved_qpos = np.r_[achieved_xpos, self.qpos_posix]
         object_qpos_list = [achieved_qpos.copy()]

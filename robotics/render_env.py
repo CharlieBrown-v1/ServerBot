@@ -42,7 +42,7 @@ class RenderEnv(gym.Env):
         self.table_start_xyz = np.r_[table_start_xy, table_start_z]
         self.table_end_xyz = np.r_[table_end_xy, table_end_z]
 
-        self.success_rate_threshold = 0.5
+        self.success_rate_threshold = 0.7
 
     def reset(self):
         obs = self.model.reset()
@@ -50,7 +50,7 @@ class RenderEnv(gym.Env):
 
     def step(self, action: np.ndarray):
         obs = self.model.get_obs()
-        prev_success_rate = self.agent.policy.predict_observation(obs)
+        prev_success_rate, value = self.agent.policy.predict_observation(obs)
         # print(f'Previous success rate: {prev_success_rate}')
 
         if action is None:
@@ -73,7 +73,7 @@ class RenderEnv(gym.Env):
             else:
                 self.model.macro_step_setup(planning_action)
         obs, _, done, info = self.macro_step(obs)
-        curr_success_rate = self.agent.policy.predict_observation(self.model.get_obs())
+        curr_success_rate, value = self.agent.policy.predict_observation(self.model.get_obs())
         # print(f'Current success rate: {curr_success_rate}')
 
         return obs, curr_success_rate - prev_success_rate, done, info
