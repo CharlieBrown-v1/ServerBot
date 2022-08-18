@@ -46,14 +46,16 @@ class RobotEnv(gym.GoalEnv):
         self.seed()
         self._env_setup(initial_qpos=initial_qpos)
         self.initial_state = copy.deepcopy(self.sim.get_state())
+        self.goal = self._sample_goal()
 
         # DIY
         self.super_hrl_mode = super_hrl_mode
 
-        self.is_grasp = False
-        self.is_removal_success = False
-        self.removal_goal = None
-        self.global_goal = self._sample_goal()
+        if self.super_hrl_mode:
+            self.is_grasp = False
+            self.is_removal_success = False
+            self.removal_goal = None
+            self.global_goal = self._sample_goal()
 
         obs = self._get_obs()
         self.action_space = spaces.Box(-1.0, 1.0, shape=(n_actions,), dtype="float32")
@@ -90,6 +92,17 @@ class RobotEnv(gym.GoalEnv):
         self._step_callback()
         obs = self._get_obs()
 
+        if self.super_hrl_mode:
+            return self.hrl_step(obs, action)
+
+        done = False
+        info = {
+            "is_success": self._is_success(obs["achieved_goal"], self.goal),
+        }
+        reward = self.compute_reward(obs["achieved_goal"], self.goal, info)
+        return obs, reward, done, info
+
+    def hrl_step(self, obs, action):
         # DIY
         info = {
             "is_grasp": False,

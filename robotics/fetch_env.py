@@ -456,10 +456,13 @@ class FetchEnv(robot_env.RobotEnv):
                 ]
             )
 
-        if self.removal_goal is None or self.is_removal_success:
-            goal = self.global_goal.copy()
+        if self.hrl_mode:
+            if self.removal_goal is None or self.is_removal_success:
+                goal = self.global_goal.copy()
+            else:
+                goal = self.removal_goal.copy()
         else:
-            goal = self.removal_goal.copy()
+            goal = self.goal
 
         return {
             "observation": obs.copy(),
@@ -577,7 +580,7 @@ class FetchEnv(robot_env.RobotEnv):
                     assert object_qpos.shape == (7,)
                     self.sim.data.set_joint_qpos(f"{object_name}:joint", object_qpos)
             else:
-                while np.linalg.norm(object_xpos - self.initial_gripper_xpos[:2]) < 0.1:
+                while np.linalg.norm(object_xpos[:2] - self.initial_gripper_xpos[:2]) < 0.1:
                     object_xpos = self.initial_gripper_xpos[:2] + self.np_random.uniform(
                         -self.obj_range, self.obj_range, size=2
                     )
@@ -588,33 +591,35 @@ class FetchEnv(robot_env.RobotEnv):
 
         self.sim.forward()
 
-        while True:
-            count = 0
-            done = False
-            while not done:
-                self.sim.step()
-                curr_object_xpos_list = [self.sim.data.get_geom_xpos(object_name).copy() for object_name in
-                                         self.object_name_list]
-                done = np.linalg.norm(
-                    np.concatenate(curr_object_xpos_list) - np.concatenate(self.init_object_xpos_list),
-                    ord=np.inf) < epsilon
-                self.init_object_xpos_list = curr_object_xpos_list.copy()
-                count += 1
-                # self.render()
-            not_fall_off = np.all(
-                np.array([object_xpos[2] for object_xpos in self.init_object_xpos_list]) > self.height_offset - 0.01)
-            all_in_desk = np.all(
-                np.array([object_xpos[2] for object_xpos in self.init_object_xpos_list]) > 0.4 - 0.01)
-            if not_fall_off and all_in_desk:
-                break
-            object_dict = self._set_hrl_initial_state(resample_mode=True)
-            for object_name, object_qpos in object_dict.items():
-                assert object_qpos.shape == (7,)
-                self.sim.data.set_joint_qpos(f"{object_name}:joint", object_qpos)
-            self.sim.forward()
+        if self.hrl_mode:
+            while True:
+                count = 0
+                done = False
+                while not done:
+                    self.sim.step()
+                    curr_object_xpos_list = [self.sim.data.get_geom_xpos(object_name).copy() for object_name in
+                                             self.object_name_list]
+                    done = np.linalg.norm(
+                        np.concatenate(curr_object_xpos_list) - np.concatenate(self.init_object_xpos_list),
+                        ord=np.inf) < epsilon
+                    self.init_object_xpos_list = curr_object_xpos_list.copy()
+                    count += 1
+                    # self.render()
+                not_fall_off = np.all(
+                    np.array([object_xpos[2] for object_xpos in self.init_object_xpos_list]) > self.height_offset - 0.01)
+                all_in_desk = np.all(
+                    np.array([object_xpos[2] for object_xpos in self.init_object_xpos_list]) > 0.4 - 0.01)
+                if not_fall_off and all_in_desk:
+                    break
+                object_dict = self._set_hrl_initial_state(resample_mode=True)
+                for object_name, object_qpos in object_dict.items():
+                    assert object_qpos.shape == (7,)
+                    self.sim.data.set_joint_qpos(f"{object_name}:joint", object_qpos)
+                self.sim.forward()
 
-        self.init_obstacle_xpos_list = [self.sim.data.get_geom_xpos(obstacle_name).copy() for obstacle_name
-                                        in self.obstacle_name_list]
+            self.init_obstacle_xpos_list = [self.sim.data.get_geom_xpos(obstacle_name).copy() for obstacle_name
+                                            in self.obstacle_name_list]
+
         return True
 
     # DIY
@@ -686,7 +691,8 @@ class FetchEnv(robot_env.RobotEnv):
             )
 
         # DIY
-        self.reset_removal(goal=goal.copy(), is_removal=is_removal)
+        if self.hrl_mode:
+            self.reset_removal(goal=goal.copy(), is_removal=is_removal)
 
         return goal.copy()
 
