@@ -132,7 +132,7 @@ class RobotEnv(gym.GoalEnv):
         # done for reset sim
         if removal_done:
             info['is_success'] = self._is_success(obs["achieved_goal"], self.global_goal)
-        done = info['is_fail'] or (self.super_hrl_mode and info['is_success'])
+        done = info['is_fail'] or info['is_success']
         # train_* for train a new trial
         info['train_done'] = info['is_fail'] or info['is_success'] or info['is_removal_success']
         info['train_is_success'] = info['is_success'] or info['is_removal_success']
