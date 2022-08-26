@@ -255,7 +255,7 @@ class FetchEnv(robot_env.RobotEnv):
     def compute_reward(self, achieved_goal, goal, info):
         # Compute distance between goal and the achieved goal.
         # DIY
-        if self.hrl_mode and self.reward_type == 'Dense':
+        if self.hrl_mode and self.reward_type == 'dense':
             return self.hrl_reward(achieved_goal, goal, info)
         else:
             d = xpos_distance(achieved_goal, goal)
