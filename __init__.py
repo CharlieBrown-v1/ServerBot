@@ -342,8 +342,14 @@ def _merge(a, b):
 
 # DIY
 register(
-        id="Planning-v0",
-        entry_point="gym.envs.robotics:PlanningEnv",
+        id="PlanningC-v0",
+        entry_point="gym.envs.robotics:PlanningCEnv",
+        max_episode_steps=16,
+)
+
+register(
+        id="PlanningD-v0",
+        entry_point="gym.envs.robotics:PlanningDEnv",
         max_episode_steps=16,
 )
 
