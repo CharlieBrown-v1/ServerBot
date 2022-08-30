@@ -1,4 +1,5 @@
 import os
+import copy
 import numpy as np
 
 from gym import utils
@@ -79,18 +80,51 @@ class RenderHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         assert achieved_name is not None
 
         if set_flag and np.any(removal_goal != self.global_goal):
+            self.achieved_name = achieved_name
+            self.removal_goal = removal_goal.copy()
             self.achieved_name_indicate = achieved_name
             self.removal_goal_indicate = removal_goal.copy()
             self.removal_xpos_indicate = action_xpos.copy()
         else:
-            self.achieved_name_indicate = None
-            self.removal_goal_indicate = None
-            self.removal_xpos_indicate = None
+            self.achieved_name = 'target_object'
+            self.removal_goal = None
+            self.reset_indicate()
+
+        tmp_obstacle_name_list = self.object_name_list.copy()
+        tmp_obstacle_name_list.remove(self.achieved_name)
+        self.obstacle_name_list = tmp_obstacle_name_list.copy()
+        self.init_obstacle_xpos_list = [self.sim.data.get_geom_xpos(name).copy() for name in self.obstacle_name_list]
 
         return achieved_name, removal_goal, min_dist
 
     def is_fail(self):
         return self.judge(self.obstacle_name_list.copy(), self.init_obstacle_xpos_list.copy(), mode='done')
+
+    def get_obs(self, achieved_name=None, goal=None):
+        assert self.hrl_mode
+
+        self.is_grasp = False
+        self.is_removal_success = False
+
+        if achieved_name is not None:
+            self.achieved_name = copy.deepcopy(achieved_name)
+        else:
+            self.achieved_name = 'target_object'
+            self.reset_indicate()
+
+        if goal is not None and np.any(goal != self.global_goal):
+            self.removal_goal = goal.copy()
+        else:
+            self.removal_goal = None
+            goal = self.global_goal.copy()
+
+        tmp_obstacle_name_list = self.object_name_list.copy()
+        tmp_obstacle_name_list.remove(self.achieved_name)
+        self.obstacle_name_list = tmp_obstacle_name_list.copy()
+        self.init_obstacle_xpos_list = [self.sim.data.get_geom_xpos(name).copy() for name in self.obstacle_name_list]
+
+        self._state_init(goal.copy())
+        return self._get_obs()
 
     def _render_callback(self):
         # Visualize target.

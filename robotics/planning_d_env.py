@@ -6,7 +6,7 @@ import torch as th
 from gym import spaces
 from stable_baselines3.common.torch_layers import ENet
 
-
+epsilon = 1e-3
 target_point = 0
 target_object = 1
 
@@ -82,10 +82,12 @@ class PlanningDEnv(gym.Env):
 
         planning_action = self.action_mapping(action.copy())
 
-        achieved_name, removal_goal, min_dist = self.model.macro_step_setup(planning_action, set_flag=True)
         prev_obs = self.model.get_obs()
         prev_success_rate = self.ENet(prev_obs).item()
         # print(f'Previous success rate: {prev_success_rate}')
+
+        achieved_name, removal_goal, min_dist = self.model.macro_step_setup(planning_action, set_flag=True)
+        # self.render()  # show which point and object agent has just selected
 
         done = self.model.is_fail()
         info = {
@@ -95,7 +97,15 @@ class PlanningDEnv(gym.Env):
             'is_fail': self.model.is_fail(),
         }
 
-        if min_dist > self.distance_threshold:
+        target_xpos = self.model.sim.data.get_geom_xpos('target_object').copy()
+        achieved_xpos = self.model.sim.data.get_geom_xpos(achieved_name).copy()
+
+        # choosing the object just below the target_object
+        if np.abs(achieved_xpos[:2] - target_xpos[:2]).sum() < epsilon:
+            # print(f'Undefined Behaviour!')
+            return prev_obs, -(min_dist - self.distance_threshold), done, info
+
+        if min_dist > np.inf:  # self.distance_threshold:
             # print(f'Out of control')
             return prev_obs, -(min_dist - self.distance_threshold), done, info
 
@@ -103,19 +113,26 @@ class PlanningDEnv(gym.Env):
                                            else 'target_object:joint',
                                            np.r_[removal_goal, self.model.object_generator.qpos_posix])
         self.model.sim.forward()
+        for _ in range(10):
+            self.model.sim.step()
+        # self.model.render()  # show what agent has just done (I guess model.render maybe work?)
+
+        done = self.model.is_fail()
+        info['is_fail'] = self.model.is_fail()
+        info['train_done'] = done
 
         obs = self.model.get_obs()
         curr_success_rate = self.ENet(obs).item()
         # print(f'Current success rate: {curr_success_rate}')
 
-        if curr_success_rate > self.success_rate_threshold:
+        if info['is_fail']:
+            return obs, self.fail_reward, done, info
+        elif curr_success_rate > self.success_rate_threshold:
             done = True
             info['is_success'] = True
             info['train_done'] = True
             info['train_is_success'] = True
             return obs, self.success_reward, done, info
-        elif info['is_fail']:
-            return obs, self.fail_reward, done, info
         return obs, curr_success_rate - prev_success_rate, done, info
 
     def render(self, mode="human", width=500, height=500):
