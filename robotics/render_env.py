@@ -50,7 +50,7 @@ class RenderEnv(gym.Env):
         self.table_start_xyz = np.r_[table_start_xy, table_start_z]
         self.table_end_xyz = np.r_[table_end_xy, table_end_z]
 
-        self.success_rate_threshold = 0.7
+        self.success_rate_threshold = 0.75
 
     def reset(self):
         obs = self.model.reset()

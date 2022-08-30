@@ -42,7 +42,7 @@ class PlanningDEnv(gym.Env):
         self.table_end_xyz = np.r_[table_end_xy, table_end_z]
 
         self.success_reward = 100
-        self.success_rate_threshold = 0.7
+        self.success_rate_threshold = 0.75
         self.fail_reward = -10
         self.distance_threshold = 0.1
 
