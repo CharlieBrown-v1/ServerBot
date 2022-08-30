@@ -2,8 +2,9 @@ import gym
 import copy
 
 import numpy as np
+import torch as th
 from gym import spaces
-from gym.envs.robotics import RenderHrlEnv
+from stable_baselines3.common.torch_layers import ENet
 from stable_baselines3 import HybridPPO
 
 desk_x = 0
@@ -16,13 +17,20 @@ action_list = [desk_x, desk_y, pos_x, pos_y, pos_z]
 
 
 class RenderEnv(gym.Env):
-    def __init__(self, model_path=None):
+    def __init__(self, agent_path=None, ENet_path=None, device='cuda'):
         super(RenderEnv, self).__init__()
 
-        if model_path is None:
+        if agent_path is None:
             self.agent = None
         else:
-            self.agent = HybridPPO.load(path=model_path)
+            self.agent = HybridPPO.load(agent_path)
+
+        if ENet_path is None:
+            self.ENet = None
+        else:
+            self.ENet = ENet()
+            self.ENet.load_state_dict(th.load(ENet_path))
+            self.ENet.to(device)
 
         self.model = gym.make('RenderHrlDense-v0')
 
@@ -50,7 +58,7 @@ class RenderEnv(gym.Env):
 
     def step(self, action: np.ndarray):
         obs = self.model.get_obs()
-        prev_success_rate = self.agent.policy.predict_observation(obs)
+        prev_success_rate = self.ENet(obs).item()
         # print(f'Previous success rate: {prev_success_rate}')
 
         if action is None:
@@ -73,7 +81,7 @@ class RenderEnv(gym.Env):
             else:
                 self.model.macro_step_setup(planning_action)
         obs, _, done, info = self.macro_step(obs)
-        curr_success_rate = self.agent.policy.predict_observation(self.model.get_obs())
+        curr_success_rate = self.ENet(self.model.get_obs()).item()
         # print(f'Current success rate: {curr_success_rate}')
 
         return obs, curr_success_rate - prev_success_rate, done, info

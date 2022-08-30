@@ -243,7 +243,7 @@ class ObjectGenerator:
                 obstacle_count = np.random.randint(1, self.single_count_sup)
                 achieved_qpos = np.r_[np.random.uniform(self.desktop_lower_boundary, self.desktop_upper_boundary), self.qpos_posix]
         else:
-            obstacle_count = 4
+            obstacle_count = 3
             achieved_qpos = np.r_[[1.34, 0.88, 0.425], self.qpos_posix]
 
         object_name_list.insert(0, achieved_name)

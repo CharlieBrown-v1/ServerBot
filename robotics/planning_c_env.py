@@ -2,9 +2,9 @@ import gym
 import copy
 
 import numpy as np
-from gym import spaces
 import torch as th
-from torch import nn
+from gym import spaces
+from stable_baselines3.common.torch_layers import ENet
 
 
 desk_x = 0
@@ -16,77 +16,16 @@ pos_z = 4
 action_list = [desk_x, desk_y, pos_x, pos_y, pos_z]
 
 
-class ENet(nn.Module):
-    def __init__(self) -> None:
-        super().__init__()
-
-        self.cube_shape = [25, 35, 17]
-        self.cube_len = np.prod(self.cube_shape)
-        self.n_input_channels = 1
-        self.flatten_dim = 768
-        self.cube_embedding_dim = 64
-        self.physcial_embedding_dim = 25
-
-        self.cnn = nn.Sequential(
-            nn.Conv3d(self.n_input_channels, 32, kernel_size=(3, 3, 3), stride=(1, 1, 1)),
-            nn.ReLU(),
-            nn.MaxPool3d(kernel_size=(1, 2, 2), stride=(1, 2, 2)),
-            nn.Conv3d(32, 64, kernel_size=(3, 3, 3), stride=(1, 1, 1)),
-            nn.ReLU(),
-            nn.MaxPool3d(kernel_size=(2, 2, 2), stride=(2, 2, 2)),
-            nn.Conv3d(64, 64, kernel_size=(3, 3, 2), stride=(1, 1, 1)),
-            nn.ReLU(),
-            nn.MaxPool3d(kernel_size=(2, 2, 2), stride=(2, 2, 2), padding=(0, 1, 1)),
-            nn.Flatten(),
-        )
-        self.linear = nn.Sequential(
-            nn.Linear(self.flatten_dim, self.cube_embedding_dim),
-            nn.ReLU()
-        )
-        input_dim = self.cube_embedding_dim + self.physcial_embedding_dim + 3 * 2
-        self.fc = nn.Sequential(
-            nn.Linear(input_dim, 64),
-            nn.ReLU(),
-            nn.Linear(64, 64),
-            nn.ReLU(),
-            nn.Linear(64, 1),
-            nn.Sigmoid()
-        )
-
-    def cnn_forward(self, observations: th.Tensor):
-        observations = th.as_tensor(observations, dtype=th.float).reshape(1, -1).to('cuda')
-        cube_latent = th.reshape(observations[:, :self.cube_len], shape=[-1, self.n_input_channels] + self.cube_shape)
-        cube_latent = self.cnn(cube_latent)
-        cube_latent = self.linear(cube_latent)
-        physical_latent = observations[:, self.cube_len:]
-
-        latent = th.cat([cube_latent, physical_latent], -1)
-
-        return latent
-
-    def forward(self, observation: dict) -> th.Tensor:
-        tensor_list = []
-        for key, sub_observation in observation.items():
-            if key == 'observation':
-                tensor_list.append(self.cnn_forward(th.as_tensor(sub_observation, dtype=th.float)).to('cuda'))
-            else:
-                tensor_list.append(th.as_tensor(sub_observation, dtype=th.float).reshape(1, -1).to('cuda'))
-
-        tensor = th.cat(tensor_list, dim=-1)
-        latent = self.fc(tensor)
-        return latent
-
-
 class PlanningCEnv(gym.Env):
     def __init__(self, ENet_path=None, device='cuda'):
         super(PlanningCEnv, self).__init__()
 
         if ENet_path is None:
-            self.agent = None
+            self.ENet = None
         else:
-            self.agent = ENet()
-            self.agent.load_state_dict(th.load(ENet_path))
-            self.agent.to(device)
+            self.ENet = ENet()
+            self.ENet.load_state_dict(th.load(ENet_path))
+            self.ENet.to(device)
 
         self.model = gym.make('RenderHrlDense-v0')
 
@@ -116,7 +55,7 @@ class PlanningCEnv(gym.Env):
         return obs
 
     def step(self, action: np.ndarray):
-        assert self.agent is not None, "You must load agent before step in upper env!"
+        assert self.ENet is not None, "You must load ENet before step in upper env!"
 
         planning_action = action.copy()
 
@@ -129,7 +68,7 @@ class PlanningCEnv(gym.Env):
 
         achieved_name, removal_goal, min_dist = self.model.macro_step_setup(planning_action, set_flag=True)
         prev_obs = self.model.get_obs()
-        prev_success_rate = self.agent(prev_obs).item()
+        prev_success_rate = self.ENet(prev_obs).item()
         # print(f'Previous success rate: {prev_success_rate}')
 
         done = self.model.is_fail()
@@ -150,7 +89,7 @@ class PlanningCEnv(gym.Env):
         self.model.sim.forward()
 
         obs = self.model.get_obs()
-        curr_success_rate = self.agent(obs).item()
+        curr_success_rate = self.ENet(obs).item()
         # print(f'Current success rate: {curr_success_rate}')
 
         if curr_success_rate > self.success_rate_threshold:
