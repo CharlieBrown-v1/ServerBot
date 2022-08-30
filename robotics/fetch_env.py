@@ -6,10 +6,13 @@ from gym.envs.robotics import rotations, robot_env, utils
 epsilon = 1e-3
 
 # Used by cube space
-item_name = ['air', 'table', 'goal', 'achieved_goal', 'obstacle']
+item_name = ['air', 'table', 'gripper_link', 'gripper_finger',
+             'goal', 'achieved_goal', 'obstacle']
 item_dict = dict(zip(item_name, np.linspace(0, 1, len(item_name))))
 table_xpos = np.array([1.3, 0.75, 0.2])
 table_size = np.array([0.25, 0.35, 0.2])
+gripper_finger_size = np.array([0.0135, 0.0070, 0.0385])
+gripper_link_size = np.array([0.0403, 0.0631, 0.0617])
 table_xpos_start = table_xpos - table_size
 table_xpos_end = table_xpos + table_size
 
@@ -298,6 +301,8 @@ class FetchEnv(robot_env.RobotEnv):
         utils.mocap_set_action(self.sim, action)
 
     def _map_object2cube(self, cube_obs: np.ndarray, starting_point: np.ndarray,
+                         gripper_link_xpos_tuple: tuple,
+                         gripper_finger_tuple_list: list,
                          goal_xpos_tuple: tuple,
                          achieved_goal_xpos_tuple: tuple,
                          obstacle_xpos_tuple_list: list,
@@ -310,6 +315,33 @@ class FetchEnv(robot_env.RobotEnv):
 
         _map_once(cube_obs, compute_starting_point, starting_point_idx,
                   table_xpos_start, table_xpos_end, item_dict['table'])
+        if self.debug_mode:
+            _verify_cube(cube_obs, starting_point, starting_point_idx, 'table',
+                         table_xpos_start, table_xpos_end)
+
+        gripper_link_xpos_start = gripper_link_xpos_tuple[1]
+        gripper_link_xpos_end = gripper_link_xpos_tuple[2]
+        _map_once(cube_obs, compute_starting_point, starting_point_idx,
+                  gripper_link_xpos_start, gripper_link_xpos_end, item_dict['gripper_link'])
+        if self.debug_mode:
+            _verify_cube(cube_obs, starting_point, starting_point_idx, 'gripper_link',
+                         gripper_link_xpos_start, gripper_link_xpos_end)
+
+        for gripper_finger_xpos_tuple in gripper_finger_tuple_list:
+            gripper_finger_xpos_start = gripper_finger_xpos_tuple[1]
+            gripper_finger_xpos_end = gripper_finger_xpos_tuple[2]
+            _map_once(cube_obs, compute_starting_point, starting_point_idx,
+                      gripper_finger_xpos_start, gripper_finger_xpos_end, item_dict['gripper_finger'])
+            if self.debug_mode:
+                _verify_cube(cube_obs, starting_point, starting_point_idx, 'gripper_finger',
+                             gripper_finger_xpos_start, gripper_finger_xpos_end)
+
+        goal_xpos_start = goal_xpos_tuple[1]
+        goal_xpos_end = goal_xpos_tuple[2]
+        _map_once(cube_obs, compute_starting_point, starting_point_idx,
+                  goal_xpos_start, goal_xpos_end, item_dict['goal'])
+        if self.debug_mode:
+            _verify_cube(cube_obs, starting_point, starting_point_idx, 'goal', goal_xpos_start, goal_xpos_end)
 
         # TODO Consider rotation angle
         goal_xpos = goal_xpos_tuple[0]
@@ -329,10 +361,10 @@ class FetchEnv(robot_env.RobotEnv):
             _verify_cube(cube_obs, starting_point, starting_point_idx, 'achieved_goal', achieved_goal_xpos_start,
                          achieved_goal_xpos_end)
 
-        for obstacle_xpos_pair in obstacle_xpos_tuple_list:
-            obstacle_xpos = obstacle_xpos_pair[0]
-            obstacle_xpos_start = obstacle_xpos_pair[1]
-            obstacle_xpos_end = obstacle_xpos_pair[2]
+        for obstacle_xpos_tuple in obstacle_xpos_tuple_list:
+            obstacle_xpos = obstacle_xpos_tuple[0]
+            obstacle_xpos_start = obstacle_xpos_tuple[1]
+            obstacle_xpos_end = obstacle_xpos_tuple[2]
             _map_once(cube_obs, compute_starting_point, starting_point_idx,
                       obstacle_xpos_start, obstacle_xpos_end, item_dict['obstacle'])
             if self.debug_mode:
@@ -367,6 +399,19 @@ class FetchEnv(robot_env.RobotEnv):
 
                 cube_obs = np.zeros((length_scale, width_scale, height_scale))
 
+                gripper_link_xpos = self.sim.data.get_geom_xpos('robot0:gripper_link').copy()
+                gripper_link_tuple = (gripper_link_xpos, gripper_link_xpos - gripper_link_size,
+                                      gripper_link_xpos + gripper_link_size)
+
+                gripper_finger_xpos_list = [
+                    self.sim.data.get_geom_xpos('robot0:l_gripper_finger_link').copy(),
+                    self.sim.data.get_geom_xpos('robot0:r_gripper_finger_link').copy(),
+                ]
+                gripper_finger_tuple_list = [
+                    (gripper_finger_xpos, gripper_finger_xpos - gripper_finger_size,
+                     gripper_finger_xpos + gripper_finger_size) for gripper_finger_xpos in gripper_finger_xpos_list
+                ]
+
                 if self.removal_goal is None or self.is_removal_success:
                     goal_xpos = self.global_goal.copy()
                 else:
@@ -384,6 +429,8 @@ class FetchEnv(robot_env.RobotEnv):
                     (obstacle_xpos, obstacle_xpos - obstacle_size, obstacle_xpos + obstacle_size) for obstacle_xpos in
                     obstacle_xpos_list]
                 self._map_object2cube(cube_obs, starting_point,
+                                      gripper_link_tuple,
+                                      gripper_finger_tuple_list,
                                       goal_xpos_tuple,
                                       achieved_goal_xpos_tuple,
                                       obstacle_xpos_tuple_list,
