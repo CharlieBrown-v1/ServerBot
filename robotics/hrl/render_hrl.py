@@ -4,6 +4,7 @@ import numpy as np
 
 from gym import utils
 from gym.envs.robotics import fetch_env
+from stable_baselines3 import HybridPPO
 
 
 desk_x = 0
@@ -54,11 +55,6 @@ class RenderHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.removal_goal_indicate = None
         self.removal_xpos_indicate = None
 
-    def reset(self):
-        obs = super(RenderHrlEnv, self).reset()
-        self.reset_indicate()
-        return obs
-
     def reset_indicate(self):
         self.achieved_name_indicate = None
         self.removal_goal_indicate = None
@@ -108,6 +104,10 @@ class RenderHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             self.removal_goal = None
             self.reset_indicate()
 
+            achieved_name = None
+            removal_goal = None
+            min_dist = None
+
         tmp_obstacle_name_list = self.object_name_list.copy()
         tmp_obstacle_name_list.remove(self.achieved_name)
         self.obstacle_name_list = tmp_obstacle_name_list.copy()
@@ -115,12 +115,32 @@ class RenderHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         return achieved_name, removal_goal, min_dist
 
+    def macro_step(self, agent: HybridPPO, obs: dict):
+        i = 0
+        info = {'is_success': False}
+        frames = []
+        while i < self.spec.max_episode_steps:
+            i += 1
+            agent_action = agent.predict(observation=obs, deterministic=True)[0]
+            next_obs, reward, done, info = self.step(agent_action)
+            obs = next_obs
+            # frames.append(self.render(mode='rgb_array'))
+            # self.render()
+            if info['train_done']:
+                break
+        info['frames'] = frames
+        if info['is_removal_success']:
+            return obs, 0, False, info
+        else:
+            return obs, 0, True, info
+
     def is_fail(self):
         return self.judge(self.obstacle_name_list.copy(), self.init_obstacle_xpos_list.copy(), mode='done')
 
     def get_obs(self, achieved_name=None, goal=None):
         assert self.hrl_mode
 
+        new_goal = goal.copy() if goal is not None else None
         self.is_grasp = False
         self.is_removal_success = False
 
@@ -130,18 +150,18 @@ class RenderHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             self.achieved_name = 'target_object'
             self.reset_indicate()
 
-        if goal is not None and np.any(goal != self.global_goal):
-            self.removal_goal = goal.copy()
+        if new_goal is not None and np.any(new_goal != self.global_goal):
+            self.removal_goal = new_goal.copy()
         else:
             self.removal_goal = None
-            goal = self.global_goal.copy()
+            new_goal = self.global_goal.copy()
 
         tmp_obstacle_name_list = self.object_name_list.copy()
         tmp_obstacle_name_list.remove(self.achieved_name)
         self.obstacle_name_list = tmp_obstacle_name_list.copy()
         self.init_obstacle_xpos_list = [self.sim.data.get_geom_xpos(name).copy() for name in self.obstacle_name_list]
 
-        self._state_init(goal.copy())
+        self._state_init(new_goal.copy())
         return self._get_obs()
 
     def _render_callback(self):

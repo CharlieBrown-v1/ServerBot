@@ -7,6 +7,9 @@ from gym import spaces
 from stable_baselines3.common.torch_layers import ENet
 from stable_baselines3 import HybridPPO
 
+
+epsilon = 1e-3
+
 desk_x = 0
 desk_y = 1
 pos_x = 2
@@ -16,9 +19,9 @@ pos_z = 4
 action_list = [desk_x, desk_y, pos_x, pos_y, pos_z]
 
 
-class RenderEnv(gym.Env):
+class PlanningWithENetEnv(gym.Env):
     def __init__(self, agent_path=None, ENet_path=None):
-        super(RenderEnv, self).__init__()
+        super(PlanningWithENetEnv, self).__init__()
 
         if agent_path is None:
             self.agent = None
@@ -52,39 +55,47 @@ class RenderEnv(gym.Env):
 
         self.success_rate_threshold = 0.75
 
+        self.success_reward = 1
+        self.removal_success_reward = 0
+        self.fail_reward = -1
+        self.step_reward = -0.1
+
     def reset(self):
         obs = self.model.reset()
         return obs
 
     def step(self, action: np.ndarray):
-        obs = self.model.get_obs()
-        prev_success_rate = self.ENet(obs).item()
+        assert self.agent is not None and self.ENet is not None, "You must load agent and ENet before step!"
+
+        planning_action = action.copy()
+
+        # action for choosing desk's position
+        planning_action[:2] = (self.table_end_xyz[:2] - self.table_start_xyz[:2]) * planning_action[:2] / 2 \
+                              + (self.table_start_xyz[:2] + self.table_end_xyz[:2]) / 2
+        # action for choosing obstacle's position
+        planning_action[2:] = (self.table_end_xyz - self.table_start_xyz) * planning_action[2:] / 2 \
+                              + (self.table_start_xyz + self.table_end_xyz) / 2
+
+        prev_obs = self.model.get_obs()
+        prev_success_rate = self.ENet(prev_obs).item()
+
         # print(f'Previous success rate: {prev_success_rate}')
 
-        if action is None:
-            self.model.reset_indicate()
-        else:
-            planning_action = action.copy()
+        set_flag = prev_success_rate <= self.success_rate_threshold
+        achieved_name, removal_goal, min_dist = self.model.macro_step_setup(planning_action, set_flag=set_flag)
+        # self.render()  # show which point and object agent has just selected
 
-            # action for choosing desk's position
-            planning_action[:2] = (self.table_end_xyz[:2] - self.table_start_xyz[:2]) * planning_action[:2] / 2 \
-                                  + (self.table_start_xyz[:2] + self.table_end_xyz[:2]) / 2
-            # action for choosing obstacle's position
-            planning_action[2:] = (self.table_end_xyz - self.table_start_xyz) * planning_action[2:] / 2 \
-                                  + (self.table_start_xyz + self.table_end_xyz) / 2
-
-            if prev_success_rate <= self.success_rate_threshold:
-                achieved_name, removal_goal, _ = self.model.macro_step_setup(planning_action, set_flag=True)
-                assert achieved_name is not None
-                if np.any(removal_goal != self.model.global_goal):
-                    obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal.copy())
-            else:
-                self.model.macro_step_setup(planning_action)
+        obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal)
         obs, _, done, info = self.model.macro_step(agent=self.agent, obs=obs)
-        curr_success_rate = self.ENet(self.model.get_obs()).item()
-        # print(f'Current success rate: {curr_success_rate}')
 
-        return obs, curr_success_rate - prev_success_rate, done, info
+        if info['is_success']:
+            return obs, self.success_reward, done, info
+        elif info['is_removal_success']:
+            return obs, self.removal_success_reward, done, info
+        elif info['is_fail']:
+            return obs, self.fail_reward, done, info
+        else:
+            return obs, self.step_reward, done, info
 
     def render(self, mode="human", width=500, height=500):
         self.model.render()

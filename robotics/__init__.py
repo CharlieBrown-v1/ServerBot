@@ -19,4 +19,6 @@ from gym.envs.robotics.hrl.render_hrl import RenderHrlEnv
 
 from gym.envs.robotics.planning_c_env import PlanningCEnv
 from gym.envs.robotics.planning_d_env import PlanningDEnv
+from gym.envs.robotics.planning_with_enet_env import PlanningWithENetEnv
+from gym.envs.robotics.planning_direct_env import PlanningDirectEnv
 from gym.envs.robotics.render_env import RenderEnv
