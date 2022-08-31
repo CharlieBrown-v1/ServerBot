@@ -10,14 +10,13 @@ from stable_baselines3 import HybridPPO
 
 epsilon = 1e-3
 
-grasp_mode = 0
 desk_x = 1
 desk_y = 2
 pos_x = 3
 pos_y = 4
 pos_z = 5
 
-action_list = [grasp_mode, desk_x, desk_y, pos_x, pos_y, pos_z]
+action_list = [desk_x, desk_y, pos_x, pos_y, pos_z]
 
 
 class PlanningDirectEnv(gym.Env):
@@ -71,17 +70,13 @@ class PlanningDirectEnv(gym.Env):
         planning_action = action.copy()
 
         # action for choosing desk's position
-        planning_action[1: 1 + 2] = (self.table_end_xyz[:2] - self.table_start_xyz[:2]) * planning_action[1: 1 + 2] / 2\
+        planning_action[:2] = (self.table_end_xyz[:2] - self.table_start_xyz[:2]) * planning_action[:2] / 2\
                                     + (self.table_start_xyz[:2] + self.table_end_xyz[:2]) / 2
         # action for choosing obstacle's position
-        planning_action[1 + 2:] = (self.table_end_xyz - self.table_start_xyz) * planning_action[1 + 2:] / 2 \
+        planning_action[2:] = (self.table_end_xyz - self.table_start_xyz) * planning_action[2:] / 2 \
                               + (self.table_start_xyz + self.table_end_xyz) / 2
 
-        # decide the mode of grasp
-        # <= 0 for removal, > 0 for grasp
-        set_flag = planning_action[0] <= 0
-
-        achieved_name, removal_goal, min_dist = self.model.macro_step_setup(planning_action[1:], set_flag=set_flag)
+        achieved_name, removal_goal, min_dist = self.model.macro_step_setup(planning_action)
         # self.render()  # show which point and object agent has just selected
 
         obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal)

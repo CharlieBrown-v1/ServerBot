@@ -1,4 +1,5 @@
 import os
+import copy
 import numpy as np
 import xml.etree.ElementTree as ET
 
@@ -119,6 +120,7 @@ class ObjectGenerator:
                  single_count_sup=7,
                  object_stacked_probability=0.5,
                  random_mode=False,
+                 train_upper_mode=False,
                  ):
         self.size_sup = 0.025
         self.height_inf = 0.025
@@ -138,32 +140,34 @@ class ObjectGenerator:
         self.initial_xpos_origin = np.array([20.0, 20.0, 0.0])
         self.initial_xpos_size = np.array([5.0, 5.0, 0])
 
-        self.qpos_posix = np.array([1.0, 0.0, 0.0, 0.0])
+        self.qpos_postfix = np.array([1.0, 0.0, 0.0, 0.0])
 
         self.single_count_sup = single_count_sup + 1
         self.random_mode = random_mode
+        self.train_upper_mode = train_upper_mode
 
         self.object_name_list = []
         self.obstacle_name_list = []
         self.init_total_obstacle()
 
-        self.step = 0.054
+        self.step = 0.052
         self.delta_obstacle_qpos_list = [
-            np.r_[[0, 0, self.step], self.qpos_posix],
-            np.r_[[-self.step, 0, 0], self.qpos_posix],
-            np.r_[[self.step, 0, 0], self.qpos_posix],
-            np.r_[[0, 0, 2 * self.step], self.qpos_posix],
-            np.r_[[0, 0, 3 * self.step], self.qpos_posix],
-            np.r_[[0, -self.step, 0], self.qpos_posix],
-            np.r_[[0, self.step, 0], self.qpos_posix],
+            np.r_[[0, 0, self.step], self.qpos_postfix],
+            np.r_[[-self.step, 0, 0], self.qpos_postfix],
+            np.r_[[self.step, 0, 0], self.qpos_postfix],
+            np.r_[[0, 0, 2 * self.step], self.qpos_postfix],
+            np.r_[[0, 0, 3 * self.step], self.qpos_postfix],
+            np.r_[[0, -self.step, 0], self.qpos_postfix],
+            np.r_[[0, self.step, 0], self.qpos_postfix],
         ]
 
         self.max_stack_count = 4
         self.possible_stack_qpos_list = []
+        self.stack_qpos_postfix = np.array([0.0, 0.0, 0.0, 0.0])
         for stack_count in range(2, self.max_stack_count + 1):
             stack_qpos_list = []
             for i in range(1, stack_count):
-                stack_qpos_list.append(np.r_[0, 0, -i * self.step, self.qpos_posix])
+                stack_qpos_list.append(np.r_[0, 0, -i * self.step, self.stack_qpos_postfix])
             self.possible_stack_qpos_list.append(stack_qpos_list)
         assert len(self.possible_stack_qpos_list) == self.max_stack_count - 1
 
@@ -182,7 +186,7 @@ class ObjectGenerator:
                 self.obstacle_name_list.append(obstacle_name)
 
     def sample_one_qpos_on_table(self, achieved_xpos: np.ndarray):
-        object_qpos = np.r_[achieved_xpos, self.qpos_posix]
+        object_qpos = np.r_[achieved_xpos, self.qpos_postfix]
         object_xpos = object_qpos[:3]
 
         object_xpos[2] = self.desktop_lower_boundary[2]
@@ -206,7 +210,7 @@ class ObjectGenerator:
     def stack_setup(self):
         stack_qpos_list = self.possible_stack_qpos_list[np.random.randint(len(self.possible_stack_qpos_list))].copy()
         return stack_qpos_list
-    
+
     def sample_objects(self):
         achieved_name = 'target_object'
 
@@ -222,7 +226,7 @@ class ObjectGenerator:
                 achieved_qpos = np.r_[
                     np.random.uniform(self.desktop_lower_boundary[:2], self.desktop_upper_boundary[:2]),
                     self.desktop_lower_boundary[2],
-                    self.qpos_posix,
+                    self.qpos_postfix,
                 ]
                 stack_qpos_list = self.stack_setup()
                 achieved_qpos[2] += self.step * len(stack_qpos_list)
@@ -234,6 +238,21 @@ class ObjectGenerator:
                     obstacle_qpos = achieved_qpos + stack_qpos_list[i]
                     object_qpos_list.append(obstacle_qpos.copy())
                     obstacle_xpos_list.append(obstacle_qpos[:3].copy())
+
+                if self.train_upper_mode:
+                    swap_index = np.random.randint(len(obstacle_xpos_list))
+                    tmp_achieved_xpos = obstacle_xpos_list[swap_index].copy()
+
+                    obstacle_xpos_list.pop(swap_index)
+                    obstacle_xpos_list.insert(swap_index, achieved_qpos[:3].copy())
+                    object_qpos_list.pop(swap_index)
+                    object_qpos_list.insert(swap_index, achieved_qpos.copy())
+                    
+                    achieved_qpos = np.r_[
+                        tmp_achieved_xpos.copy(),
+                        self.qpos_postfix,
+                    ]
+
                 obstacle_count = np.random.randint(self.single_count_sup
                                                    - 1  # recover + 1 in __init__
                                                    - len(stack_qpos_list)
@@ -241,10 +260,11 @@ class ObjectGenerator:
                                                    )
             else:
                 obstacle_count = np.random.randint(1, self.single_count_sup)
-                achieved_qpos = np.r_[np.random.uniform(self.desktop_lower_boundary, self.desktop_upper_boundary), self.qpos_posix]
+                achieved_qpos = np.r_[
+                    np.random.uniform(self.desktop_lower_boundary, self.desktop_upper_boundary), self.qpos_postfix]
         else:
             obstacle_count = 4
-            achieved_qpos = np.r_[[1.34, 0.88, 0.425], self.qpos_posix]
+            achieved_qpos = np.r_[[1.34, 0.88, 0.425], self.qpos_postfix]
 
         object_name_list.insert(0, achieved_name)
         object_qpos_list.insert(0, achieved_qpos.copy())
@@ -286,7 +306,7 @@ class ObjectGenerator:
         else:
             achieved_xpos = np.array([1.34, 0.88, 0.425])
 
-        achieved_qpos = np.r_[achieved_xpos, self.qpos_posix]
+        achieved_qpos = np.r_[achieved_xpos, self.qpos_postfix]
         object_qpos_list = [achieved_qpos.copy()]
 
         delta_obstacle_qpos_list = self.delta_obstacle_qpos_list[: obstacle_count].copy()

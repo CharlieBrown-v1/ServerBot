@@ -124,6 +124,7 @@ class FetchEnv(robot_env.RobotEnv):
             single_count_sup=7,
             hrl_mode=False,
             random_mode=False,
+            train_upper_mode=False,
             debug_mode=False,
             demo_mode=False,
     ):
@@ -169,6 +170,7 @@ class FetchEnv(robot_env.RobotEnv):
             single_count_sup=single_count_sup,
             object_stacked_probability=object_stacked_probability,
             random_mode=random_mode,
+            train_upper_mode=train_upper_mode,
         )
 
         self.prev_grip_achi_dist = None

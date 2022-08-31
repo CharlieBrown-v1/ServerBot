@@ -45,9 +45,11 @@ class RenderHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             reward_type=reward_type,
             single_count_sup=7,
             target_in_air_probability=0.5,
-            object_stacked_probability=0.5,
+            # object_stacked_probability=0.5,
+            object_stacked_probability=1,
             hrl_mode=True,
             random_mode=True,
+            train_upper_mode=True,
         )
         utils.EzPickle.__init__(self, reward_type=reward_type)
 
@@ -78,13 +80,13 @@ class RenderHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         self._state_init(goal.copy())
 
-    def macro_step_setup(self, macro_action, set_flag=False):
+    def macro_step_setup(self, macro_action):
         removal_goal = np.array([macro_action[desk_x], macro_action[desk_y], self.height_offset])
         action_xpos = np.array([macro_action[pos_x], macro_action[pos_y], macro_action[pos_z]])
 
         achieved_name = None
         min_dist = np.inf
-        name_list = self.obstacle_name_list
+        name_list = self.object_name_list
         for name in name_list:
             xpos = self.sim.data.get_geom_xpos(name).copy()
             dist = xpos_distance(action_xpos, xpos)
@@ -93,7 +95,7 @@ class RenderHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                 achieved_name = name
         assert achieved_name is not None
 
-        if set_flag and np.any(removal_goal != self.global_goal):
+        if achieved_name != 'target_object' and np.any(removal_goal != self.global_goal):
             self.achieved_name = achieved_name
             self.removal_goal = removal_goal.copy()
             self.achieved_name_indicate = achieved_name
@@ -103,7 +105,7 @@ class RenderHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             self.achieved_name = 'target_object'
             self.removal_goal = None
             self.reset_indicate()
-
+            self.removal_xpos_indicate = action_xpos.copy()
             achieved_name = None
             removal_goal = None
             min_dist = None
@@ -148,7 +150,6 @@ class RenderHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             self.achieved_name = copy.deepcopy(achieved_name)
         else:
             self.achieved_name = 'target_object'
-            self.reset_indicate()
 
         if new_goal is not None and np.any(new_goal != self.global_goal):
             self.removal_goal = new_goal.copy()
