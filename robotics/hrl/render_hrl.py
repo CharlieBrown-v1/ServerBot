@@ -64,6 +64,24 @@ class RenderHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.removal_goal_indicate = None
         self.removal_xpos_indicate = None
 
+    def reset_after_removal(self, goal=None):
+        assert self.hrl_mode
+        assert self.is_removal_success
+
+        if goal is None:
+            goal = self.global_goal.copy()
+
+        new_achieved_name = 'target_object'
+        new_obstacle_name_list = self.object_name_list.copy()
+        new_obstacle_name_list.remove(new_achieved_name)
+
+        self.achieved_name = copy.deepcopy(new_achieved_name)
+        self.obstacle_name_list = new_obstacle_name_list.copy()
+        self.init_obstacle_xpos_list = [self.sim.data.get_geom_xpos(obstacle_name).copy() for obstacle_name
+                                        in self.obstacle_name_list]
+
+        self._state_init(goal.copy())
+
     def macro_step_setup(self, macro_action, set_flag=False):
         removal_goal = np.array([macro_action[desk_x], macro_action[desk_y], self.height_offset])
         action_xpos = np.array([macro_action[pos_x], macro_action[pos_y], macro_action[pos_z]])
