@@ -58,7 +58,6 @@ class PlanningDirectEnv(gym.Env):
         self.success_rate_threshold = 0.75
 
         self.success_reward = 1
-        self.removal_success_reward = 0
         self.fail_reward = -1
         self.step_reward = -0.1
 
@@ -90,9 +89,7 @@ class PlanningDirectEnv(gym.Env):
 
         if info['is_success']:
             return obs, self.success_reward, done, info
-        # elif info['is_removal_success']:
-        #     return obs, self.removal_success_reward, done, info
-        elif info['is_fail']:
+        elif info['is_fail'] or done:
             return obs, self.fail_reward, done, info
         else:
             return obs, self.step_reward, done, info
