@@ -201,7 +201,6 @@ class FetchEnv(robot_env.RobotEnv):
         achieved_xpos = self.sim.data.get_geom_xpos(self.achieved_name).copy()
 
         move_count = 0
-        fall_count = 0
         not_in_desk_count = int(achieved_xpos[2] <= 0.4 - 0.01)
 
         for idx in np.arange(len(name_list)):
@@ -213,16 +212,13 @@ class FetchEnv(robot_env.RobotEnv):
             if delta_xpos > self.distance_threshold:
                 move_count += 1
 
-            if init_xpos[2] - curr_xpos[2] > self.distance_threshold:
-                fall_count += 1
-
             if curr_xpos[2] <= 0.4 - 0.01:
                 not_in_desk_count += 1
 
         if mode == 'done':
-            return move_count + fall_count + not_in_desk_count > 0
+            return move_count + not_in_desk_count > 0
         elif mode == 'punish':
-            return (move_count + fall_count + not_in_desk_count) * self.punish_factor
+            return (move_count + not_in_desk_count) * self.punish_factor
 
     # DIY
     def _judge_is_grasp(self, achieved_goal: np.array, action: np.array):

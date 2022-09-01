@@ -19,6 +19,11 @@ pos_z = 5
 action_list = [desk_x, desk_y, pos_x, pos_y, pos_z]
 
 
+def xpos_distance(goal_a: np.ndarray, goal_b: np.ndarray):
+    assert goal_a.shape == goal_b.shape
+    return np.linalg.norm(goal_a - goal_b, axis=-1)
+
+
 class PlanningDirectEnv(gym.Env):
     def __init__(self, agent_path=None, ENet_path=None):
         super(PlanningDirectEnv, self).__init__()
@@ -59,6 +64,7 @@ class PlanningDirectEnv(gym.Env):
 
         self.success_reward = 1
         self.fail_reward = -1
+        self.suitable_step_reward = -0.01
         self.step_reward = -0.1
 
     def unset_training_mode(self):
@@ -91,8 +97,23 @@ class PlanningDirectEnv(gym.Env):
             return obs, self.success_reward, done, info
         elif info['is_fail'] or done:
             return obs, self.fail_reward, done, info
+        elif self.is_step_suitable():
+            return obs, self.suitable_step_reward, done, info
         else:
             return obs, self.step_reward, done, info
+
+    def is_step_suitable(self):
+        achieved_name = self.model.env.achieved_name_indicate  # achieved name of this macro-step
+        removal_goal = self.model.env.removal_goal_indicate.copy()  # removal goal of this macro-step
+        name_list = self.model.env.object_name_list.copy()
+        for name in name_list:
+            if name != achieved_name:  # obstacle_name of this macro-step
+                xpos = self.model.env.sim.data.get_geom_xpos(name).copy()
+                delta_xpos = xpos_distance(removal_goal, xpos)
+
+                if delta_xpos <= 1.5 * self.model.env.distance_threshold:
+                    return False
+        return True
 
     def render(self, mode="human", width=500, height=500):
         self.model.render()
