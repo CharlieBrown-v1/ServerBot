@@ -75,7 +75,7 @@ class PlanningDirectEnv(gym.Env):
         return obs
 
     def step(self, action: np.ndarray):
-        assert self.agent is not None and self.ENet is not None, "You must load agent and ENet before step!"
+        assert self.agent is not None, "You must load agent before step!"
 
         planning_action = action.copy()
 
@@ -101,6 +101,19 @@ class PlanningDirectEnv(gym.Env):
             return obs, self.suitable_step_reward, done, info
         else:
             return obs, self.step_reward, done, info
+
+    def compute_reward(self, achieved_goal: np.ndarray, desired_goal: np.ndarray, info: np.ndarray):
+        assert isinstance(info, np.ndarray), 'off policy algorithm must be ndarray'
+        reward = []
+        for info_dict in info:
+            done = info_dict['is_fail'] or info_dict['is_success']
+            if info_dict['is_success']:
+                reward.append(self.success_reward)
+            elif info_dict['is_fail'] or done:
+                reward.append(self.fail_reward)
+            else:
+                reward.append(self.step_reward)
+        return np.array(reward)
 
     def is_step_suitable(self):
         achieved_name = self.model.env.achieved_name_indicate  # achieved name of this macro-step
