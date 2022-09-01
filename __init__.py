@@ -401,7 +401,7 @@ for reward_type in ["sparse", "dense"]:
         id="RenderHrl{}-v0".format(suffix),
         entry_point="gym.envs.robotics:RenderHrlEnv",
         kwargs=kwargs,
-        max_episode_steps=12,
+        max_episode_steps=128,
     )
 
     # DIY
