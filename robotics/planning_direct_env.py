@@ -53,12 +53,17 @@ class PlanningDirectEnv(gym.Env):
         self.table_start_xyz = np.r_[table_start_xy, table_start_z]
         self.table_end_xyz = np.r_[table_end_xy, table_end_z]
 
+        self.training_mode = False
+
         self.success_rate_threshold = 0.75
 
         self.success_reward = 1
         self.removal_success_reward = 0
         self.fail_reward = -1
         self.step_reward = -0.1
+
+    def set_training_mode(self):
+        self.training_mode = True
 
     def reset(self):
         obs = self.model.reset()
@@ -77,15 +82,16 @@ class PlanningDirectEnv(gym.Env):
                               + (self.table_start_xyz + self.table_end_xyz) / 2
 
         achieved_name, removal_goal, min_dist = self.model.macro_step_setup(planning_action)
-        # self.render()  # show which point and object agent has just selected
+        if not self.training_mode:
+            self.render()  # show which point and object agent has just selected
 
         obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal)
         obs, _, done, info = self.model.macro_step(agent=self.agent, obs=obs)
 
         if info['is_success']:
             return obs, self.success_reward, done, info
-        elif info['is_removal_success']:
-            return obs, self.removal_success_reward, done, info
+        # elif info['is_removal_success']:
+        #     return obs, self.removal_success_reward, done, info
         elif info['is_fail']:
             return obs, self.fail_reward, done, info
         else:

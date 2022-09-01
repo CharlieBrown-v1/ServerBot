@@ -45,17 +45,21 @@ class RenderHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             reward_type=reward_type,
             single_count_sup=7,
             target_in_air_probability=0.5,
-            # object_stacked_probability=0.5,
-            object_stacked_probability=1,
+            object_stacked_probability=0.5,
             hrl_mode=True,
             random_mode=True,
             train_upper_mode=True,
         )
         utils.EzPickle.__init__(self, reward_type=reward_type)
 
+        self.training_mode = False
+
         self.achieved_name_indicate = None
         self.removal_goal_indicate = None
         self.removal_xpos_indicate = None
+
+    def set_training_mode(self):
+        self.training_mode = True
 
     def reset_indicate(self):
         self.achieved_name_indicate = None
@@ -127,7 +131,8 @@ class RenderHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             next_obs, reward, done, info = self.step(agent_action)
             obs = next_obs
             # frames.append(self.render(mode='rgb_array'))
-            # self.render()
+            if not self.training_mode:
+                self.render()
             if info['train_done']:
                 break
         info['frames'] = frames

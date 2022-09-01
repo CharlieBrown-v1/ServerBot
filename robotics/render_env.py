@@ -61,25 +61,18 @@ class RenderEnv(gym.Env):
         prev_success_rate = self.ENet(obs).item()
         # print(f'Previous success rate: {prev_success_rate}')
 
-        if action is None:
-            self.model.reset_indicate()
-        else:
-            planning_action = action.copy()
+        assert action is not None
 
-            # action for choosing desk's position
-            planning_action[:2] = (self.table_end_xyz[:2] - self.table_start_xyz[:2]) * planning_action[:2] / 2 \
-                                  + (self.table_start_xyz[:2] + self.table_end_xyz[:2]) / 2
-            # action for choosing obstacle's position
-            planning_action[2:] = (self.table_end_xyz - self.table_start_xyz) * planning_action[2:] / 2 \
+        planning_action = action.copy()
+        # action for choosing desk's position
+        planning_action[:2] = (self.table_end_xyz[:2] - self.table_start_xyz[:2]) * planning_action[:2] / 2 \
+                              + (self.table_start_xyz[:2] + self.table_end_xyz[:2]) / 2
+        # action for choosing obstacle's position
+        planning_action[2:] = (self.table_end_xyz - self.table_start_xyz) * planning_action[2:] / 2 \
                                   + (self.table_start_xyz + self.table_end_xyz) / 2
 
-            if prev_success_rate <= self.success_rate_threshold:
-                achieved_name, removal_goal, _ = self.model.macro_step_setup(planning_action, set_flag=True)
-                assert achieved_name is not None
-                if np.any(removal_goal != self.model.global_goal):
-                    obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal.copy())
-            else:
-                self.model.macro_step_setup(planning_action)
+        achieved_name, removal_goal, _ = self.model.macro_step_setup(planning_action)
+        obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal)
         obs, _, done, info = self.model.macro_step(agent=self.agent, obs=obs)
         curr_success_rate = self.ENet(self.model.get_obs()).item()
         # print(f'Current success rate: {curr_success_rate}')
