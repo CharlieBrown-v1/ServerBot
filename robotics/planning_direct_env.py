@@ -53,7 +53,7 @@ class PlanningDirectEnv(gym.Env):
         self.table_start_xyz = np.r_[table_start_xy, table_start_z]
         self.table_end_xyz = np.r_[table_end_xy, table_end_z]
 
-        self.training_mode = False
+        self.training_mode = True
 
         self.success_rate_threshold = 0.75
 
@@ -62,8 +62,8 @@ class PlanningDirectEnv(gym.Env):
         self.fail_reward = -1
         self.step_reward = -0.1
 
-    def set_training_mode(self):
-        self.training_mode = True
+    def unset_training_mode(self):
+        self.training_mode = False
 
     def reset(self):
         obs = self.model.reset()

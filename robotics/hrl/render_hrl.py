@@ -52,14 +52,14 @@ class RenderHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         )
         utils.EzPickle.__init__(self, reward_type=reward_type)
 
-        self.training_mode = False
+        self.training_mode = True
 
         self.achieved_name_indicate = None
         self.removal_goal_indicate = None
         self.removal_xpos_indicate = None
 
-    def set_training_mode(self):
-        self.training_mode = True
+    def unset_training_mode(self):
+        self.training_mode = False
 
     def reset_indicate(self):
         self.achieved_name_indicate = None
