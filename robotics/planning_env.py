@@ -2,7 +2,6 @@ import gym
 import copy
 
 import numpy as np
-import torch as th
 from gym import spaces
 from stable_baselines3 import HybridPPO
 
@@ -23,9 +22,9 @@ def xpos_distance(goal_a: np.ndarray, goal_b: np.ndarray):
     return np.linalg.norm(goal_a - goal_b, axis=-1)
 
 
-class PlanningDirectEnv(gym.Env):
+class PlanningEnv(gym.Env):
     def __init__(self, agent_path=None):
-        super(PlanningDirectEnv, self).__init__()
+        super(PlanningEnv, self).__init__()
 
         if agent_path is None:
             self.agent = None

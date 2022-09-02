@@ -17,4 +17,4 @@ from gym.envs.robotics.hrl.grasp import GraspEnv
 from gym.envs.robotics.hrl.hrl import HrlEnv
 from gym.envs.robotics.hrl.render_hrl import RenderHrlEnv
 
-from gym.envs.robotics.planning_direct_env import PlanningDirectEnv
+from gym.envs.robotics.planning_env import PlanningEnv
