@@ -59,7 +59,7 @@ class PlanningDirectEnv(gym.Env):
         self.suitable_step_reward = -0.01
         self.step_reward = -0.1
 
-    def unset_training_mode(self, mode: bool):
+    def set_training_mode(self, mode: bool):
         self.training_mode = mode
 
     def reset(self):

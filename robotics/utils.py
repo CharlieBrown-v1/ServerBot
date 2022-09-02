@@ -160,6 +160,7 @@ class ObjectGenerator:
             np.r_[[0, -self.step, 0], self.qpos_postfix],
             np.r_[[0, self.step, 0], self.qpos_postfix],
         ]
+        self.obstacle_count = 3
 
         self.max_stack_count = 4
         self.possible_stack_qpos_list = []
@@ -263,8 +264,9 @@ class ObjectGenerator:
                 achieved_qpos = np.r_[
                     np.random.uniform(self.desktop_lower_boundary, self.desktop_upper_boundary), self.qpos_postfix]
         else:
-            obstacle_count = 3
-            achieved_qpos = np.r_[[1.34, 0.88, 0.425], self.qpos_postfix]
+            obstacle_count = self.obstacle_count
+            self.obstacle_count = 3 + (self.obstacle_count + 1) % 3
+            achieved_qpos = np.r_[[1.34, 0.55, 0.425], self.qpos_postfix]
 
         object_name_list.insert(0, achieved_name)
         object_qpos_list.insert(0, achieved_qpos.copy())
