@@ -342,35 +342,10 @@ def _merge(a, b):
 
 # DIY
 register(
-        id="PlanningWithENet-v0",
-        entry_point="gym.envs.robotics:PlanningWithENetEnv",
-        max_episode_steps=16,
-)
-
-register(
         id="PlanningDirect-v0",
         entry_point="gym.envs.robotics:PlanningDirectEnv",
         max_episode_steps=16,
 )
-
-register(
-        id="PlanningC-v0",
-        entry_point="gym.envs.robotics:PlanningCEnv",
-        max_episode_steps=16,
-)
-
-register(
-        id="PlanningD-v0",
-        entry_point="gym.envs.robotics:PlanningDEnv",
-        max_episode_steps=16,
-)
-
-register(
-        id="Render-v0",
-        entry_point="gym.envs.robotics:RenderEnv",
-        max_episode_steps=16,
-)
-
 
 for reward_type in ["sparse", "dense"]:
     suffix = "Dense" if reward_type == "dense" else ""
@@ -390,8 +365,8 @@ for reward_type in ["sparse", "dense"]:
 
     # DIY
     register(
-        id="Naive{}-v0".format(suffix),
-        entry_point="gym.envs.robotics:NaiveEnv",
+        id="Hrl{}-v0".format(suffix),
+        entry_point="gym.envs.robotics:HrlEnv",
         kwargs=kwargs,
         max_episode_steps=128,
     )
@@ -400,14 +375,6 @@ for reward_type in ["sparse", "dense"]:
     register(
         id="RenderHrl{}-v0".format(suffix),
         entry_point="gym.envs.robotics:RenderHrlEnv",
-        kwargs=kwargs,
-        max_episode_steps=128,
-    )
-
-    # DIY
-    register(
-        id="Hrl{}-v0".format(suffix),
-        entry_point="gym.envs.robotics:HrlEnv",
         kwargs=kwargs,
         max_episode_steps=128,
     )

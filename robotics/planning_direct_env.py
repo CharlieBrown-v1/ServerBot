@@ -4,7 +4,6 @@ import copy
 import numpy as np
 import torch as th
 from gym import spaces
-from stable_baselines3.common.torch_layers import ENet
 from stable_baselines3 import HybridPPO
 
 
@@ -25,20 +24,13 @@ def xpos_distance(goal_a: np.ndarray, goal_b: np.ndarray):
 
 
 class PlanningDirectEnv(gym.Env):
-    def __init__(self, agent_path=None, ENet_path=None):
+    def __init__(self, agent_path=None):
         super(PlanningDirectEnv, self).__init__()
 
         if agent_path is None:
             self.agent = None
         else:
             self.agent = HybridPPO.load(agent_path)
-
-        if ENet_path is None:
-            self.ENet = None
-        else:
-            self.ENet = ENet(device=self.agent.device)
-            self.ENet.load_state_dict(th.load(ENet_path))
-            self.ENet.to(self.agent.device)
 
         self.model = gym.make('RenderHrlDense-v0')
 
@@ -67,8 +59,8 @@ class PlanningDirectEnv(gym.Env):
         self.suitable_step_reward = -0.01
         self.step_reward = -0.1
 
-    def unset_training_mode(self):
-        self.training_mode = False
+    def unset_training_mode(self, mode: bool):
+        self.training_mode = mode
 
     def reset(self):
         obs = self.model.reset()
