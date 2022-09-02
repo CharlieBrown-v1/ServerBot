@@ -209,7 +209,7 @@ class FetchEnv(robot_env.RobotEnv):
             curr_xpos = self.sim.data.get_geom_xpos(name).copy()
             delta_xpos = xpos_distance(init_xpos, curr_xpos)
 
-            if delta_xpos > self.distance_threshold:
+            if delta_xpos > 2 * self.distance_threshold:
                 move_count += 1
 
             if curr_xpos[2] <= 0.4 - 0.01:
