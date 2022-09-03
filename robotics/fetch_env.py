@@ -125,6 +125,7 @@ class FetchEnv(robot_env.RobotEnv):
             hrl_mode=False,
             random_mode=False,
             train_upper_mode=False,
+            test_mode=False,
             debug_mode=False,
             demo_mode=False,
     ):
@@ -171,6 +172,8 @@ class FetchEnv(robot_env.RobotEnv):
             object_stacked_probability=object_stacked_probability,
             random_mode=random_mode,
             train_upper_mode=train_upper_mode,
+            test_mode=test_mode,
+            xml_path=model_path,
         )
 
         self.prev_grip_achi_dist = None
@@ -650,11 +653,9 @@ class FetchEnv(robot_env.RobotEnv):
                     self.init_object_xpos_list = curr_object_xpos_list.copy()
                     count += 1
                     # self.render()
-                not_fall_off = np.all(
-                    np.array([object_xpos[2] for object_xpos in self.init_object_xpos_list]) > self.height_offset - 0.01)
                 all_in_desk = np.all(
                     np.array([object_xpos[2] for object_xpos in self.init_object_xpos_list]) > 0.4 - 0.01)
-                if not_fall_off and all_in_desk:
+                if all_in_desk:
                     break
                 object_dict = self._set_hrl_initial_state(resample_mode=True)
                 for object_name, object_qpos in object_dict.items():
@@ -711,7 +712,11 @@ class FetchEnv(robot_env.RobotEnv):
         # DIY
         is_removal = True
 
-        if self.has_object:
+        if self.object_generator.test_mode:
+            goal = self.object_generator.test_set_goal()
+            is_removal = False
+
+        elif self.has_object:
             goal = self.initial_gripper_xpos[:3] + self.np_random.uniform(
                 -self.target_range, self.target_range, size=3
             )
@@ -725,7 +730,7 @@ class FetchEnv(robot_env.RobotEnv):
                     goal[2] += self.np_random.uniform(self.distance_threshold, 0.3)
                     is_removal = False
 
-            if self.hrl_mode and not self.object_generator.random_mode:
+            if self.hrl_mode and not (self.object_generator.random_mode or self.object_generator.test_mode):
                 goal = np.array([1.32, 0.64, 0.54])
 
         else:
@@ -775,6 +780,7 @@ class FetchEnv(robot_env.RobotEnv):
             if self.hrl_mode:
                 self.height_offset = 0.42
                 self._set_hrl_initial_state()
+                self.object_generator.test_set_goal()
             else:
                 self.height_offset = self.sim.data.get_site_xpos("object0")[2].copy()
 

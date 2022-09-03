@@ -379,6 +379,14 @@ for reward_type in ["sparse", "dense"]:
         max_episode_steps=128,
     )
 
+    # DIY
+    register(
+        id="TestHrl{}-v0".format(suffix),
+        entry_point="gym.envs.robotics:TestHrlEnv",
+        kwargs=kwargs,
+        max_episode_steps=128,
+    )
+
     register(
         id="FetchSlide{}-v1".format(suffix),
         entry_point="gym.envs.robotics:FetchSlideEnv",

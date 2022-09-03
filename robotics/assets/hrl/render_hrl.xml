@@ -86,6 +86,65 @@
 			<site name="obstacle_object_6" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
 		</body>
 
+		<body name="obstacle_object_7" pos="20 20 0.025">
+			<joint name="obstacle_object_7:joint" type="free" damping="0.01"/>
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_7" material="block_mat" mass="2"/>
+			<site name="obstacle_object_7" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
+		</body>
+
+		<body name="obstacle_object_8" pos="20 20 0.025">
+			<joint name="obstacle_object_8:joint" type="free" damping="0.01"/>
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_8" material="block_mat" mass="2"/>
+			<site name="obstacle_object_8" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
+		</body>
+
+		<body name="obstacle_object_9" pos="20 20 0.025">
+			<joint name="obstacle_object_9:joint" type="free" damping="0.01"/>
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_9" material="block_mat" mass="2"/>
+			<site name="obstacle_object_9" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
+		</body>
+
+		<body name="obstacle_object_10" pos="20 20 0.025">
+			<joint name="obstacle_object_10:joint" type="free" damping="0.01"/>
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_10" material="block_mat" mass="2"/>
+			<site name="obstacle_object_10" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
+		</body>
+
+		<body name="obstacle_object_11" pos="20 20 0.025">
+			<joint name="obstacle_object_11:joint" type="free" damping="0.01"/>
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_11" material="block_mat" mass="2"/>
+			<site name="obstacle_object_11" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
+		</body>
+
+		<body name="obstacle_object_12" pos="20 20 0.025">
+			<joint name="obstacle_object_12:joint" type="free" damping="0.01"/>
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_12" material="block_mat" mass="2"/>
+			<site name="obstacle_object_12" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
+		</body>
+
+		<body name="obstacle_object_13" pos="20 20 0.025">
+			<joint name="obstacle_object_13:joint" type="free" damping="0.01"/>
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_13" material="block_mat" mass="2"/>
+			<site name="obstacle_object_13" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
+		</body>
+
+		<body name="obstacle_object_14" pos="20 20 0.025">
+			<joint name="obstacle_object_14:joint" type="free" damping="0.01"/>
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_14" material="block_mat" mass="2"/>
+			<site name="obstacle_object_14" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
+		</body>
+
+		<body name="obstacle_object_15" pos="20 20 0.025">
+			<joint name="obstacle_object_15:joint" type="free" damping="0.01"/>
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_15" material="block_mat" mass="2"/>
+			<site name="obstacle_object_15" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
+		</body>
+
+		<body name="obstacle_object_16" pos="20 20 0.025">
+			<joint name="obstacle_object_16:joint" type="free" damping="0.01"/>
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_16" material="block_mat" mass="2"/>
+			<site name="obstacle_object_16" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
+		</body>
 
 		</worldbody>
 

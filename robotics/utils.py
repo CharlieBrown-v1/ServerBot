@@ -115,12 +115,37 @@ def get_full_path(path: str):
     return fullpath
 
 
+def sample_after_removal(object_name_list: list, object_xpos_list: list, achieved_name: str):
+    new_obstacle_name_list = object_name_list.copy()
+    assert achieved_name in new_obstacle_name_list
+    old_achieved_idx = new_obstacle_name_list.index(achieved_name)
+
+    new_obstacle_name_list.pop(old_achieved_idx)
+    object_xpos_list.pop(old_achieved_idx)
+
+    highest_object_idx = None
+    highest_object_height = -np.inf
+    for new_achieved_idx in range(len(object_xpos_list)):
+        new_achieved_xpos = object_xpos_list[new_achieved_idx]
+        if new_achieved_xpos[2] > highest_object_height:
+            highest_object_idx = new_achieved_idx
+            highest_object_height = new_achieved_xpos[2]
+    assert highest_object_idx is not None
+    new_achieved_name = new_obstacle_name_list[highest_object_idx]
+    new_obstacle_name_list.pop(highest_object_idx)
+    new_obstacle_name_list.append(achieved_name)
+
+    return new_achieved_name, new_obstacle_name_list
+
+
 class ObjectGenerator:
     def __init__(self,
                  single_count_sup=7,
                  object_stacked_probability=0.5,
                  random_mode=False,
                  train_upper_mode=False,
+                 test_mode=False,
+                 xml_path='hrl/hrl.xml',
                  ):
         self.size_sup = 0.025
         self.height_inf = 0.025
@@ -145,12 +170,13 @@ class ObjectGenerator:
         self.single_count_sup = single_count_sup + 1
         self.random_mode = random_mode
         self.train_upper_mode = train_upper_mode
+        self.test_mode = test_mode
 
         self.object_name_list = []
         self.obstacle_name_list = []
-        self.init_total_obstacle()
+        self.init_total_obstacle(xml_path=xml_path)
 
-        self.step = 0.052
+        self.step = 0.055
         self.delta_obstacle_qpos_list = [
             np.r_[[0, 0, self.step], self.qpos_postfix],
             np.r_[[-self.step, 0, 0], self.qpos_postfix],
@@ -171,6 +197,39 @@ class ObjectGenerator:
                 stack_qpos_list.append(np.r_[0, 0, -i * self.step, self.stack_qpos_postfix])
             self.possible_stack_qpos_list.append(stack_qpos_list)
         assert len(self.possible_stack_qpos_list) == self.max_stack_count - 1
+
+        self.test_scenario_name_list = [
+            'all_stack_above_target_object',
+            'block_target_goal',
+            # 'cover_target_object_densely',
+        ]
+        self.test_scenario_xpos_list = [
+            {
+                'target_object':
+                    np.array([1.34, 0.88, 0.425 + 0.005]),
+                'obstacle_object': [
+                    np.array([1.34, 0.88, 0.425 + 0.005 + self.step * 1]),
+                    np.array([1.34, 0.88, 0.425 + 0.005 + self.step * 2]),
+                    np.array([1.34, 0.88, 0.425 + 0.005 + self.step * 3]),
+                ],
+            },
+            {
+                'target_object':
+                    np.array([1.30 + self.step * 2, 0.75, 0.425 + 0.005]),
+                'obstacle_object': [
+                    np.array([1.30 - self.step * 2, 0.75, 0.425 + 0.005]),
+                    np.array([1.30 - self.step * 1, 0.75, 0.425 + 0.005]),
+                    np.array([1.30 - self.step * 0, 0.75, 0.425 + 0.005]),
+                    np.array([1.30 + self.step * 1, 0.75, 0.425 + 0.005]),
+                ],
+            },
+        ]
+        self.test_scenario_goal_list = [
+            np.array([1.32, 0.64, 0.500]),
+            np.array([1.30, 0.75, 0.425 + 0.005]),
+        ]
+        self.test_object_count = 0
+        self.test_goal_count = 0
 
     def init_total_obstacle(self, xml_path='hrl/hrl.xml'):
         fullpath = get_full_path(xml_path)
@@ -213,6 +272,9 @@ class ObjectGenerator:
         return stack_qpos_list
 
     def sample_objects(self):
+        if self.test_mode:
+            return self.test_set_objects()
+
         achieved_name = 'target_object'
 
         tmp_object_name_list = self.object_name_list.copy()
@@ -248,7 +310,7 @@ class ObjectGenerator:
                     obstacle_xpos_list.insert(swap_index, achieved_qpos[:3].copy())
                     object_qpos_list.pop(swap_index)
                     object_qpos_list.insert(swap_index, achieved_qpos.copy())
-                    
+
                     achieved_qpos = np.r_[
                         tmp_achieved_xpos.copy(),
                         self.qpos_postfix,
@@ -266,7 +328,7 @@ class ObjectGenerator:
         else:
             obstacle_count = self.obstacle_count
             self.obstacle_count = 3 + (self.obstacle_count + 1) % 3
-            achieved_qpos = np.r_[[1.34, 0.55, 0.425], self.qpos_postfix]
+            achieved_qpos = np.r_[[1.34, 0.55, 0.425 + 0.005], self.qpos_postfix]
 
         object_name_list.insert(0, achieved_name)
         object_qpos_list.insert(0, achieved_qpos.copy())
@@ -300,13 +362,16 @@ class ObjectGenerator:
             zip(obstacle_name_list, obstacle_xpos_list))
 
     def resample_obstacles(self, object_name_list: list, obstacle_count: int):
+        if self.test_mode:
+            return self.test_resample_obstacles(object_name_list=object_name_list, obstacle_count=obstacle_count)
+
         if self.random_mode:
             achieved_xpos = np.r_[
                 np.random.uniform(self.desktop_lower_boundary[:2], self.desktop_upper_boundary[:2]),
                 self.desktop_lower_boundary[2],
             ]
         else:
-            achieved_xpos = np.array([1.34, 0.88, 0.425])
+            achieved_xpos = np.array([1.34, 0.88, 0.425 + 0.005])
 
         achieved_qpos = np.r_[achieved_xpos, self.qpos_postfix]
         object_qpos_list = [achieved_qpos.copy()]
@@ -324,24 +389,47 @@ class ObjectGenerator:
 
         return dict(zip(object_name_list, object_qpos_list))
 
-    def sample_after_removal(self, object_name_list: list, object_xpos_list: list, achieved_name: str):
-        new_obstacle_name_list = object_name_list.copy()
-        assert achieved_name in new_obstacle_name_list
-        old_achieved_idx = new_obstacle_name_list.index(achieved_name)
+    def test_set_objects(self):
+        assert self.test_mode
+        scenario_name = self.test_scenario_name_list[self.test_object_count]
+        print(f'Description of scenario: {scenario_name}')
+        if self.test_object_count == 1:
+            print()
+        scenario_xpos_dict = self.test_scenario_xpos_list[self.test_object_count]
+        self.test_object_count = (self.test_object_count + 1) % len(self.test_scenario_xpos_list)
 
-        new_obstacle_name_list.pop(old_achieved_idx)
-        object_xpos_list.pop(old_achieved_idx)
+        achieved_name = 'target_object'
+        tmp_object_name_list = self.object_name_list.copy()
+        tmp_object_name_list.remove(achieved_name)
+        object_name_list = [achieved_name]
+        object_qpos_list = [np.r_[scenario_xpos_dict['target_object'], self.qpos_postfix]]
+        obstacle_name_list = []
+        obstacle_xpos_list = []
 
-        highest_object_idx = None
-        highest_object_height = -np.inf
-        for new_achieved_idx in range(len(object_xpos_list)):
-            new_achieved_xpos = object_xpos_list[new_achieved_idx]
-            if new_achieved_xpos[2] > highest_object_height:
-                highest_object_idx = new_achieved_idx
-                highest_object_height = new_achieved_xpos[2]
-        assert highest_object_idx is not None
-        new_achieved_name = new_obstacle_name_list[highest_object_idx]
-        new_obstacle_name_list.pop(highest_object_idx)
-        new_obstacle_name_list.append(achieved_name)
+        assert len(scenario_xpos_dict['obstacle_object']) <= len(tmp_object_name_list)
+        for obstacle_xpos in scenario_xpos_dict['obstacle_object']:
+            object_qpos_list.append(np.r_[obstacle_xpos.copy(), self.qpos_postfix])
+            obstacle_xpos_list.append(obstacle_xpos.copy())
+        object_name_list.extend(tmp_object_name_list[:len(scenario_xpos_dict['obstacle_object'])])
+        obstacle_name_list.extend(tmp_object_name_list[:len(scenario_xpos_dict['obstacle_object'])])
 
-        return new_achieved_name, new_obstacle_name_list
+        return achieved_name, dict(zip(object_name_list, object_qpos_list)), dict(
+            zip(obstacle_name_list, obstacle_xpos_list))
+
+    def test_resample_obstacles(self, object_name_list: list, obstacle_count: int):
+        scenario_xpos_dict = self.test_scenario_xpos_list[self.test_object_count - 1]
+        assert len(scenario_xpos_dict['obstacle_object']) == obstacle_count
+
+        object_qpos_list = [np.r_[scenario_xpos_dict['target_object'], self.qpos_postfix]]
+
+        for obstacle_xpos in scenario_xpos_dict['obstacle_object']:
+            object_qpos_list.append(np.r_[obstacle_xpos.copy(), self.qpos_postfix])
+
+        return dict(zip(object_name_list, object_qpos_list))
+
+    def test_set_goal(self) -> np.ndarray:
+        assert self.test_mode
+        goal_xpos = self.test_scenario_goal_list[self.test_goal_count]
+        self.test_goal_count = (self.test_goal_count + 1) % len(self.test_scenario_goal_list)
+
+        return goal_xpos.copy()
