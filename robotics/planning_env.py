@@ -23,13 +23,13 @@ def xpos_distance(goal_a: np.ndarray, goal_b: np.ndarray):
 
 
 class PlanningEnv(gym.Env):
-    def __init__(self, agent_path=None):
+    def __init__(self, agent_path=None, device=None):
         super(PlanningEnv, self).__init__()
 
         if agent_path is None:
             self.agent = None
         else:
-            self.agent = HybridPPO.load(agent_path)
+            self.agent = HybridPPO.load(agent_path, device=device)
 
         self.model = gym.make('RenderHrlDense-v0')
 
@@ -50,8 +50,6 @@ class PlanningEnv(gym.Env):
         self.table_end_xyz = np.r_[table_end_xy, table_end_z]
 
         self.training_mode = True
-
-        self.success_rate_threshold = 0.75
 
         self.success_reward = 1
         self.fail_reward = -1
