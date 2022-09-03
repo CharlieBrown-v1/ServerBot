@@ -2,6 +2,7 @@ import copy
 
 import numpy as np
 from gym.envs.robotics import rotations, robot_env, utils
+from gym.envs.robotics.utils import sample_after_removal
 
 epsilon = 1e-3
 
@@ -696,10 +697,9 @@ class FetchEnv(robot_env.RobotEnv):
             goal = self.global_goal.copy()
 
         object_xpos_list = [self.sim.data.get_geom_xpos(object_name).copy() for object_name in self.object_name_list]
-        new_achieved_name, new_obstacle_name_list = self.object_generator. \
-            sample_after_removal(object_name_list=self.object_name_list.copy(),
-                                 object_xpos_list=object_xpos_list.copy(),
-                                 achieved_name=copy.deepcopy(self.achieved_name))
+        new_achieved_name, new_obstacle_name_list = sample_after_removal(object_name_list=self.object_name_list.copy(),
+                                                                         object_xpos_list=object_xpos_list.copy(),
+                                                                         achieved_name=copy.deepcopy(self.achieved_name))
 
         self.achieved_name = copy.deepcopy(new_achieved_name)
         self.obstacle_name_list = new_obstacle_name_list.copy()
@@ -780,7 +780,8 @@ class FetchEnv(robot_env.RobotEnv):
             if self.hrl_mode:
                 self.height_offset = 0.42
                 self._set_hrl_initial_state()
-                self.object_generator.test_set_goal()
+                if self.object_generator.test_mode:
+                    self.object_generator.test_set_goal()
             else:
                 self.height_offset = self.sim.data.get_site_xpos("object0")[2].copy()
 
