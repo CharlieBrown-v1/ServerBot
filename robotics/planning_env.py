@@ -82,11 +82,19 @@ class PlanningEnv(gym.Env):
         obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal)
         obs, _, done, info = self.model.macro_step(agent=self.agent, obs=obs)
 
+        is_obstacle_chosen = achieved_name is not None
+        is_good_goal = is_obstacle_chosen and self.is_step_suitable()
+
+        info['upper_info'] = {
+            'is_obstacle_chosen': is_obstacle_chosen,
+            'is_good_goal': is_good_goal,
+        }
+
         if info['is_success']:
             return obs, self.success_reward, done, info
         elif info['is_fail'] or done:
             return obs, self.fail_reward, done, info
-        elif self.is_step_suitable():
+        elif is_good_goal:
             return obs, self.suitable_step_reward, done, info
         else:
             return obs, self.step_reward, done, info
