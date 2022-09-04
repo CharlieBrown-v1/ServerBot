@@ -201,7 +201,9 @@ class ObjectGenerator:
         self.test_scenario_name_list = [
             'all_stack_above_target_object',
             'block_target_goal',
-            # 'cover_target_object_densely',
+            'cover_target_object_densely',
+            'block_stacked_target_goal',
+            # 'capsule_storage_box',
         ]
         self.test_scenario_xpos_list = [
             {
@@ -219,17 +221,60 @@ class ObjectGenerator:
                 'obstacle_object': [
                     np.array([1.30 - self.step * 2, 0.75, 0.425 + 0.005]),
                     np.array([1.30 - self.step * 1, 0.75, 0.425 + 0.005]),
-                    np.array([1.30 - self.step * 0, 0.75, 0.425 + 0.005]),
+                    np.array([1.30 + self.step * 0, 0.75, 0.425 + 0.005]),
                     np.array([1.30 + self.step * 1, 0.75, 0.425 + 0.005]),
+                ],
+            },
+            {
+                'target_object':
+                    np.array([1.30, 0.75, 0.425 + 0.005]),
+                'obstacle_object': [
+                    # floor 1
+                    np.array([1.30 - self.step * 1, 0.75 - self.step * 1.25, 0.425 + 0.005]),
+                    np.array([1.30 - self.step * 1, 0.75 + self.step * 0, 0.425 + 0.005]),
+                    np.array([1.30 - self.step * 1, 0.75 + self.step * 1.25, 0.425 + 0.005]),
+                    
+                    np.array([1.30 + self.step * 0, 0.75 - self.step * 1.25, 0.425 + 0.005]),
+                    np.array([1.30 + self.step * 0, 0.75 + self.step * 1.25, 0.425 + 0.005]),
+
+                    np.array([1.30 + self.step * 1, 0.75 - self.step * 1.25, 0.425 + 0.005]),
+                    np.array([1.30 + self.step * 1, 0.75 + self.step * 0, 0.425 + 0.005]),
+                    np.array([1.30 + self.step * 1, 0.75 + self.step * 1.25, 0.425 + 0.005]),
+
+                    # floor 2
+                    np.array([1.30 - self.step * 1, 0.75 - self.step * 1.25, 0.425 + 0.005 + self.step * 1]),
+                    np.array([1.30 - self.step * 1, 0.75 + self.step * 0, 0.425 + 0.005 + self.step * 1]),
+                    np.array([1.30 - self.step * 1, 0.75 + self.step * 1.25, 0.425 + 0.005 + self.step * 1]),
+
+                    np.array([1.30 + self.step * 0, 0.75 - self.step * 1.25, 0.425 + 0.005 + self.step * 1]),
+                    np.array([1.30 + self.step * 0, 0.75 + self.step * 0, 0.425 + 0.005 + self.step * 1]),
+                    np.array([1.30 + self.step * 0, 0.75 + self.step * 1.25, 0.425 + 0.005 + self.step * 1]),
+                    
+                    np.array([1.30 + self.step * 1, 0.75 - self.step * 1.25, 0.425 + 0.005 + self.step * 1]),
+                    np.array([1.30 + self.step * 1, 0.75 + self.step * 0, 0.425 + 0.005 + self.step * 1]),
+                    np.array([1.30 + self.step * 1, 0.75 + self.step * 1.25, 0.425 + 0.005 + self.step * 1]),
+                ],
+            },
+            {
+                'target_object':
+                    np.array([1.34, 0.62, 0.425 + 0.005]),
+                'obstacle_object': [
+                    np.array([1.34, 0.88, 0.425 + 0.005 + self.step * 0]),
+                    np.array([1.34, 0.88, 0.425 + 0.005 + self.step * 1]),
+                    np.array([1.34, 0.88, 0.425 + 0.005 + self.step * 2]),
+                    np.array([1.34, 0.88, 0.425 + 0.005 + self.step * 3]),
                 ],
             },
         ]
         self.test_scenario_goal_list = [
             np.array([1.32, 0.64, 0.500]),
-            np.array([1.30, 0.75, 0.425 + 0.005]),
+            np.array([1.30, 0.75, 0.425]),
+            np.array([1.32, 0.64, 0.500]),
+            np.array([1.34, 0.88, 0.425 + self.step * 2]),
         ]
-        self.test_object_count = 0
-        self.test_goal_count = 0
+        assert len(self.test_scenario_name_list) == len(self.test_scenario_xpos_list) \
+               and len(self.test_scenario_name_list) == len(self.test_scenario_goal_list)
+        self.test_count = 0
 
     def init_total_obstacle(self, xml_path='hrl/hrl.xml'):
         fullpath = get_full_path(xml_path)
@@ -391,12 +436,10 @@ class ObjectGenerator:
 
     def test_set_objects(self):
         assert self.test_mode
-        scenario_name = self.test_scenario_name_list[self.test_object_count]
+        scenario_name = self.test_scenario_name_list[self.test_count]
         print(f'Description of scenario: {scenario_name}')
-        if self.test_object_count == 1:
-            print()
-        scenario_xpos_dict = self.test_scenario_xpos_list[self.test_object_count]
-        self.test_object_count = (self.test_object_count + 1) % len(self.test_scenario_xpos_list)
+        scenario_xpos_dict = self.test_scenario_xpos_list[self.test_count]
+        self.test_count = (self.test_count + 1) % len(self.test_scenario_xpos_list)
 
         achieved_name = 'target_object'
         tmp_object_name_list = self.object_name_list.copy()
@@ -417,7 +460,7 @@ class ObjectGenerator:
             zip(obstacle_name_list, obstacle_xpos_list))
 
     def test_resample_obstacles(self, object_name_list: list, obstacle_count: int):
-        scenario_xpos_dict = self.test_scenario_xpos_list[self.test_object_count - 1]
+        scenario_xpos_dict = self.test_scenario_xpos_list[self.test_count - 1]
         assert len(scenario_xpos_dict['obstacle_object']) == obstacle_count
 
         object_qpos_list = [np.r_[scenario_xpos_dict['target_object'], self.qpos_postfix]]
@@ -429,7 +472,6 @@ class ObjectGenerator:
 
     def test_set_goal(self) -> np.ndarray:
         assert self.test_mode
-        goal_xpos = self.test_scenario_goal_list[self.test_goal_count]
-        self.test_goal_count = (self.test_goal_count + 1) % len(self.test_scenario_goal_list)
+        goal_xpos = self.test_scenario_goal_list[self.test_count - 1]
 
         return goal_xpos.copy()
