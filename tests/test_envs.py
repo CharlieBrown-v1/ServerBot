@@ -13,7 +13,7 @@ from gym.utils.env_checker import check_env
 def test_env(spec):
     # Capture warnings
     with pytest.warns(None) as warnings:
-        env = spec
+        env = spec.make()
 
     # Test if env adheres to Gym API
     check_env(env, warn=True, skip_render_check=True)

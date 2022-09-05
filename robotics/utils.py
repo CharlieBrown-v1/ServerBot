@@ -199,7 +199,20 @@ class ObjectGenerator:
         self.object_name_list = []
         self.obstacle_name_list = []
         self.init_total_obstacle(xml_path=xml_path)
-        reset(xml_path=xml_path)
+        if not self.test_mode:
+            object_remove_name_list = []
+            obstacle_remove_name_list = []
+            for name in self.object_name_list:
+                if 'target' in name and name != 'target_object':
+                    object_remove_name_list.append(name)
+                elif 'test_obstacle' in name:
+                    object_remove_name_list.append(name)
+                    obstacle_remove_name_list.append(name)
+
+            for name in object_remove_name_list:
+                self.object_name_list.remove(name)
+            for name in obstacle_remove_name_list:
+                self.obstacle_name_list.remove(name)
 
         self.step = 0.05
         self.delta_obstacle_qpos_list = [

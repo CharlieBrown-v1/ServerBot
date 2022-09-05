@@ -31,7 +31,7 @@ class PlanningEnv(gym.Env):
         else:
             self.agent = HybridPPO.load(agent_path, device=device)
 
-        self.model = gym
+        self.model = gym.make('RenderHrlDense-v0')
         # self.model = gym.make('TestHrlDense-v0')
 
         self.action_space = spaces.Box(-1.0, 1.0, shape=(len(action_list),), dtype="float32")

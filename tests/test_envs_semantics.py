@@ -32,7 +32,7 @@ def hash_object(unhashed):
 
 def generate_rollout_hash(spec):
     spaces.seed(0)
-    env = spec
+    env = spec.make()
     env.seed(0)
 
     observation_list = []
