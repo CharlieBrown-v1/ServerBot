@@ -646,6 +646,7 @@ class FetchEnv(robot_env.RobotEnv):
                 done = False
                 while not done:
                     self.sim.step()
+
                     curr_object_xpos_list = [self.sim.data.get_geom_xpos(object_name).copy() for object_name in
                                              self.object_name_list]
                     done = np.linalg.norm(
@@ -653,7 +654,6 @@ class FetchEnv(robot_env.RobotEnv):
                         ord=np.inf) < epsilon
                     self.init_object_xpos_list = curr_object_xpos_list.copy()
                     count += 1
-                    # self.render()
                 all_in_desk = np.all(
                     np.array([object_xpos[2] for object_xpos in self.init_object_xpos_list]) > 0.4 - 0.01)
                 if all_in_desk:
