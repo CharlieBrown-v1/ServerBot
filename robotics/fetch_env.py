@@ -389,7 +389,7 @@ class FetchEnv(robot_env.RobotEnv):
             # DIY
             if self.hrl_mode:
                 # TODO: how to generalize size
-                goal_size = 0.02
+                goal_size = 0.025
                 achieved_goal_size = 0.025
                 obstacle_size = self.object_generator.size_sup
 
