@@ -64,17 +64,21 @@ class PlanningEnv(gym.Env):
         obs = self.model.reset()
         return obs
 
-    def step(self, action: np.ndarray):
-        assert self.agent is not None, "You must load agent before step!"
-
+    def action_mapping(self, action: np.ndarray):
         planning_action = action.copy()
 
         # action for choosing desk's position
-        planning_action[:2] = (self.table_end_xyz[:2] - self.table_start_xyz[:2]) * planning_action[:2] / 2\
-                                    + (self.table_start_xyz[:2] + self.table_end_xyz[:2]) / 2
+        planning_action[:2] = (self.table_end_xyz[:2] - self.table_start_xyz[:2]) * planning_action[:2] / 2 \
+                              + (self.table_start_xyz[:2] + self.table_end_xyz[:2]) / 2
         # action for choosing obstacle's position
         planning_action[2:] = (self.table_end_xyz - self.table_start_xyz) * planning_action[2:] / 2 \
                               + (self.table_start_xyz + self.table_end_xyz) / 2
+        return planning_action
+
+    def step(self, action: np.ndarray):
+        assert self.agent is not None, "You must load agent before step!"
+
+        planning_action = self.action_mapping(action.copy())
 
         achieved_name, removal_goal, min_dist = self.model.macro_step_setup(planning_action)
         if not self.training_mode:
@@ -86,7 +90,10 @@ class PlanningEnv(gym.Env):
         obs = self.model.get_obs(achieved_name=None, goal=None)
 
         is_obstacle_chosen = achieved_name is not None
-        is_good_goal = is_obstacle_chosen and self.is_step_suitable()
+        suitable_achieved_name = self.model.env.achieved_name_indicate  # achieved name of this macro-step
+        suitable_removal_goal = self.model.env.removal_goal_indicate.copy()  # removal goal of this macro-step
+        is_good_goal = is_obstacle_chosen and self.is_step_suitable(achieved_name=suitable_achieved_name,
+                                                                    removal_goal=suitable_removal_goal)
 
         info['upper_info'] = {
             'is_obstacle_chosen': is_obstacle_chosen,
@@ -115,9 +122,7 @@ class PlanningEnv(gym.Env):
                 reward.append(self.step_reward)
         return np.array(reward)
 
-    def is_step_suitable(self):
-        achieved_name = self.model.env.achieved_name_indicate  # achieved name of this macro-step
-        removal_goal = self.model.env.removal_goal_indicate.copy()  # removal goal of this macro-step
+    def is_step_suitable(self, achieved_name, removal_goal):
         name_list = self.model.env.object_name_list.copy()
         for name in name_list:
             if name != achieved_name:  # obstacle_name of this macro-step

@@ -777,7 +777,7 @@ class FetchEnv(robot_env.RobotEnv):
         if self.has_object:
             # DIY
             if self.hrl_mode:
-                self.height_offset = 0.42
+                self.height_offset = 0.425
                 self._set_hrl_initial_state()
                 if self.object_generator.test_mode:
                     self.object_generator.test_set_goal()
