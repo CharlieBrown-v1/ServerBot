@@ -81,7 +81,9 @@ class PlanningEnv(gym.Env):
             self.render()  # show which point and object agent has just selected
 
         obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal)
-        obs, _, done, info = self.model.macro_step(agent=self.agent, obs=obs)
+        _, _, done, info = self.model.macro_step(agent=self.agent, obs=obs)
+
+        obs = self.model.get_obs(achieved_name=None, goal=None)
 
         is_obstacle_chosen = achieved_name is not None
         is_good_goal = is_obstacle_chosen and self.is_step_suitable()
