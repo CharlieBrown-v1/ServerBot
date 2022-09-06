@@ -731,7 +731,7 @@ class FetchEnv(robot_env.RobotEnv):
                     is_removal = False
 
             if self.hrl_mode and not (self.object_generator.random_mode or self.object_generator.test_mode):
-                goal = np.array([1.32, 0.64, 0.54])
+                goal = np.array([1.30, 0.75, 0.54])
 
         else:
             goal = self.initial_gripper_xpos[:3] + self.np_random.uniform(
