@@ -213,7 +213,7 @@ class FetchEnv(robot_env.RobotEnv):
             curr_xpos = self.sim.data.get_geom_xpos(name).copy()
             delta_xpos = xpos_distance(init_xpos, curr_xpos)
 
-            if delta_xpos > 2 * self.distance_threshold:
+            if delta_xpos > 1.25 * self.distance_threshold:
                 move_count += 1
 
             if curr_xpos[2] <= 0.4 - 0.01:
@@ -564,8 +564,8 @@ class FetchEnv(robot_env.RobotEnv):
         lookat = self.sim.data.body_xpos[body_id]
         for idx, value in enumerate(lookat):
             self.viewer.cam.lookat[idx] = value
-        self.viewer.cam.distance = 1.2
-        self.viewer.cam.azimuth = 180  # 132.0
+        self.viewer.cam.distance = 1.6
+        self.viewer.cam.azimuth = 140  # 132.0
         self.viewer.cam.elevation = -15.0
 
     def _render_callback(self):

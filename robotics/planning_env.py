@@ -31,8 +31,9 @@ class PlanningEnv(gym.Env):
         else:
             self.agent = HybridPPO.load(agent_path, device=device)
 
-        self.model = gym.make('RenderHrlDense-v0')
-        # self.model = gym.make('TestHrlDense-v0')
+        test_mode = False
+        self.model = gym.make('RenderHrlDense-v0', test_mode=test_mode)
+        # self.model = gym.make('TestHrlDense-v0', test_mode=test_mode)
 
         self.action_space = spaces.Box(-1.0, 1.0, shape=(len(action_list),), dtype="float32")
         self.observation_space = copy.deepcopy(self.model.observation_space)
@@ -52,10 +53,10 @@ class PlanningEnv(gym.Env):
 
         self.training_mode = True
 
-        self.success_reward = 1
-        self.fail_reward = -1
-        self.suitable_step_reward = -0.01
-        self.step_reward = -0.1
+        self.success_reward = 100
+        self.fail_reward = -20
+        self.suitable_step_reward = -0.1
+        self.step_reward = -1
 
     def set_training_mode(self, mode: bool):
         self.training_mode = mode
@@ -90,20 +91,22 @@ class PlanningEnv(gym.Env):
         obs = self.model.get_obs(achieved_name=None, goal=None)
 
         is_obstacle_chosen = achieved_name is not None
-        suitable_achieved_name = self.model.env.achieved_name_indicate  # achieved name of this macro-step
-        suitable_removal_goal = self.model.env.removal_goal_indicate.copy()  # removal goal of this macro-step
-        is_good_goal = is_obstacle_chosen and self.is_step_suitable(achieved_name=suitable_achieved_name,
-                                                                    removal_goal=suitable_removal_goal)
+        is_good_goal = False
+        if is_obstacle_chosen:
+            suitable_achieved_name = self.model.env.achieved_name_indicate  # achieved name of this macro-step
+            suitable_removal_goal = self.model.env.removal_goal_indicate.copy()  # removal goal of this macro-step
+            is_good_goal = self.is_step_suitable(achieved_name=suitable_achieved_name,
+                                                 removal_goal=suitable_removal_goal)
 
         info['upper_info'] = {
             'is_obstacle_chosen': is_obstacle_chosen,
             'is_good_goal': is_good_goal,
         }
 
-        if info['is_success']:
-            return obs, self.success_reward, done, info
-        elif info['is_fail'] or done:
+        if info['is_fail'] or done:
             return obs, self.fail_reward, done, info
+        elif info['is_success']:
+            return obs, self.success_reward, done, info
         elif is_good_goal:
             return obs, self.suitable_step_reward, done, info
         else:
