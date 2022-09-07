@@ -653,6 +653,8 @@ class FetchEnv(robot_env.RobotEnv):
                         ord=np.inf) < epsilon
                     self.init_object_xpos_list = curr_object_xpos_list.copy()
                     count += 1
+                    if count > 1e3:
+                        assert False, 'Check initial setting!'
                 all_in_desk = np.all(
                     np.array([object_xpos[2] for object_xpos in self.init_object_xpos_list]) > 0.4 - 0.01)
                 if all_in_desk:
