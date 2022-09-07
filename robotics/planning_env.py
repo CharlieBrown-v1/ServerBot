@@ -103,10 +103,12 @@ class PlanningEnv(gym.Env):
             'is_good_goal': is_good_goal,
         }
 
-        if info['is_fail'] or done:
+        if info['is_fail']:
             return obs, self.fail_reward, done, info
         elif info['is_success']:
             return obs, self.success_reward, done, info
+        elif done:
+            return obs, self.fail_reward, done, info
         elif is_good_goal:
             return obs, self.suitable_step_reward, done, info
         else:
