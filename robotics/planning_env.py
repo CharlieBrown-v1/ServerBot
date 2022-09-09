@@ -32,8 +32,8 @@ class PlanningEnv(gym.Env):
             self.agent = HybridPPO.load(agent_path, device=device)
 
         test_mode = False
-        self.model = gym.make('RenderHrlDense-v0', test_mode=test_mode)
-        # self.model = gym.make('TestHrlDense-v0', test_mode=test_mode)
+        # self.model = gym.make('RenderHrlDense-v0', test_mode=test_mode)
+        self.model = gym.make('TestHrlDense-v0', test_mode=test_mode)
 
         self.action_space = spaces.Box(-1.0, 1.0, shape=(len(action_list),), dtype="float32")
         self.observation_space = copy.deepcopy(self.model.observation_space)
