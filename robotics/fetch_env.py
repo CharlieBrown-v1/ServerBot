@@ -119,7 +119,7 @@ class FetchEnv(robot_env.RobotEnv):
             success_reward=100,
             grasp_reward=10,
             reward_factor=100,
-            punish_factor=-1,
+            punish_factor=-20,
             target_in_air_probability=0.5,
             object_stacked_probability=0.5,
             single_count_sup=7,
@@ -213,7 +213,7 @@ class FetchEnv(robot_env.RobotEnv):
             curr_xpos = self.sim.data.get_geom_xpos(name).copy()
             delta_xpos = xpos_distance(init_xpos, curr_xpos)
 
-            if delta_xpos > 1.25 * self.distance_threshold:
+            if delta_xpos > 2 * self.distance_threshold:
                 move_count += 1
 
             if curr_xpos[2] <= 0.4 - 0.01:
