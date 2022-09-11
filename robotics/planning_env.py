@@ -31,9 +31,8 @@ class PlanningEnv(gym.Env):
         else:
             self.agent = HybridPPO.load(agent_path, device=device)
 
-        test_mode = False
-        self.model = gym.make('RenderHrlDense-v0', test_mode=test_mode)
-        # self.model = gym.make('TestHrlDense-v0', test_mode=test_mode)
+        # self.model = gym.make('RenderHrlDense-v0')
+        self.model = gym.make('TestHrlDense-v0')
 
         self.action_space = spaces.Box(-1.0, 1.0, shape=(len(action_list),), dtype="float32")
         self.observation_space = copy.deepcopy(self.model.observation_space)
@@ -58,8 +57,11 @@ class PlanningEnv(gym.Env):
         self.suitable_step_reward = -0.5
         self.step_reward = -1
 
-    def set_training_mode(self, mode: bool):
-        self.training_mode = mode
+    def set_mode(self, name: str, mode: bool):
+        if name == 'training':
+            self.training_mode = mode
+        else:
+            raise NotImplementedError
 
     def reset(self):
         obs = self.model.reset()
@@ -79,7 +81,11 @@ class PlanningEnv(gym.Env):
     def step(self, action: np.ndarray):
         assert self.agent is not None, "You must load agent before step!"
 
-        planning_action = self.action_mapping(action.copy())
+        if action is None:  # used by RL + None
+            planning_action = np.r_[np.array([0, 0]),
+                                    self.model.sim.data.get_geom_xpos(self.model.object_generator.global_achieved_name)]
+        else:
+            planning_action = self.action_mapping(action.copy())
 
         achieved_name, removal_goal, min_dist = self.model.macro_step_setup(planning_action)
         if not self.training_mode:
@@ -139,4 +145,4 @@ class PlanningEnv(gym.Env):
         return True
 
     def render(self, mode="human", width=500, height=500):
-        self.model.render()
+        return self.model.render(mode=mode, width=width, height=height)

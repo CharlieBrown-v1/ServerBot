@@ -29,7 +29,7 @@
 		</body>
 
 		<body name="achieved_site" pos="31 31 31">
-			<site name="achieved_site" pos="0 0 1" rgba="1 1 0 0.32" size="0.032 0.032 0.032" type="box" />
+			<site name="achieved_site" pos="0 0 1" rgba="1 1 0 0.5" size="0.032 0.032 0.032" type="box" />
 		</body>
 
 		<body name="cube_site" pos="32 32 32">
