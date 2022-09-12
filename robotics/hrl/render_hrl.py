@@ -58,8 +58,11 @@ class RenderHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.removal_goal_indicate = None
         self.removal_xpos_indicate = None
 
-    def set_training_mode(self, mode: bool):
-        self.training_mode = mode
+    def set_mode(self, name: str, mode: bool):
+        if name == 'training':
+            self.training_mode = mode
+        else:
+            raise NotImplementedError
 
     def reset_indicate(self):
         self.achieved_name_indicate = None

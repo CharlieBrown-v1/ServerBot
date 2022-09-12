@@ -113,7 +113,7 @@ class TestHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             self.removal_goal_indicate = removal_goal.copy()
             self.removal_xpos_indicate = action_xpos.copy()
         else:
-            self.achieved_name = 'target_object'
+            self.achieved_name = self.object_generator.global_achieved_name
             self.removal_goal = None
             self.reset_indicate()
             self.removal_xpos_indicate = action_xpos.copy()
@@ -163,7 +163,7 @@ class TestHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         if achieved_name is not None:
             self.achieved_name = copy.deepcopy(achieved_name)
         else:
-            self.achieved_name = 'target_object'
+            self.achieved_name = self.object_generator.global_achieved_name
 
         if new_goal is not None and np.any(new_goal != self.global_goal):
             self.removal_goal = new_goal.copy()

@@ -31,8 +31,8 @@ class PlanningEnv(gym.Env):
         else:
             self.agent = HybridPPO.load(agent_path, device=device)
 
-        # self.model = gym.make('RenderHrlDense-v0')
-        self.model = gym.make('TestHrlDense-v0')
+        self.model = gym.make('RenderHrlDense-v0')
+        # self.model = gym.make('TestHrlDense-v0')
 
         self.action_space = spaces.Box(-1.0, 1.0, shape=(len(action_list),), dtype="float32")
         self.observation_space = copy.deepcopy(self.model.observation_space)
@@ -53,9 +53,9 @@ class PlanningEnv(gym.Env):
         self.training_mode = True
 
         self.success_reward = 1
-        self.fail_reward = -10
-        self.suitable_step_reward = -0.5
-        self.step_reward = -1
+        self.fail_reward = -1
+        self.suitable_step_reward = -0.1
+        self.step_reward = -0.5
 
     def set_mode(self, name: str, mode: bool):
         if name == 'training':
