@@ -365,6 +365,14 @@ for reward_type in ["sparse", "dense"]:
 
     # DIY
     register(
+        id="Push{}-v0".format(suffix),
+        entry_point="gym.envs.robotics:PushEnv",
+        kwargs=kwargs,
+        max_episode_steps=64,
+    )
+
+    # DIY
+    register(
         id="Hrl{}-v0".format(suffix),
         entry_point="gym.envs.robotics:HrlEnv",
         kwargs=kwargs,
