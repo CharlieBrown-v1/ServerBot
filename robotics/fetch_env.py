@@ -564,7 +564,7 @@ class FetchEnv(robot_env.RobotEnv):
         lookat = self.sim.data.body_xpos[body_id]
         for idx, value in enumerate(lookat):
             self.viewer.cam.lookat[idx] = value
-        self.viewer.cam.distance = 1.6
+        self.viewer.cam.distance = 1.28
         self.viewer.cam.azimuth = 180 + 40  # 132.0
         self.viewer.cam.elevation = -15.0
 
