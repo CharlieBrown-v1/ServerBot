@@ -390,7 +390,7 @@ for reward_type in ["sparse", "dense"]:
         id="StackHrl{}-v0".format(suffix),
         entry_point="gym.envs.robotics:StackHrlEnv",
         kwargs=kwargs,
-        max_episode_steps=128,
+        max_episode_steps=64,
     )
 
     # DIY
@@ -398,7 +398,7 @@ for reward_type in ["sparse", "dense"]:
         id="PlaceHrl{}-v0".format(suffix),
         entry_point="gym.envs.robotics:PlaceHrlEnv",
         kwargs=kwargs,
-        max_episode_steps=128,
+        max_episode_steps=64,
     )
 
     # DIY

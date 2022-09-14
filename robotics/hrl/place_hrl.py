@@ -44,7 +44,7 @@ class PlaceHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             distance_threshold=0.05,
             initial_qpos=initial_qpos,
             reward_type=reward_type,
-            single_count_sup=7,
+            single_count_sup=5,
             target_in_air_probability=0.5,
             object_stacked_probability=0.5,
             hrl_mode=True,
@@ -59,8 +59,18 @@ class PlaceHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.removal_goal_indicate = None
         self.removal_xpos_indicate = None
 
-        self.suitable_reward = 0.1
+        self.reward_factor = 0.1
+        self.prev_valid_count = None
 
+        self.desired_boundary_list = [
+            np.array([1.30 - 0.16 + 0.025, 0.75 - 0.16 + 0.025]),
+            np.array([1.30 - 0.16 + 0.025, 0.75 + 0.16 - 0.025]),
+            np.array([1.30 + 0.16 - 0.025, 0.75 - 0.16 + 0.025]),
+            np.array([1.30 + 0.16 - 0.025, 0.75 + 0.16 - 0.025]),
+        ]
+        self.lower_bound = np.array([1.30 - 0.16 + 0.025, 0.75 - 0.16 + 0.025])
+        self.upper_bound = np.array([1.30 + 0.16 - 0.025, 0.75 + 0.16 - 0.025])
+        
     def set_mode(self, name: str, mode: bool):
         if name == 'training':
             self.training_mode = mode
@@ -135,14 +145,30 @@ class PlaceHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             if info['train_done']:
                 break
         info['frames'] = frames
-        reward = self.compute_reward(achieved_goal=None, goal=None, info=info)
+        reward = self.place_compute_reward(achieved_goal=None, goal=None, info=info)
         if info['is_removal_success']:
             return obs, reward, False, info
         else:
             return obs, reward, True, info
 
-    def is_fail(self):
-        return self.judge(self.obstacle_name_list.copy(), self.init_obstacle_xpos_list.copy(), mode='done')
+    def judge(self, name_list: list, xpos_list: list, mode: str):
+        assert len(name_list) == len(xpos_list)
+
+        achieved_xpos = self.sim.data.get_geom_xpos(self.achieved_name).copy()
+
+        not_in_desk_count = int(achieved_xpos[2] <= 0.4 - 0.01)
+
+        for idx in np.arange(len(name_list)):
+            name = name_list[idx]
+            curr_xpos = self.sim.data.get_geom_xpos(name).copy()
+
+            if curr_xpos[2] <= 0.4 - 0.01:
+                not_in_desk_count += 1
+
+        if mode == 'done':
+            return not_in_desk_count > 0
+        elif mode == 'punish':
+            return not_in_desk_count * self.punish_factor
 
     def get_obs(self, achieved_name=None, goal=None):
         assert self.hrl_mode
@@ -170,50 +196,40 @@ class PlaceHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self._state_init(new_goal.copy())
         return self._get_obs()
 
-    def compute_reward(self, achieved_goal, goal, info):
-        reward = 0
+    def couting_valid_object(self):
+        count = 0
         for name in self.object_name_list:
-            tmp_object_name_list = self.object_name_list.copy()
-            tmp_object_name_list.remove(name)
-            object_xpos = self.sim.data.get_geom_xpos(name).copy()
-            min_dist = np.inf
-            for nb_name in tmp_object_name_list:
-                nb_object_xpos = self.sim.data.get_geom_xpos(nb_name).copy()
-                dist = xpos_distance(object_xpos, nb_object_xpos)
-                if dist < min_dist:
-                    min_dist = dist
-            assert min_dist != np.inf
-            if abs(min_dist - self.object_generator.size_sup * 2) < 2 * epsilon:
-                reward += self.suitable_reward
-            else:
-                reward += -min_dist
-        return reward
+            object_xy = self.sim.data.get_geom_xpos(name)[:2].copy()
+            if np.all(object_xy >= self.lower_bound) and np.all(object_xy <= self.upper_bound):
+                count += 1
+        return count
+
+    def reset(self):
+        self.prev_valid_count = 0
+        return super(PlaceHrlEnv, self).reset()
+
+    def place_compute_reward(self, achieved_goal, goal, info):
+        prev_valid_count = self.prev_valid_count
+        curr_valid_count = self.couting_valid_object()
+        self.prev_valid_count = curr_valid_count
+        return self.reward_factor * (curr_valid_count - prev_valid_count)
 
     def is_place_success(self):
-        for name in self.object_name_list:
-            tmp_object_name_list = self.object_name_list.copy()
-            tmp_object_name_list.remove(name)
-            object_xpos = self.sim.data.get_geom_xpos(name).copy()
-            min_dist = np.inf
-            for nb_name in tmp_object_name_list:
-                nb_object_xpos = self.sim.data.get_geom_xpos(nb_name).copy()
-                dist = xpos_distance(object_xpos, nb_object_xpos)
-                if dist < min_dist:
-                    min_dist = dist
-            assert min_dist != np.inf
-            if abs(min_dist - self.object_generator.size_sup * 2) >= 2 * epsilon:
-                return False
-        return True
+        valid_count = self.couting_valid_object()
+        return valid_count == len(self.object_name_list)
 
     def _render_callback(self):
         # Visualize target.
         sites_offset = (self.sim.data.site_xpos - self.sim.model.site_pos).copy()
         global_target_site_id = self.sim.model.site_name2id("global_target")
+        area_id = self.sim.model.site_name2id("area")
         if self.removal_goal_indicate is not None:
             self.sim.model.site_pos[global_target_site_id] = self.removal_goal_indicate - sites_offset[global_target_site_id]
         elif self.removal_goal is not None:
             self.sim.model.site_pos[global_target_site_id] = self.removal_goal - sites_offset[global_target_site_id]
         else:
             self.sim.model.site_pos[global_target_site_id] = np.array([20, 20, 0.5])
+
+        self.sim.model.site_pos[area_id] = np.array([1.30, 0.75, 0.4 - 0.01 + 1e-5])  - sites_offset[area_id]
 
         self.sim.forward()
