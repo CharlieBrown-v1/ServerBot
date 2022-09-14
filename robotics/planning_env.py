@@ -54,7 +54,7 @@ class PlanningEnv(gym.Env):
 
         self.success_reward = 1
         self.fail_reward = -1
-        self.suitable_step_reward = -0.1
+        self.suitable_step_reward = -0.2
         self.step_reward = -0.5
 
     def set_mode(self, name: str, mode: bool):
