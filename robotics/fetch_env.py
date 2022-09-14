@@ -734,6 +734,8 @@ class FetchEnv(robot_env.RobotEnv):
                 elif self.np_random.uniform() < self.target_in_air_probability:
                     goal[2] += self.np_random.uniform(self.distance_threshold, 0.3)
                     is_removal = False
+            else:
+                is_removal = False
 
             if self.hrl_mode and not (self.object_generator.random_mode or self.object_generator.test_mode):
                 goal = np.array([1.30, 0.75, 0.54])

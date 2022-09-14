@@ -25,18 +25,13 @@ def xpos_distance(goal_a: np.ndarray, goal_b: np.ndarray):
 
 
 class VPGEnv(gym.Env):
-    def __init__(self, grasp_path=None, push_path=None, device=None):
+    def __init__(self, agent_path=None, device=None):
         super(VPGEnv, self).__init__()
 
-        if grasp_path is None:
-            self.grasp_agent = None
+        if agent_path is None:
+            self.agent = None
         else:
-            self.grasp_agent = HybridPPO.load(grasp_path, device=device)
-
-        if push_path is None:
-            self.push_agent = None
-        else:
-            self.push_agent = HybridPPO.load(push_path, device=device)
+            self.agent = HybridPPO.load(agent_path, device=device)
 
         self.model = gym.make('VPGHrlDense-v0')
         # self.model = gym.make('TestHrlDense-v0')
@@ -99,18 +94,10 @@ class VPGEnv(gym.Env):
         return planning_action
 
     def step(self, action: np.ndarray):
-        assert self.grasp_agent is not None and self.push_agent is not None, "You must load agent before step!"
+        assert self.agent is not None, "You must load agent before step!"
 
         planning_action = self.action_mapping(action.copy())
-
-        if planning_action[macro_action] == grasp:
-            agent = self.grasp_agent
-            self.model.set_block_gripper_mode(False)
-        elif planning_action[macro_action] == push:
-            agent = self.push_agent
-            self.model.set_block_gripper_mode(True)
-        else:
-            raise NotImplementedError
+        agent = self.agent
 
         achieved_name, removal_goal, min_dist = self.model.macro_step_setup(planning_action)
         if not self.training_mode:

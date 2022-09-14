@@ -28,7 +28,7 @@ class PushEnv(fetch_env.FetchEnv, utils.EzPickle):
             block_gripper=True,
             n_substeps=20,
             gripper_extra_height=0.2,
-            target_in_the_air=True,
+            target_in_the_air=False,
             target_offset=0.0,
             obj_range=0.15,
             target_range=0.15,
@@ -36,7 +36,8 @@ class PushEnv(fetch_env.FetchEnv, utils.EzPickle):
             initial_qpos=initial_qpos,
             reward_type=reward_type,
             single_count_sup=7,
-            object_stacked_probability=0.1,
+            target_in_air_probability=0,
+            object_stacked_probability=0,
             hrl_mode=True,
             random_mode=True,
         )
