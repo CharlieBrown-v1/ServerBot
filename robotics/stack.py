@@ -62,6 +62,8 @@ class StackEnv(gym.Env):
 
     def reset(self):
         obs = self.model.reset()
+        self.count = 0
+        self.model.reset_max_dist()
         return obs
 
     def action_mapping(self, action: np.ndarray):
@@ -83,6 +85,8 @@ class StackEnv(gym.Env):
                                     self.model.sim.data.get_geom_xpos(self.model.object_generator.global_achieved_name)]
         else:
             planning_action = self.action_mapping(action.copy())
+
+        self.count += 1
 
         achieved_name, removal_goal, min_dist = self.model.macro_step_setup(planning_action)
         if not self.training_mode:

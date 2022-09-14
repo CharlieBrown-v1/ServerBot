@@ -7,7 +7,7 @@ from gym.envs.robotics import fetch_env
 from stable_baselines3 import HybridPPO
 
 
-epsilon = 1e-3
+epsilon = 1e-2
 desk_x = 0
 desk_y = 1
 pos_x = 2
@@ -48,7 +48,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             target_in_air_probability=0.5,
             object_stacked_probability=0.5,
             hrl_mode=True,
-            random_mode=True,
+            # random_mode=True,
             stack_mode=True,
         )
         utils.EzPickle.__init__(self, reward_type=reward_type)
@@ -59,11 +59,12 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.removal_goal_indicate = None
         self.removal_xpos_indicate = None
 
-        self.prev_height_mean = None
+        self.prev_max_dist = None
 
-        self.target_height = 0.425 + 0.025 * 2
-        self.height_reward_factor = 10
-        self.suitable_reward = 0.1
+        self.desired_xy = np.array([1.30, 0.65])
+        self.target_height = 0.425 + self.object_generator.size_sup * 2 * 2 - epsilon
+        
+        self.reward_factor = 3
 
     def set_mode(self, name: str, mode: bool):
         if name == 'training':
@@ -94,8 +95,17 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         self._state_init(goal.copy())
 
+    def counting_object(self, target_xy: np.ndarray):
+        count = 0
+        for name in self.object_name_list:
+            xy = self.sim.data.get_geom_xpos(name)[:2].copy()
+            count += int(xpos_distance(xy, target_xy) <= epsilon)
+        return count
+
     def macro_step_setup(self, macro_action):
-        removal_goal = np.array([macro_action[desk_x], macro_action[desk_y], self.height_offset])
+        same_xpos_object_count = self.counting_object(np.array([macro_action[desk_x], macro_action[desk_y]]))
+        removal_goal = np.array([macro_action[desk_x], macro_action[desk_y],
+                                 self.height_offset + same_xpos_object_count * 2 * self.object_generator.size_sup])
         action_xpos = np.array([macro_action[pos_x], macro_action[pos_y], macro_action[pos_z]])
 
         achieved_name = None
@@ -141,14 +151,30 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             if info['train_done']:
                 break
         info['frames'] = frames
-        reward = self.compute_reward(achieved_goal=None, goal=removal_goal.copy(), info=info)
+        reward = self.stack_compute_reward(achieved_goal=None, goal=None, info=info)
         if info['is_removal_success']:
             return obs, reward, False, info
         else:
             return obs, reward, True, info
 
-    def is_fail(self):
-        return self.judge(self.obstacle_name_list.copy(), self.init_obstacle_xpos_list.copy(), mode='done')
+    def judge(self, name_list: list, xpos_list: list, mode: str):
+        assert len(name_list) == len(xpos_list)
+
+        achieved_xpos = self.sim.data.get_geom_xpos(self.achieved_name).copy()
+
+        not_in_desk_count = int(achieved_xpos[2] <= 0.4 - 0.01)
+
+        for idx in np.arange(len(name_list)):
+            name = name_list[idx]
+            curr_xpos = self.sim.data.get_geom_xpos(name).copy()
+
+            if curr_xpos[2] <= 0.4 - 0.01:
+                not_in_desk_count += 1
+
+        if mode == 'done':
+            return not_in_desk_count > 0
+        elif mode == 'punish':
+            return not_in_desk_count * self.punish_factor
 
     def get_obs(self, achieved_name=None, goal=None):
         assert self.hrl_mode
@@ -176,37 +202,29 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self._state_init(new_goal.copy())
         return self._get_obs()
 
-    def compute_height_mean(self):
-        object_height_list = list(sorted([self.sim.data.get_geom_xpos(name)[2] for name in self.object_name_list]))
-        if abs(object_height_list[-1] - object_height_list[-2]) > 1.2 * 2 * self.object_generator.size_sup:
-            object_height_list.pop(-1)
-        return np.mean(object_height_list)
+    def reset_max_dist(self):
+        self.prev_max_dist = self.compute_max_dist()
 
-    def _state_init(self, goal_xpos: np.ndarray = None):
-        super(StackHrlEnv, self)._state_init(goal_xpos=goal_xpos)
-        self.prev_height_mean = self.compute_height_mean()
-        grip_xpos = self.sim.data.get_site_xpos("robot0:grip").copy()
-        achieved_xpos = self.sim.data.get_geom_xpos(self.achieved_name).copy()
-        self.prev_grip_achi_dist = xpos_distance(grip_xpos, achieved_xpos)
-        self.prev_achi_desi_dist = xpos_distance(achieved_xpos, goal_xpos)
-
-    def compute_reward(self, achieved_goal, goal, info):
-        reward = 0
-        min_dist = np.inf
+    def compute_max_dist(self):
+        max_dist = -np.inf
         for name in self.object_name_list:
             object_xpos = self.sim.data.get_geom_xpos(name).copy()
-            dist = xpos_distance(object_xpos, goal)
-            if dist < min(min_dist, 1.5 * self.distance_threshold):
-                min_dist = dist
-        if min_dist != np.inf:
-            reward += self.suitable_reward
-        curr_height_mean = self.compute_height_mean()
-        reward += self.height_reward_factor * (curr_height_mean - self.prev_height_mean)
-        return reward
+            object_xy = object_xpos[:2].copy()
+            dist = xpos_distance(object_xy, self.desired_xy)
+            if dist > max_dist:
+                max_dist = dist
+        assert max_dist != -np.inf
+        return max_dist
+
+    def stack_compute_reward(self, achieved_goal, goal, info):
+        prev_max_dist = self.prev_max_dist
+        curr_max_dist = self.compute_max_dist()
+        return self.reward_factor * (prev_max_dist - curr_max_dist)
 
     def is_stack_success(self):
-        curr_height_mean = self.compute_height_mean()
-        return curr_height_mean >= self.height_offset + 2 * self.object_generator.size_sup  # initial height + 2 * half size
+        sorted_height_list = list(sorted([self.sim.data.get_geom_xpos(name)[2] for name in self.object_name_list]))
+        return abs(sorted_height_list[-1] - sorted_height_list[-2]) <= 1.25 * 2 * self.object_generator.size_sup\
+               and sorted_height_list[-1] >= self.target_height
 
     def _render_callback(self):
         # Visualize target.
