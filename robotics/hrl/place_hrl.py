@@ -7,7 +7,7 @@ from gym.envs.robotics import fetch_env
 from stable_baselines3 import HybridPPO
 
 
-epsilon = 1e-3
+epsilon = 1e-2
 desk_x = 0
 desk_y = 1
 pos_x = 2
@@ -59,7 +59,7 @@ class PlaceHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.removal_goal_indicate = None
         self.removal_xpos_indicate = None
 
-        self.target_height = 0.425 + 0.025 * 2
+        self.suitable_reward = 0.1
 
     def set_mode(self, name: str, mode: bool):
         if name == 'training':
@@ -183,8 +183,8 @@ class PlaceHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                 if dist < min_dist:
                     min_dist = dist
             assert min_dist != np.inf
-            if abs(min_dist - self.object_generator.size_sup * 2) < epsilon:
-                reward += 0.1
+            if abs(min_dist - self.object_generator.size_sup * 2) < 2 * epsilon:
+                reward += self.suitable_reward
             else:
                 reward += -min_dist
         return reward
@@ -201,7 +201,7 @@ class PlaceHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                 if dist < min_dist:
                     min_dist = dist
             assert min_dist != np.inf
-            if abs(min_dist - self.object_generator.size_sup * 2) >= epsilon:
+            if abs(min_dist - self.object_generator.size_sup * 2) >= 2 * epsilon:
                 return False
         return True
 

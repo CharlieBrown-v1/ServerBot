@@ -59,7 +59,11 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.removal_goal_indicate = None
         self.removal_xpos_indicate = None
 
+        self.prev_height_mean = None
+
         self.target_height = 0.425 + 0.025 * 2
+        self.height_reward_factor = 10
+        self.suitable_reward = 0.1
 
     def set_mode(self, name: str, mode: bool):
         if name == 'training':
@@ -122,6 +126,8 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         i = 0
         info = {'is_success': False}
         frames = []
+        assert self.removal_goal is not None
+        removal_goal = self.removal_goal.copy()
         while i < self.spec.max_episode_steps:
             i += 1
             agent_action = agent.predict(observation=obs, deterministic=True)[0]
@@ -135,7 +141,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             if info['train_done']:
                 break
         info['frames'] = frames
-        reward = self.compute_reward(achieved_goal=None, goal=None, info=info)
+        reward = self.compute_reward(achieved_goal=None, goal=removal_goal.copy(), info=info)
         if info['is_removal_success']:
             return obs, reward, False, info
         else:
@@ -170,28 +176,37 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self._state_init(new_goal.copy())
         return self._get_obs()
 
+    def compute_height_mean(self):
+        object_height_list = list(sorted([self.sim.data.get_geom_xpos(name)[2] for name in self.object_name_list]))
+        if abs(object_height_list[-1] - object_height_list[-2]) > 1.2 * 2 * self.object_generator.size_sup:
+            object_height_list.pop(-1)
+        return np.mean(object_height_list)
+
+    def _state_init(self, goal_xpos: np.ndarray = None):
+        super(StackHrlEnv, self)._state_init(goal_xpos=goal_xpos)
+        self.prev_height_mean = self.compute_height_mean()
+        grip_xpos = self.sim.data.get_site_xpos("robot0:grip").copy()
+        achieved_xpos = self.sim.data.get_geom_xpos(self.achieved_name).copy()
+        self.prev_grip_achi_dist = xpos_distance(grip_xpos, achieved_xpos)
+        self.prev_achi_desi_dist = xpos_distance(achieved_xpos, goal_xpos)
+
     def compute_reward(self, achieved_goal, goal, info):
         reward = 0
-        object_xy_list = []
-        object_z_list = []
+        min_dist = np.inf
         for name in self.object_name_list:
             object_xpos = self.sim.data.get_geom_xpos(name).copy()
-            object_xy_list.append(object_xpos[:2].copy())
-            object_z_list.append(object_xpos[2].copy())
-        reward += -np.sum(np.var(object_xy_list, axis=0))
-        reward += -np.abs(np.mean(object_z_list) - self.target_height)
+            dist = xpos_distance(object_xpos, goal)
+            if dist < min(min_dist, 1.5 * self.distance_threshold):
+                min_dist = dist
+        if min_dist != np.inf:
+            reward += self.suitable_reward
+        curr_height_mean = self.compute_height_mean()
+        reward += self.height_reward_factor * (curr_height_mean - self.prev_height_mean)
         return reward
 
     def is_stack_success(self):
-        object_xy_list = []
-        object_z_list = []
-        for name in self.object_name_list:
-            object_xpos = self.sim.data.get_geom_xpos(name).copy()
-            object_xy_list.append(object_xpos[:2].copy())
-            object_z_list.append(object_xpos[2].copy())
-        var_flag = np.sum(np.var(object_xy_list), axis=0) < epsilon
-        height_flag = np.abs(np.mean(object_z_list) - self.target_height) < epsilon
-        return var_flag and height_flag
+        curr_height_mean = self.compute_height_mean()
+        return curr_height_mean >= self.height_offset + 2 * self.object_generator.size_sup  # initial height + 2 * half size
 
     def _render_callback(self):
         # Visualize target.
