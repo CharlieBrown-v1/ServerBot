@@ -347,6 +347,20 @@ register(
         max_episode_steps=16,
 )
 
+# DIY
+register(
+        id="Stack-v0",
+        entry_point="gym.envs.robotics:StackEnv",
+        max_episode_steps=16,
+)
+
+# DIY
+register(
+        id="Place-v0",
+        entry_point="gym.envs.robotics:PlaceEnv",
+        max_episode_steps=16,
+)
+
 for reward_type in ["sparse", "dense"]:
     suffix = "Dense" if reward_type == "dense" else ""
     kwargs = {
@@ -367,6 +381,22 @@ for reward_type in ["sparse", "dense"]:
     register(
         id="Hrl{}-v0".format(suffix),
         entry_point="gym.envs.robotics:HrlEnv",
+        kwargs=kwargs,
+        max_episode_steps=128,
+    )
+
+    # DIY
+    register(
+        id="StackHrl{}-v0".format(suffix),
+        entry_point="gym.envs.robotics:StackHrlEnv",
+        kwargs=kwargs,
+        max_episode_steps=128,
+    )
+
+    # DIY
+    register(
+        id="PlaceHrl{}-v0".format(suffix),
+        entry_point="gym.envs.robotics:PlaceHrlEnv",
         kwargs=kwargs,
         max_episode_steps=128,
     )

@@ -169,6 +169,8 @@ class ObjectGenerator:
                  random_mode=False,
                  train_upper_mode=False,
                  test_mode=False,
+                 stack_mode=False,
+                 place_mode=False,
                  xml_path='hrl/hrl.xml',
                  ):
         self.size_sup = 0.025
@@ -196,6 +198,8 @@ class ObjectGenerator:
         self.random_mode = random_mode
         self.train_upper_mode = train_upper_mode
         self.test_mode = test_mode
+        self.stack_mode = stack_mode
+        self.place_mode = place_mode
 
         self.global_achieved_name = 'target_object'
 
@@ -224,6 +228,10 @@ class ObjectGenerator:
             np.r_[[0, self.step, 0], self.qpos_postfix],
         ]
         self.obstacle_count = 3
+        if self.stack_mode:
+            self.obstacle_count = 2
+        elif self.place_mode:
+            self.obstacle_count = 3
 
         self.max_stack_count = 4
         self.possible_stack_qpos_list = []
@@ -300,7 +308,11 @@ class ObjectGenerator:
         obstacle_name_list = []
         obstacle_xpos_list = []
 
-        if self.random_mode:
+        if self.stack_mode or self.place_mode:
+            obstacle_count = self.obstacle_count
+            achieved_qpos = np.r_[
+                np.random.uniform(self.desktop_lower_boundary, self.desktop_upper_boundary), self.qpos_postfix]
+        elif self.random_mode:
             if np.random.uniform() < self.object_stacked_probability:
                 achieved_qpos = np.r_[
                     np.random.uniform(self.desktop_lower_boundary[:2], self.desktop_upper_boundary[:2]),
@@ -349,7 +361,7 @@ class ObjectGenerator:
         object_name_list.insert(0, achieved_name)
         object_qpos_list.insert(0, achieved_qpos.copy())
 
-        if self.random_mode:
+        if self.random_mode or self.stack_mode or self.place_mode:
             new_obstacle_name_list = list(np.random.choice(tmp_object_name_list, size=obstacle_count, replace=False))
         else:
             new_obstacle_name_list = tmp_object_name_list[:obstacle_count].copy()
@@ -359,6 +371,7 @@ class ObjectGenerator:
 
         # DIY
         delta_obstacle_qpos_list = self.delta_obstacle_qpos_list[: obstacle_count].copy()
+
         if not self.random_mode:
             for delta_obstacle_qpos in delta_obstacle_qpos_list:
                 object_qpos_list.append(achieved_qpos.copy() + delta_obstacle_qpos)

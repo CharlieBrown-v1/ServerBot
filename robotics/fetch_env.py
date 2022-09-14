@@ -127,6 +127,8 @@ class FetchEnv(robot_env.RobotEnv):
             random_mode=False,
             train_upper_mode=False,
             test_mode=False,
+            stack_mode=False,
+            place_mode=False,
             debug_mode=False,
             demo_mode=False,
     ):
@@ -174,6 +176,8 @@ class FetchEnv(robot_env.RobotEnv):
             random_mode=random_mode,
             train_upper_mode=train_upper_mode,
             test_mode=test_mode,
+            stack_mode=stack_mode,
+            place_mode=place_mode,
             xml_path=model_path,
         )
 
@@ -396,6 +400,7 @@ class FetchEnv(robot_env.RobotEnv):
                 starting_point = self.cube_starting_point.copy()
 
                 achieved_goal_pos = self.sim.data.get_geom_xpos(self.achieved_name).copy()
+
                 cube_achieved_pos = np.squeeze(achieved_goal_pos.copy())
 
                 cube_obs = np.zeros((length_scale, width_scale, height_scale))
