@@ -347,6 +347,13 @@ register(
         max_episode_steps=16,
 )
 
+# DIY
+register(
+        id="VPG-v0",
+        entry_point="gym.envs.robotics:VPGEnv",
+        max_episode_steps=16,
+)
+
 for reward_type in ["sparse", "dense"]:
     suffix = "Dense" if reward_type == "dense" else ""
     kwargs = {
@@ -391,6 +398,14 @@ for reward_type in ["sparse", "dense"]:
     register(
         id="TestHrl{}-v0".format(suffix),
         entry_point="gym.envs.robotics:TestHrlEnv",
+        kwargs=kwargs,
+        max_episode_steps=128,
+    )
+
+    # DIY
+    register(
+        id="VPGHrl{}-v0".format(suffix),
+        entry_point="gym.envs.robotics:VPGHrlEnv",
         kwargs=kwargs,
         max_episode_steps=128,
     )
