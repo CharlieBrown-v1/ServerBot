@@ -188,7 +188,7 @@
 					<!--Proximal-->
 					<body name="thproximal" pos="0 0 0">
 						<inertial pos="-0.000 -0.000 0.017" quat="0.982 -0.000 0.001 0.191" mass="0.016" diaginertia="0.00001 0.00001 0.00001"/>
-						<joint name="THJ3" type="hinge" pos="0 0 0" axis="1 0 0" range="0 1.309"  user="1120"/>
+						<joint name="THJ3" type="hinge" pos="0 0 0" axis="1 0 0" range="0 1.809"  user="1120"/>
 						<geom class="D_Vizual" name="V_thproximal" mesh="TH3_z"/>
 						<geom class="DC_Hand" name="C_thproximal" type="capsule" pos="0 0 .019" size=".013 .019" rgba=".4 .5 .6 .1"/>
 						<site class="D_Touch" name="Tch_thproxiaml" size="0.005 0.011 0.016" pos="-.007 0 0.019" />

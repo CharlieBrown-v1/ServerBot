@@ -89,14 +89,18 @@ class PlaceEnv(gym.Env):
             self.render()  # show which point and object agent has just selected
 
         obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal)
-        obs, _, done, info = self.model.macro_step(agent=self.agent, obs=obs)
+        obs, reward, done, info = self.model.macro_step(agent=self.agent, obs=obs)
+
+        info['is_success'] = self.model.is_place_success()
 
         if info['is_fail']:
             return obs, self.fail_reward, done, info
         elif info['is_success']:
             return obs, self.success_reward, done, info
-        else:
+        elif done:
             return obs, self.fail_reward, done, info
+        else:
+            return obs, reward, done, info
 
     def render(self, mode="human", width=500, height=500):
         return self.model.render(mode=mode, width=width, height=height)

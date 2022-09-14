@@ -189,7 +189,7 @@ class PlaceHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                 reward += -min_dist
         return reward
 
-    def is_stack_success(self):
+    def is_place_success(self):
         for name in self.object_name_list:
             tmp_object_name_list = self.object_name_list.copy()
             tmp_object_name_list.remove(name)
