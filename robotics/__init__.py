@@ -19,7 +19,9 @@ from gym.envs.robotics.hrl.render_hrl import RenderHrlEnv
 from gym.envs.robotics.hrl.test_hrl import TestHrlEnv
 from gym.envs.robotics.hrl.stack_hrl import StackHrlEnv
 from gym.envs.robotics.hrl.place_hrl import PlaceHrlEnv
+from gym.envs.robotics.hrl.push import PushEnv
 
+from gym.envs.robotics.vpg_env import VPGEnv
 from gym.envs.robotics.stack import StackEnv
 from gym.envs.robotics.place import PlaceEnv
 from gym.envs.robotics.planning_env import PlanningEnv
