@@ -197,9 +197,6 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         else:
             return obs, 0, True, info
 
-    def is_fail(self):
-        return self.judge(self.obstacle_name_list.copy(), self.init_obstacle_xpos_list.copy(), mode='done')
-
     def get_obs(self, achieved_name=None, goal=None):
         assert self.hrl_mode
 
