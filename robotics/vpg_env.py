@@ -30,7 +30,7 @@ def xpos_distance(goal_a: np.ndarray, goal_b: np.ndarray):
 
 
 class VPGEnv(gym.Env):
-    def __init__(self, agent_path=None, push_path=None, device=None):
+    def __init__(self, agent_path=None, device=None):
         super(VPGEnv, self).__init__()
 
         if agent_path is None:

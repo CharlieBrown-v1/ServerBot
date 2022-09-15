@@ -20,6 +20,7 @@ from gym.envs.robotics.hrl.test_hrl import TestHrlEnv
 from gym.envs.robotics.hrl.stack_hrl import StackHrlEnv
 from gym.envs.robotics.hrl.place_hrl import PlaceHrlEnv
 from gym.envs.robotics.hrl.push import PushEnv
+from gym.envs.robotics.hrl.vpg_hrl import VPGHrlEnv
 
 from gym.envs.robotics.vpg_env import VPGEnv
 from gym.envs.robotics.stack import StackEnv
