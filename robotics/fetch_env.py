@@ -538,6 +538,10 @@ class FetchEnv(robot_env.RobotEnv):
         assert achieved_name is not None or len(self.obstacle_name_list) == 0
         return achieved_name, removal_goal
 
+    def set_block_gripper_mode(self, mode):
+        assert self.hrl_mode
+        self.block_gripper = mode
+
     # DIY
     def get_obs(self, achieved_name=None, goal=None):
         assert self.hrl_mode
@@ -739,6 +743,8 @@ class FetchEnv(robot_env.RobotEnv):
                 elif self.np_random.uniform() < self.target_in_air_probability:
                     goal[2] += self.np_random.uniform(self.distance_threshold, 0.3)
                     is_removal = False
+            else:
+                is_removal = False
 
             if self.hrl_mode and not (self.object_generator.random_mode or self.object_generator.test_mode):
                 goal = np.array([1.30, 0.75, 0.54])
@@ -784,6 +790,8 @@ class FetchEnv(robot_env.RobotEnv):
         # DIY
         if self.hrl_mode:
             self.cube_starting_point = table_xpos.copy() + np.array([0, 0, 0.2 + 0.17])
+            self.cube_starting_index = np.array([length_scale, width_scale, height_scale], dtype=float) / 2
+            self.box_d = d
 
         if self.has_object:
             # DIY
