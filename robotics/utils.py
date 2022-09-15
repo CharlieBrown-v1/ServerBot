@@ -218,8 +218,24 @@ class ObjectGenerator:
         self.step = 0.05
         self.delta_obstacle_qpos_list = [
             # np.r_[[0, 0, self.step], self.qpos_postfix],
-            np.r_[[-self.step * 2, 0, 0], self.qpos_postfix],
-            np.r_[[self.step * 2, 0, 0], self.qpos_postfix],
+            # np.r_[np.array([1.40, 0.88, 0.475]) - np.array([1.30, 0.88, 0.425]), self.qpos_postfix],
+            # np.r_[np.array([1.20, 0.88, 0.475]) - np.array([1.30, 0.88, 0.425]), self.qpos_postfix],
+
+            np.r_[np.array([1.30 - 0.20, 0.75 + 0.20, 0.425]) - np.array([1.30 - 0.20, 0.75 - 0.20, 0.425]), self.qpos_postfix],
+            # np.r_[np.array([1.30 + 0.20, 0.75 - 0.20, 0.425]) - np.array([1.30 - 0.20, 0.75 - 0.20, 0.425]), self.qpos_postfix],
+            np.r_[np.array([1.30 + 0.20, 0.75 + 0.20, 0.425]) - np.array([1.30 - 0.20, 0.75 - 0.20, 0.425]), self.qpos_postfix],
+
+            # np.r_[np.array([1.30, 0.75 - 0.20, 0.425]) - np.array(
+            #     [1.30 - 0.20, 0.75 - 0.20, 0.425]), self.qpos_postfix],
+            # np.r_[np.array([1.30, 0.75 - 0.20, 0.475]) - np.array(
+            #     [1.30 - 0.20, 0.75 - 0.20, 0.425]), self.qpos_postfix],
+            np.r_[np.array([1.30, 0.75 + 0.20, 0.425]) - np.array(
+                [1.30 - 0.20, 0.75 - 0.20, 0.425]), self.qpos_postfix],
+            np.r_[np.array([1.30, 0.75 + 0.20, 0.475]) - np.array(
+                [1.30 - 0.20, 0.75 - 0.20, 0.425]), self.qpos_postfix],
+
+            np.r_[[-self.step * 1, 0, 0], self.qpos_postfix],
+            np.r_[[self.step * 1, 0, 0], self.qpos_postfix],
             np.r_[[0, 0, 2 * self.step], self.qpos_postfix],
             np.r_[[0, 0, 3 * self.step], self.qpos_postfix],
             np.r_[[-self.step, 0, 1 * self.step], self.qpos_postfix],
@@ -231,7 +247,7 @@ class ObjectGenerator:
         if self.stack_mode:
             self.obstacle_count = 2
         elif self.place_mode:
-            self.obstacle_count = 3
+            self.obstacle_count = 3 + 1
 
         self.max_stack_count = 4
         self.possible_stack_qpos_list = []
@@ -311,7 +327,7 @@ class ObjectGenerator:
         if self.stack_mode or self.place_mode:
             obstacle_count = self.obstacle_count
             # achieved_qpos = np.r_[np.random.uniform(self.desktop_lower_boundary, self.desktop_upper_boundary), self.qpos_postfix]
-            achieved_qpos = np.r_[np.array([1.30, 0.65, 0.425]), self.qpos_postfix]
+            achieved_qpos = np.r_[np.array([1.30 - 0.20, 0.75 - 0.20, 0.425]), self.qpos_postfix]
         elif self.random_mode:
             if np.random.uniform() < self.object_stacked_probability:
                 achieved_qpos = np.r_[
@@ -529,19 +545,19 @@ class ObjectGenerator:
                 'target_object':
                     np.array([1.30, 0.65, 0.425]),
                 'obstacle_object': [
-                    np.array([1.30 - self.step * 1, 0.78, 0.425 + self.step * 0]) - np.array([1.30, 0.65, 0.425]),
-                    np.array([1.30 + self.step * 0, 0.78, 0.425 + self.step * 0]) - np.array([1.30, 0.65, 0.425]),
-                    np.array([1.30 + self.step * 1, 0.78, 0.425 + self.step * 0]) - np.array([1.30, 0.65, 0.425]),
+                    np.array([1.30 - self.step * 1, 0.80, 0.425 + self.step * 0]) - np.array([1.30, 0.65, 0.425]),
+                    np.array([1.30 + self.step * 0, 0.80, 0.425 + self.step * 0]) - np.array([1.30, 0.65, 0.425]),
+                    np.array([1.30 + self.step * 1, 0.80, 0.425 + self.step * 0]) - np.array([1.30, 0.65, 0.425]),
                 ],
             },
             {
                 'target_object':
-                    np.array([1.30, 0.68, 0.425 + self.step * 0]),
+                    np.array([1.30, 0.63, 0.425 + self.step * 0]),
                 'obstacle_object': [
-                    np.array([1.30, 0.68, 0.425 + self.step * 1]) - np.array([1.30, 0.68, 0.425 + self.step * 0]),
+                    np.array([1.30, 0.63, 0.425 + self.step * 1]) - np.array([1.30, 0.63, 0.425 + self.step * 0]),
 
-                    np.array([1.30, 0.83, 0.425 + self.step * 0]) - np.array([1.30, 0.68, 0.425 + self.step * 0]),
-                    np.array([1.30, 0.83, 0.425 + self.step * 1]) - np.array([1.30, 0.68, 0.425 + self.step * 0]),
+                    np.array([1.30, 0.83, 0.425 + self.step * 0]) - np.array([1.30, 0.63, 0.425 + self.step * 0]),
+                    np.array([1.30, 0.83, 0.425 + self.step * 1]) - np.array([1.30, 0.63, 0.425 + self.step * 0]),
                 ],
             },
             {
@@ -564,12 +580,11 @@ class ObjectGenerator:
                 'obstacle_object': [
                     np.array([1.30, 0.88, 0.425 + self.step * 1]) - np.array([1.30, 0.88, 0.425]),
                     np.array([1.30, 0.88, 0.425 + self.step * 2]) - np.array([1.30, 0.88, 0.425]),
-                    np.array([1.30, 0.88, 0.425 + self.step * 3]) - np.array([1.30, 0.88, 0.425]),
 
-                    np.array([1.20 + self.step * 0, 0.70, 0.425 + self.step * 1]) - np.array([1.30, 0.88, 0.425]),
-                    np.array([1.20 + self.step * 0, 0.70, 0.425 + self.step * 0]) - np.array([1.30, 0.88, 0.425]),
-                    np.array([1.20 - self.step * 1, 0.70, 0.425 + self.step * 0]) - np.array([1.30, 0.88, 0.425]),
-                    np.array([1.20 + self.step * 1, 0.70, 0.425 + self.step * 0]) - np.array([1.30, 0.88, 0.425]),
+                    np.array([1.18 + self.step * 0, 0.50, 0.425 + self.step * 1]) - np.array([1.30, 0.88, 0.425]),
+                    np.array([1.18 + self.step * 0, 0.50, 0.425 + self.step * 0]) - np.array([1.30, 0.88, 0.425]),
+                    np.array([1.18 - self.step * 1, 0.50, 0.425 + self.step * 0]) - np.array([1.30, 0.88, 0.425]),
+                    np.array([1.18 + self.step * 1, 0.50, 0.425 + self.step * 0]) - np.array([1.30, 0.88, 0.425]),
                 ],
             },
             {
@@ -590,22 +605,22 @@ class ObjectGenerator:
                     np.array([1.28, 0.82, 0.425 + self.step * 1]) - np.array([1.28, 0.82, 0.425]),
                     np.array([1.28, 0.82, 0.425 + self.step * 2]) - np.array([1.28, 0.82, 0.425]),
 
-                    np.array([1.28 - 0.10, 0.82 - 0.00, 0.425]) - np.array([1.28, 0.82, 0.425]),
-                    np.array([1.28 - 0.00, 0.82 - 0.10, 0.425]) - np.array([1.28, 0.82, 0.425]),
-                    np.array([1.28 + 0.00, 0.82 + 0.10, 0.425]) - np.array([1.28, 0.82, 0.425]),
-                    np.array([1.28 + 0.10, 0.82 + 0.00, 0.425]) - np.array([1.28, 0.82, 0.425]),
+                    np.array([1.28 - 0.15, 0.82 - 0.00, 0.425]) - np.array([1.28, 0.82, 0.425]),
+                    np.array([1.28 - 0.00, 0.82 - 0.15, 0.425]) - np.array([1.28, 0.82, 0.425]),
+                    np.array([1.28 + 0.00, 0.82 + 0.15, 0.425]) - np.array([1.28, 0.82, 0.425]),
+                    np.array([1.28 + 0.15, 0.82 + 0.00, 0.425]) - np.array([1.28, 0.82, 0.425]),
                 ],
             },
         ][self.test_scenario_start_idx: self.test_scenario_end_idx]
         self.test_scenario_goal_list = [
-            np.array([1.30, 0.90, 0.425]),
+            np.array([1.30, 0.70, 0.540]),
             np.array([1.30, 0.75, 0.425]),
 
             np.array([1.30, 0.75, 0.540]),
-            np.array([1.30, 0.75, 0.540]),
+            np.array([1.30, 0.75, 0.425]),
 
+            np.array([1.30, 0.75, 0.425]),
             np.array([1.30, 0.75, 0.540]),
-            np.array([1.40, 0.75, 0.540]),
         ][self.test_scenario_start_idx: self.test_scenario_end_idx]
         self.test_scenario_best_motion_list = [
             1.5,

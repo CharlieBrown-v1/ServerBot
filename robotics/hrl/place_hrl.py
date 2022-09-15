@@ -48,7 +48,7 @@ class PlaceHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             target_in_air_probability=0.5,
             object_stacked_probability=0.5,
             hrl_mode=True,
-            random_mode=True,
+            # random_mode=True,
             place_mode=True,
         )
         utils.EzPickle.__init__(self, reward_type=reward_type)
@@ -230,6 +230,7 @@ class PlaceHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         else:
             self.sim.model.site_pos[global_target_site_id] = np.array([20, 20, 0.5])
 
+        self.sim.model.site_pos[global_target_site_id] = np.array([20, 20, 0.5])
         self.sim.model.site_pos[area_id] = np.array([1.30, 0.75, 0.4 - 0.01 + 1e-5])  - sites_offset[area_id]
 
         self.sim.forward()

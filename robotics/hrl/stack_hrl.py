@@ -7,7 +7,6 @@ from gym.envs.robotics import fetch_env
 from stable_baselines3 import HybridPPO
 
 
-epsilon = 1e-2
 desk_x = 0
 desk_y = 1
 pos_x = 2
@@ -41,7 +40,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             target_offset=0.0,
             obj_range=0.15,
             target_range=0.15,
-            distance_threshold=0.05,
+            distance_threshold=0.02,
             initial_qpos=initial_qpos,
             reward_type=reward_type,
             single_count_sup=7,
@@ -62,7 +61,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.prev_max_dist = None
 
         self.desired_xy = np.array([1.30, 0.65])
-        self.target_height = 0.425 + self.object_generator.size_sup * 2 * 2 - epsilon
+        self.target_height = 0.425 + self.object_generator.size_sup * 2 * 2 - self.distance_threshold
         
         self.reward_factor = 3
 
@@ -99,13 +98,20 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         count = 0
         for name in self.object_name_list:
             xy = self.sim.data.get_geom_xpos(name)[:2].copy()
-            count += int(xpos_distance(xy, target_xy) <= epsilon)
+            count += int(xpos_distance(xy, target_xy) <= 2 * self.distance_threshold)
         return count
 
     def macro_step_setup(self, macro_action):
         same_xpos_object_count = self.counting_object(np.array([macro_action[desk_x], macro_action[desk_y]]))
-        removal_goal = np.array([macro_action[desk_x], macro_action[desk_y],
-                                 self.height_offset + same_xpos_object_count * 1.25 * self.object_generator.size_sup])
+        if same_xpos_object_count > 0:
+            target_height = self.height_offset + 2.5 * same_xpos_object_count * self.object_generator.size_sup
+        else:
+            target_height = self.height_offset
+        if same_xpos_object_count == 1:
+            target_height = self.height_offset + 2.5 * self.object_generator.size_sup
+        elif same_xpos_object_count == 2:
+            target_height = self.height_offset + 5.32 * self.object_generator.size_sup
+        removal_goal = np.array([macro_action[desk_x], macro_action[desk_y], target_height])
         action_xpos = np.array([macro_action[pos_x], macro_action[pos_y], macro_action[pos_z]])
 
         achieved_name = None
@@ -132,7 +138,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         return achieved_name, removal_goal, min_dist
 
-    def macro_step(self, agent: HybridPPO, obs: dict):
+    def macro_step(self, agent: HybridPPO, obs: dict, count: int):
         i = 0
         info = {'is_success': False}
         frames = []
@@ -153,6 +159,14 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         info['frames'] = frames
         reward = self.stack_compute_reward(achieved_goal=None, goal=None, info=info)
         if info['is_removal_success']:
+            release_action = np.zeros(self.action_space.shape)
+            up_action = np.zeros(self.action_space.shape)
+            release_action[-1] = self.action_space.high[-1]
+            up_action[-2] = self.action_space.high[-2]
+            from PIL import Image
+            # Image.fromarray(self.render(mode='rgb_array', width=300, height=300)).save(f'/home/stalin/robot/result/RL+RL/{count}.png')
+            obs, _, _, _ = self.step(release_action)
+            obs, _, _, _ = self.step(up_action)
             return obs, reward, False, info
         else:
             return obs, reward, True, info
@@ -236,5 +250,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             self.sim.model.site_pos[global_target_site_id] = self.removal_goal - sites_offset[global_target_site_id]
         else:
             self.sim.model.site_pos[global_target_site_id] = np.array([20, 20, 0.5])
+
+        self.sim.model.site_pos[global_target_site_id] = np.array([20, 20, 0.5])
 
         self.sim.forward()

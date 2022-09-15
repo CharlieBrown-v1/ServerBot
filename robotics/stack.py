@@ -51,6 +51,7 @@ class StackEnv(gym.Env):
 
         self.training_mode = True
 
+        self.count = 0
         self.success_reward = 1
         self.fail_reward = -1
 
@@ -86,6 +87,16 @@ class StackEnv(gym.Env):
         else:
             planning_action = self.action_mapping(action.copy())
 
+        desired_xy = self.model.desired_xy.copy()
+        if self.count % 3 == 0:
+            desired_xy[0] += 0.5 * self.model.distance_threshold
+            planning_action = np.r_[desired_xy, np.array([1.20, 0.88, 0.425])]
+        elif self.count % 3 == 1:
+            desired_xy[0] -= 0.5 * self.model.distance_threshold
+            planning_action = np.r_[desired_xy, np.array([1.40, 0.88, 0.425])]
+        else:
+            planning_action = np.r_[desired_xy, np.array([1.30, 0.88, 0.425])]
+
         self.count += 1
 
         achieved_name, removal_goal, min_dist = self.model.macro_step_setup(planning_action)
@@ -93,7 +104,9 @@ class StackEnv(gym.Env):
             self.render()  # show which point and object agent has just selected
 
         obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal)
-        obs, reward, done, info = self.model.macro_step(agent=self.agent, obs=obs)
+        obs, reward, done, info = self.model.macro_step(agent=self.agent, obs=obs, count=self.count)
+
+        done = self.count >= 3
 
         info['is_success'] = self.model.is_stack_success()
 

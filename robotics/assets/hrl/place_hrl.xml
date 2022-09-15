@@ -15,7 +15,7 @@
 		</body>
 
 		<body name="area0" pos="28 28 28">
-			<site name="area" pos="0 0 0.5" size="0.16 0.16 0.01" rgba="1 1 0 1" type="box" />
+			<site name="area" pos="0 0 0.5" size="0.12 0.12 0.01" rgba="1 0.54 0 1" type="box" />
 		</body>
 
 		<include file="robot.xml" />
@@ -60,6 +60,24 @@
 			<joint name="obstacle_object_4:joint" type="free" damping="0.01" />
 			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_4" material="block_mat" mass="2" rgba="0 1 1 1"/>
 			<site name="obstacle_object_4" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
+		</body>
+
+		<body name="obstacle_object_5" pos="20.0 24.0 0.05">
+			<joint name="obstacle_object_5:joint" type="free" damping="0.01" />
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_5" material="block_mat" mass="2" rgba="0 1 1 1"/>
+			<site name="obstacle_object_5" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
+		</body>
+
+		<body name="obstacle_object_6" pos="20.0 25.5 0.05">
+			<joint name="obstacle_object_6:joint" type="free" damping="0.01" />
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_6" material="block_mat" mass="2" rgba="0 1 1 1"/>
+			<site name="obstacle_object_6" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
+		</body>
+
+		<body name="obstacle_object_7" pos="20.0 26.5 0.05">
+			<joint name="obstacle_object_7:joint" type="free" damping="0.01" />
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_7" material="block_mat" mass="2" rgba="0 1 1 1"/>
+			<site name="obstacle_object_7" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
 		</body>
 
 		</worldbody>
