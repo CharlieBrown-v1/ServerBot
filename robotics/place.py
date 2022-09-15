@@ -93,6 +93,8 @@ class PlaceEnv(gym.Env):
 
         info['is_success'] = self.model.is_place_success()
 
+        done = done or info['is_success']
+
         if info['is_fail']:
             return obs, self.fail_reward, done, info
         elif info['is_success']:

@@ -196,7 +196,7 @@ class PlaceHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self._state_init(new_goal.copy())
         return self._get_obs()
 
-    def couting_valid_object(self):
+    def counting_valid_object(self):
         count = 0
         for name in self.object_name_list:
             object_xy = self.sim.data.get_geom_xpos(name)[:2].copy()
@@ -210,12 +210,12 @@ class PlaceHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
     def place_compute_reward(self, achieved_goal, goal, info):
         prev_valid_count = self.prev_valid_count
-        curr_valid_count = self.couting_valid_object()
+        curr_valid_count = self.counting_valid_object()
         self.prev_valid_count = curr_valid_count
         return self.reward_factor * (curr_valid_count - prev_valid_count)
 
     def is_place_success(self):
-        valid_count = self.couting_valid_object()
+        valid_count = self.counting_valid_object()
         return valid_count == len(self.object_name_list)
 
     def _render_callback(self):

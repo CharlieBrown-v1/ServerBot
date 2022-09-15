@@ -105,7 +105,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
     def macro_step_setup(self, macro_action):
         same_xpos_object_count = self.counting_object(np.array([macro_action[desk_x], macro_action[desk_y]]))
         removal_goal = np.array([macro_action[desk_x], macro_action[desk_y],
-                                 self.height_offset + same_xpos_object_count * 2 * self.object_generator.size_sup])
+                                 self.height_offset + same_xpos_object_count * 1.25 * self.object_generator.size_sup])
         action_xpos = np.array([macro_action[pos_x], macro_action[pos_y], macro_action[pos_z]])
 
         achieved_name = None
