@@ -7,7 +7,12 @@ from stable_baselines3 import HybridPPO
 
 
 epsilon = 1e-3
+
+length_scale = 5
+width_scale = 5
+height_scale = 5
 cube_shape = np.array([25, 35, 17])
+scaled_cube_shape = (cube_shape // np.array([length_scale, width_scale, height_scale])) + 1
 
 grasp = 0
 push = 1
@@ -16,7 +21,7 @@ macro_action = 0
 xpos = 1
 rotation = 2
 action_list = [macro_action, xpos, rotation]
-action_shape_list = [2, np.prod(cube_shape), 16]
+action_shape_list = [2, np.prod(scaled_cube_shape), 16]
 
 
 def xpos_distance(goal_a: np.ndarray, goal_b: np.ndarray):
@@ -25,7 +30,7 @@ def xpos_distance(goal_a: np.ndarray, goal_b: np.ndarray):
 
 
 class VPGEnv(gym.Env):
-    def __init__(self, agent_path=None, device=None):
+    def __init__(self, agent_path=None, push_path=None, device=None):
         super(VPGEnv, self).__init__()
 
         if agent_path is None:
@@ -75,15 +80,17 @@ class VPGEnv(gym.Env):
 
         # action for choosing obstacle's position
         chosen_xpos = tmp_action[xpos]
-        x_coefficient = chosen_xpos // np.prod(cube_shape[1:])
-        chosen_x = x_coefficient
-        chosen_xpos -= x_coefficient * np.prod(cube_shape[1:])
-        y_coefficient = chosen_xpos // np.prod(cube_shape[2:])
-        chosen_y = y_coefficient
-        chosen_xpos -= y_coefficient * np.prod(cube_shape[2:])
-        chosen_z = chosen_xpos
+        x_coefficient = chosen_xpos // np.prod(scaled_cube_shape[1:])
+        chosen_x = min(x_coefficient * length_scale, cube_shape[0] - 1)
+
+        chosen_xpos -= x_coefficient * np.prod(scaled_cube_shape[1:])
+        y_coefficient = chosen_xpos // np.prod(scaled_cube_shape[2:])
+        chosen_y = min(y_coefficient * width_scale, cube_shape[1] - 1)
+
+        chosen_xpos -= y_coefficient * np.prod(scaled_cube_shape[2:])
+        chosen_z = min(chosen_xpos * height_scale + 1, cube_shape[2] - 1)  # add 1 for beautify
         chosen_index = np.array([chosen_x, chosen_y, chosen_z])
-        assert np.all(chosen_index <= cube_shape)
+        assert np.all(chosen_index <= np.array(cube_shape) - 1)
         cube_box_xpos = self.model.cube_starting_point + self.model.box_d * (chosen_index - self.model.cube_starting_index)
         planning_action = np.r_[planning_action, cube_box_xpos.copy()]
 
