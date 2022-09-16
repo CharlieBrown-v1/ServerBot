@@ -87,15 +87,16 @@ class StackEnv(gym.Env):
         else:
             planning_action = self.action_mapping(action.copy())
 
-        desired_xy = self.model.desired_xy.copy()
-        if self.count % 3 == 0:
-            desired_xy[0] += 0.5 * self.model.distance_threshold
-            planning_action = np.r_[desired_xy, np.array([1.20, 0.88, 0.425])]
-        elif self.count % 3 == 1:
-            desired_xy[0] -= 0.5 * self.model.distance_threshold
-            planning_action = np.r_[desired_xy, np.array([1.40, 0.88, 0.425])]
-        else:
-            planning_action = np.r_[desired_xy, np.array([1.30, 0.88, 0.425])]
+        if action is not None:
+            desired_xy = self.model.desired_xy.copy()
+            if self.count % 3 == 0:
+                desired_xy[0] += 0.5 * self.model.distance_threshold
+                planning_action = np.r_[desired_xy, self.model.sim.data.get_geom_xpos('obstacle_object_0').copy()]
+            elif self.count % 3 == 1:
+                desired_xy[0] -= 0.5 * self.model.distance_threshold
+                planning_action = np.r_[desired_xy, self.model.sim.data.get_geom_xpos('obstacle_object_1').copy()]
+            else:
+                planning_action = np.r_[desired_xy, self.model.sim.data.get_geom_xpos('target_object').copy()]
 
         self.count += 1
 

@@ -70,6 +70,8 @@ class PlaceHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         ]
         self.lower_bound = np.array([1.30 - 0.16 + 0.025, 0.75 - 0.16 + 0.025])
         self.upper_bound = np.array([1.30 + 0.16 - 0.025, 0.75 + 0.16 - 0.025])
+
+        self.count = 0
         
     def set_mode(self, name: str, mode: bool):
         if name == 'training':
@@ -114,6 +116,9 @@ class PlaceHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                 min_dist = dist
                 achieved_name = name
         assert achieved_name is not None
+
+        np.save(f'/home/stalin/robot/result/collect/{self.count}', removal_goal)
+        self.count += 1
 
         self.achieved_name = achieved_name
         self.removal_goal = removal_goal.copy()
