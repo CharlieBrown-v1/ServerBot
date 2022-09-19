@@ -47,7 +47,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             target_in_air_probability=0.5,
             object_stacked_probability=0.5,
             hrl_mode=True,
-            random_mode=True,
+            # random_mode=True,
             stack_mode=True,
         )
         utils.EzPickle.__init__(self, reward_type=reward_type)
@@ -59,7 +59,9 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.removal_xpos_indicate = None
 
         self.prev_max_dist = None
+        self.prev_highest_height = None
 
+        self.trick_xy_scale = np.array([0.32, 0.32]) * self.distance_threshold
         self.desired_xy = np.array([1.30, 0.65])
         self.target_height = 0.425 + self.object_generator.size_sup * 2 * 2 - self.distance_threshold
         
@@ -103,27 +105,42 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
     def macro_step_setup(self, macro_action):
         same_xpos_object_count = self.counting_object(np.array([macro_action[desk_x], macro_action[desk_y]]))
-        if same_xpos_object_count > 0:
-            target_height = self.height_offset + 2.5 * same_xpos_object_count * self.object_generator.size_sup
+        if same_xpos_object_count == 1:
+            target_height = self.height_offset + 2.60 * self.object_generator.size_sup
+        elif same_xpos_object_count == 2:
+            target_height = self.height_offset + 4.85 * self.object_generator.size_sup
         else:
             target_height = self.height_offset
-        if same_xpos_object_count == 1:
-            target_height = self.height_offset + 2.5 * self.object_generator.size_sup
-        elif same_xpos_object_count == 2:
-            target_height = self.height_offset + 5.32 * self.object_generator.size_sup
         removal_goal = np.array([macro_action[desk_x], macro_action[desk_y], target_height])
         action_xpos = np.array([macro_action[pos_x], macro_action[pos_y], macro_action[pos_z]])
 
         achieved_name = None
+        stacked_name = None
         min_dist = np.inf
+        stacked_min_dist = np.inf
         name_list = self.object_name_list
         for name in name_list:
             xpos = self.sim.data.get_geom_xpos(name).copy()
             dist = xpos_distance(action_xpos, xpos)
+            stacked_dist = xpos_distance(removal_goal, xpos)
             if dist < min_dist:
                 min_dist = dist
                 achieved_name = name
+            if stacked_dist < stacked_min_dist:
+                stacked_min_dist = stacked_dist
+                stacked_name = name
         assert achieved_name is not None
+        assert stacked_name is not None
+
+        if same_xpos_object_count > 0:
+            achieved_xpos = self.sim.data.get_geom_xpos(achieved_name).copy()
+            xy_offset = removal_goal[:self.trick_xy_scale.size] - achieved_xpos[:self.trick_xy_scale.size]
+            trick_xy_sign = np.sign(xy_offset)
+            delta_trick_xy = self.trick_xy_scale * trick_xy_sign
+
+            new_removal_goal = self.sim.data.get_geom_xpos(stacked_name).copy()
+            new_removal_goal[:self.trick_xy_scale.size] += delta_trick_xy[:self.trick_xy_scale.size]
+            removal_goal[:self.trick_xy_scale.size] = new_removal_goal[:self.trick_xy_scale.size]
 
         self.achieved_name = achieved_name
         self.removal_goal = removal_goal.copy()
@@ -219,6 +236,9 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
     def reset_max_dist(self):
         self.prev_max_dist = self.compute_max_dist()
 
+    def reset_highest_height(self):
+        self.prev_highest_height = self.compute_highest_height()
+
     def compute_max_dist(self):
         max_dist = -np.inf
         for name in self.object_name_list:
@@ -230,10 +250,20 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         assert max_dist != -np.inf
         return max_dist
 
+    def compute_highest_height(self):
+        height_list = [self.sim.data.get_geom_xpos(name).copy()[2] for name in self.object_name_list]
+        highest_height = min(np.max(height_list), self.target_height)
+        return highest_height
+
     def stack_compute_reward(self, achieved_goal, goal, info):
         prev_max_dist = self.prev_max_dist
         curr_max_dist = self.compute_max_dist()
-        return self.reward_factor * (prev_max_dist - curr_max_dist)
+        dist_reward = prev_max_dist - curr_max_dist
+
+        prev_highest_height = self.prev_highest_height
+        curr_highest_height = self.compute_highest_height()
+        height_reward = curr_highest_height - prev_highest_height
+        return self.reward_factor * (dist_reward + height_reward)
 
     def is_stack_success(self):
         sorted_height_list = list(sorted([self.sim.data.get_geom_xpos(name)[2] for name in self.object_name_list]))
@@ -256,20 +286,13 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         self.sim.model.site_pos[global_target_site_id] = np.array([20, 20, 0.5])
 
-        # if self.removal_goal_indicate is not None:
-        #     self.sim.model.site_pos[removal_target_site_id] = self.removal_goal_indicate - sites_offset[
-        #         removal_target_site_id]
-        # elif self.removal_goal is not None:
-        #     self.sim.model.site_pos[removal_target_site_id] = self.removal_goal - sites_offset[
-        #         removal_target_site_id]
-        # else:
-        #     self.sim.model.site_pos[removal_target_site_id] = np.array([20, 20, 0.5])
-        #
-        # if self.achieved_name_indicate is not None:
-        #     self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(
-        #         self.achieved_name_indicate).copy() - sites_offset[achieved_site_id]
-        # else:
-        #     self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(self.achieved_name).copy() - \
-        #                                                 sites_offset[achieved_site_id]
+        if self.removal_goal_indicate is not None:
+            self.sim.model.site_pos[removal_target_site_id] = self.removal_goal_indicate - sites_offset[
+                removal_target_site_id]
+        elif self.removal_goal is not None:
+            self.sim.model.site_pos[removal_target_site_id] = self.removal_goal - sites_offset[
+                removal_target_site_id]
+        else:
+            self.sim.model.site_pos[removal_target_site_id] = np.array([20, 20, 0.5])
 
         self.sim.forward()

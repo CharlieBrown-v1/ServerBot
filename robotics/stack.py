@@ -65,6 +65,7 @@ class StackEnv(gym.Env):
         obs = self.model.reset()
         self.count = 0
         self.model.reset_max_dist()
+        self.model.reset_highest_height()
         return obs
 
     def action_mapping(self, action: np.ndarray):
@@ -87,17 +88,6 @@ class StackEnv(gym.Env):
         else:
             planning_action = self.action_mapping(action.copy())
 
-        if action is not None:
-            desired_xy = self.model.desired_xy.copy()
-            if self.count % 3 == 0:
-                desired_xy[0] += 0.5 * self.model.distance_threshold
-                planning_action = np.r_[desired_xy, self.model.sim.data.get_geom_xpos('obstacle_object_0').copy()]
-            elif self.count % 3 == 1:
-                desired_xy[0] -= 0.5 * self.model.distance_threshold
-                planning_action = np.r_[desired_xy, self.model.sim.data.get_geom_xpos('obstacle_object_1').copy()]
-            else:
-                planning_action = np.r_[desired_xy, self.model.sim.data.get_geom_xpos('target_object').copy()]
-
         self.count += 1
 
         achieved_name, removal_goal, min_dist = self.model.macro_step_setup(planning_action)
@@ -109,7 +99,7 @@ class StackEnv(gym.Env):
         obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal)
         obs, reward, done, info = self.model.macro_step(agent=self.agent, obs=obs, count=self.count)
 
-        done = self.count >= 3
+        obs = self.model.get_obs(achieved_name=None, goal=None)
 
         info['is_success'] = self.model.is_stack_success()
 
