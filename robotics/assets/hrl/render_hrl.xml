@@ -15,7 +15,7 @@
 		</body>
 
 		<body name="floor1" pos="29 29 29">
-			<site name="removal_target" pos="0 0 0.5" size="0.025 0.025 0.025" rgba="1 0 0 1" type="sphere" />
+			<site name="removal_target" pos="0 0 0.5" size="0.025 0.025 0.025" rgba="1 0 0 1" type="box" />
 		</body>
 
 		<body name="floor2" pos="30 30 30">

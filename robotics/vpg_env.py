@@ -30,13 +30,18 @@ def xpos_distance(goal_a: np.ndarray, goal_b: np.ndarray):
 
 
 class VPGEnv(gym.Env):
-    def __init__(self, agent_path=None, device=None):
+    def __init__(self, agent_path=None, push_path=None, device=None):
         super(VPGEnv, self).__init__()
 
         if agent_path is None:
             self.agent = None
         else:
             self.agent = HybridPPO.load(agent_path, device=device)
+
+        if push_path is None:
+            self.push = None
+        else:
+            self.push = HybridPPO.load(push_path, device=device)
 
         self.model = gym.make('VPGHrlDense-v0')
 
@@ -100,17 +105,21 @@ class VPGEnv(gym.Env):
         return planning_action
 
     def step(self, action: np.ndarray):
-        assert self.agent is not None, "You must load agent before step!"
+        assert self.agent is not None and self.push is not None, "You must load agent before step!"
 
         planning_action = self.action_mapping(action.copy())
-        agent = self.agent
+
+        if planning_action[macro_action] == grasp:
+            agent = self.agent
+        else:
+            agent = self.push
 
         achieved_name, removal_goal, min_dist = self.model.macro_step_setup(planning_action)
         if not self.training_mode:
             self.render()  # show which point and object agent has just selected
 
         obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal)
-        _, _, done, info = self.model.macro_step(agent=agent, obs=obs)
+        _, _, done, info = self.model.macro_step(agent=agent, obs=obs, macro_action=planning_action)
 
         obs = self.model.get_obs(achieved_name=None, goal=None)
 
@@ -139,7 +148,7 @@ class VPGEnv(gym.Env):
             return obs, self.success_reward, done, info
         elif done:
             return obs, self.fail_reward, done, info
-        elif is_good_goal:
+        elif not info['is_invalid'] and is_good_goal:
             return obs, self.suitable_step_reward, done, info
         else:
             return obs, self.step_reward, done, info

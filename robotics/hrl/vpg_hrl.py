@@ -1,7 +1,6 @@
 import os
 import copy
 import numpy as np
-import math
 import scipy.linalg as linalg
 
 from gym import utils
@@ -29,6 +28,19 @@ def rotate_mat(radian):
 
 class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
     def __init__(self, reward_type="dense"):
+        self.mocap_name = 'robot0:mocap'
+
+        self.training_mode = True
+        self.push_mode = False
+        self.invalid_mode = False
+
+        self.achieved_name_indicate = None
+        self.removal_goal_indicate = None
+        self.removal_xpos_indicate = None
+
+        self.push_step = np.array([0.10, 0, 0])
+        self.pre_push_step = np.array([0.06, 0, 0])
+
         initial_qpos = {
             "robot0:slide0": 0.405,
             "robot0:slide1": 0.48,
@@ -54,18 +66,9 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             hrl_mode=True,
             random_mode=True,
             train_upper_mode=True,
-            test_mode=True,
+            # test_mode=True,
         )
         utils.EzPickle.__init__(self, reward_type=reward_type)
-
-        self.push_step = np.array([0.10, 0, 0])
-
-        self.training_mode = True
-        self.invalid_mode = False
-
-        self.achieved_name_indicate = None
-        self.removal_goal_indicate = None
-        self.removal_xpos_indicate = None
 
     def set_mode(self, name: str, mode: bool):
         if name == 'training':
@@ -116,7 +119,7 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             return not_in_desk_count * self.punish_factor
 
     def macro_step_setup(self, macro_action):
-        assert not self.invalid_mode
+        assert not self.invalid_mode and not self.push_mode and not self.block_gripper
         chosen_macro_action = macro_action[action_mode]
         chosen_xpos = macro_action[action_mode + 1: angle].copy()
         chosen_angle = macro_action[angle]
@@ -142,11 +145,14 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             min_dist = None
         # both push
         elif chosen_macro_action == push:
+            self.push_mode = True
+            self.block_gripper = True
             self.achieved_name = achieved_name
-            rotation_mat = rotate_mat(chosen_angle)
-            push_step = np.matmul(rotation_mat, self.push_step)
             achieved_xpos = self.sim.data.get_geom_xpos(achieved_name).copy()
-            removal_goal = achieved_xpos + push_step
+            rotation_mat = rotate_mat(chosen_angle)
+            # negative offset for being consistent with VPG-push
+            pre_push_step = -np.matmul(rotation_mat, self.pre_push_step)
+            removal_goal = achieved_xpos + pre_push_step
             self.removal_goal = removal_goal.copy()
             self.achieved_name_indicate = achieved_name
             self.removal_goal_indicate = removal_goal.copy()
@@ -168,10 +174,12 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         return achieved_name, removal_goal, min_dist
 
-    def macro_step(self, agent: HybridPPO, obs: dict):
+    def macro_step(self, agent: HybridPPO, obs: dict, macro_action=None):
+        assert macro_action is not None
         info = {
             'is_fail': False,
             'is_success': False,
+            'is_invalid': True,
         }
 
         if self.invalid_mode:
@@ -192,11 +200,60 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                 self.render()
             if info['train_done']:
                 break
-        info['frames'] = frames
+
+        if i < self.spec.max_episode_steps:
+            if self.push_mode:
+                chosen_angle = macro_action[angle]
+                rotation_mat = rotate_mat(chosen_angle)
+                push_step = np.matmul(rotation_mat, self.push_step).copy()
+                gripper_xpos = self.sim.data.get_mocap_pos(self.mocap_name).copy()
+                self.removal_goal_indicate = gripper_xpos + push_step
+                for i in np.linspace(0.1, 1, 10):
+                    gripper_target = gripper_xpos + push_step * i
+                    self.sim.data.set_mocap_pos(self.mocap_name, gripper_target)
+                    self.sim.step()
+                    if self.training_mode:
+                        self.sim.forward()
+                    else:
+                        self.render()
         if info['is_removal_success']:
+            self.reset_gripper_position()
+
+        self.push_mode = False
+        self.block_gripper = False
+
+        info['frames'] = frames
+        info['is_invalid'] = False
+        info['is_fail'] = self._is_fail()
+
+        if info['is_fail']:
+            return obs, 0, True, info
+        elif info['is_removal_success']:
             return obs, 0, False, info
         else:
             return obs, 0, True, info
+
+    def reset_gripper_position(self):
+        desired_gripper_xpos = np.array(
+            [-0.1, 0.0, 0.1]
+        ) + self.initial_gripper_xpos.copy()
+        desired_gripper_rotation = np.array([1.0, 0.0, 1.0, 0.0])
+
+        gripper_xpos = self.sim.data.get_mocap_pos(self.mocap_name).copy()
+        gripper_rotation = self.sim.data.get_mocap_quat(self.mocap_name).copy()
+        gripper_xpos_step = desired_gripper_xpos - gripper_xpos
+        gripper_rotation_step = desired_gripper_rotation - gripper_rotation
+
+        for i in np.linspace(0.1, 1, 10):
+            curr_gripper_xpos = gripper_xpos + i * gripper_xpos_step
+            curr_gripper_rotation = gripper_rotation + i * gripper_rotation_step
+            self.sim.data.set_mocap_pos("robot0:mocap", curr_gripper_xpos)
+            self.sim.data.set_mocap_quat("robot0:mocap", curr_gripper_rotation)
+            self.sim.step()
+            if self.training_mode:
+                self.sim.forward()
+            else:
+                self.render()
 
     def get_obs(self, achieved_name=None, goal=None):
         assert self.hrl_mode
@@ -223,6 +280,13 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         self._state_init(new_goal.copy())
         return self._get_obs()
+
+    def _get_obs(self):
+        obs_dict = super(VPGHrlEnv, self)._get_obs()
+        if self.push_mode:
+            obs_dict['achieved_goal'] = self.sim.data.get_mocap_pos(self.mocap_name).copy()
+
+        return obs_dict
 
     def _render_callback(self):
         # Visualize target.
