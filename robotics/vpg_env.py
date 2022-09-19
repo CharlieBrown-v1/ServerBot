@@ -39,7 +39,6 @@ class VPGEnv(gym.Env):
             self.agent = HybridPPO.load(agent_path, device=device)
 
         self.model = gym.make('VPGHrlDense-v0')
-        # self.model = gym.make('TestHrlDense-v0')
 
         size_inf = 0.05
 
