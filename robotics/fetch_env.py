@@ -569,17 +569,25 @@ class FetchEnv(robot_env.RobotEnv):
         return self._get_obs()
 
     def _viewer_setup(self):
+        object_flag = False
+
         body_id = self.sim.model.body_name2id("robot0:gripper_link")
         lookat = self.sim.data.body_xpos[body_id]
-        lookat = np.array([1.30, 0.75, 0.4])
+
+        if object_flag:
+            lookat = np.array([1.30, 0.75, 0.4])
+
         for idx, value in enumerate(lookat):
             self.viewer.cam.lookat[idx] = value
-        self.viewer.cam.distance = 0.85
-        self.viewer.cam.azimuth = 0
-        self.viewer.cam.elevation = -50.0
-        # self.viewer.cam.distance = 1.28
-        # self.viewer.cam.azimuth = 180 + 40
-        # self.viewer.cam.elevation = -15.0
+
+        if object_flag:
+            self.viewer.cam.distance = 0.85
+            self.viewer.cam.azimuth = 0
+            self.viewer.cam.elevation = -50.0
+
+        self.viewer.cam.distance = 1.28
+        self.viewer.cam.azimuth = 180 + 40
+        self.viewer.cam.elevation = -15.0
 
     def _render_callback(self):
         # Visualize target.

@@ -410,8 +410,16 @@ for reward_type in ["sparse", "dense"]:
 
     # DIY
     register(
-        id="PushHrl{}-v0".format(suffix),
-        entry_point="gym.envs.robotics:PushHrlEnv",
+        id="Push{}-v0".format(suffix),
+        entry_point="gym.envs.robotics:PushEnv",
+        kwargs=kwargs,
+        max_episode_steps=64,
+    )
+
+    # DIY
+    register(
+        id="Move{}-v0".format(suffix),
+        entry_point="gym.envs.robotics:MoveEnv",
         kwargs=kwargs,
         max_episode_steps=64,
     )
