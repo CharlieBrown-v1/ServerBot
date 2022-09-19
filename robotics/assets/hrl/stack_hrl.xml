@@ -14,10 +14,18 @@
 			<site name="global_target" pos="0 0 0.5" size="0.025 0.025 0.025" rgba="1 0 0 1" type="sphere" />
 		</body>
 
+		<body name="floor1" pos="29 29 29">
+			<site name="removal_target" pos="0 0 0.5" size="0.025 0.025 0.025" rgba="1 0 0 1" type="sphere" />
+		</body>
+
 		<include file="robot.xml" />
 
 		<body pos="1.3 0.75 0.2" name="table0">
 			<geom name="table" size="0.25 0.35 0.2" type="box" mass="2000" material="table_mat" />
+		</body>
+
+		<body name="achieved_site" pos="31 31 31">
+			<site name="achieved_site" pos="0 0 1" rgba="1 1 0 0.5" size="0.030 0.030 0.030" type="box" />
 		</body>
 
 		<light directional="true" ambient="0.2 0.2 0.2" diffuse="0.8 0.8 0.8" specular="0.3 0.3 0.3" castshadow="false" pos="0 0 4" dir="0 0 -1" name="light0" />

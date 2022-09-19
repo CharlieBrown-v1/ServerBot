@@ -104,6 +104,8 @@ class StackEnv(gym.Env):
         if not self.training_mode:
             self.render()  # show which point and object agent has just selected
 
+        from PIL import Image
+
         obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal)
         obs, reward, done, info = self.model.macro_step(agent=self.agent, obs=obs, count=self.count)
 
