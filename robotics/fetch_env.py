@@ -128,7 +128,7 @@ class FetchEnv(robot_env.RobotEnv):
             train_upper_mode=False,
             test_mode=False,
             stack_mode=False,
-            place_mode=False,
+            collect_mode=False,
             debug_mode=False,
             demo_mode=False,
     ):
@@ -177,7 +177,7 @@ class FetchEnv(robot_env.RobotEnv):
             train_upper_mode=train_upper_mode,
             test_mode=test_mode,
             stack_mode=stack_mode,
-            place_mode=place_mode,
+            collect_mode=collect_mode,
             xml_path=model_path,
         )
 
@@ -661,8 +661,8 @@ class FetchEnv(robot_env.RobotEnv):
         self.sim.forward()
 
         if self.hrl_mode:
+            count = 0
             while True:
-                count = 0
                 done = False
                 while not done:
                     self.sim.step()
@@ -673,9 +673,8 @@ class FetchEnv(robot_env.RobotEnv):
                         np.concatenate(curr_object_xpos_list) - np.concatenate(self.init_object_xpos_list),
                         ord=np.inf) < epsilon
                     self.init_object_xpos_list = curr_object_xpos_list.copy()
-                    count += 1
-                    if count > 1e3:
-                        assert False, 'Check initial setting!'
+                count += 1
+                assert count < 16, 'Check initial setting!'
                 all_in_desk = np.all(
                     np.array([object_xpos[2] for object_xpos in self.init_object_xpos_list]) > 0.4 - 0.01)
                 if all_in_desk:

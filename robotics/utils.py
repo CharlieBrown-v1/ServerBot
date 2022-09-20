@@ -170,7 +170,7 @@ class ObjectGenerator:
                  train_upper_mode=False,
                  test_mode=False,
                  stack_mode=False,
-                 place_mode=False,
+                 collect_mode=False,
                  xml_path='hrl/hrl.xml',
                  ):
         self.size_sup = 0.025
@@ -199,7 +199,7 @@ class ObjectGenerator:
         self.train_upper_mode = train_upper_mode
         self.test_mode = test_mode
         self.stack_mode = stack_mode
-        self.place_mode = place_mode
+        self.collect_mode = collect_mode
 
         self.global_achieved_name = 'target_object'
 
@@ -217,8 +217,8 @@ class ObjectGenerator:
 
         self.step = 0.05
         self.delta_obstacle_qpos_list = [
-            np.r_[np.array([1.40, 0.88, 0.475]) - np.array([1.30, 0.88, 0.425]), self.qpos_postfix],
-            np.r_[np.array([1.20, 0.88, 0.475]) - np.array([1.30, 0.88, 0.425]), self.qpos_postfix],
+            # np.r_[np.array([1.40, 0.88, 0.475]) - np.array([1.30, 0.88, 0.425]), self.qpos_postfix],
+            # np.r_[np.array([1.20, 0.88, 0.475]) - np.array([1.30, 0.88, 0.425]), self.qpos_postfix],
 
             np.r_[np.array([1.30 - 0.20, 0.75 + 0.20, 0.425]) - np.array([1.30 - 0.20, 0.75 - 0.20, 0.425]), self.qpos_postfix],
             # np.r_[np.array([1.30 + 0.20, 0.75 - 0.20, 0.425]) - np.array([1.30 - 0.20, 0.75 - 0.20, 0.425]), self.qpos_postfix],
@@ -245,7 +245,7 @@ class ObjectGenerator:
         self.obstacle_count = 3
         if self.stack_mode:
             self.obstacle_count = 2
-        elif self.place_mode:
+        elif self.collect_mode:
             self.obstacle_count = 3 + 1
 
         self.max_stack_count = 4
@@ -323,8 +323,8 @@ class ObjectGenerator:
         obstacle_name_list = []
         obstacle_xpos_list = []
 
-        if self.stack_mode or self.place_mode:
-            if self.place_mode and self.random_mode:
+        if self.stack_mode or self.collect_mode:
+            if self.collect_mode and self.random_mode:
                 obstacle_count = np.random.randint(1, 4 + 1)
             else:
                 obstacle_count = self.obstacle_count
@@ -381,7 +381,7 @@ class ObjectGenerator:
         object_name_list.insert(0, achieved_name)
         object_qpos_list.insert(0, achieved_qpos.copy())
 
-        if self.random_mode or self.stack_mode or self.place_mode:
+        if self.random_mode or self.stack_mode or self.collect_mode:
             new_obstacle_name_list = list(np.random.choice(tmp_object_name_list, size=obstacle_count, replace=False))
         else:
             new_obstacle_name_list = tmp_object_name_list[:obstacle_count].copy()
@@ -392,7 +392,7 @@ class ObjectGenerator:
         # DIY
         delta_obstacle_qpos_list = self.delta_obstacle_qpos_list[: obstacle_count].copy()
 
-        if not self.random_mode or self.stack_mode or self.place_mode:
+        if not self.random_mode or self.stack_mode or self.collect_mode:
             for delta_obstacle_qpos in delta_obstacle_qpos_list:
                 object_qpos_list.append(achieved_qpos.copy() + delta_obstacle_qpos)
                 obstacle_xpos_list.append((achieved_qpos.copy() + delta_obstacle_qpos)[:3])

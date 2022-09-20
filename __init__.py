@@ -356,8 +356,8 @@ register(
 
 # DIY
 register(
-        id="Place-v0",
-        entry_point="gym.envs.robotics:PlaceEnv",
+        id="Collect-v0",
+        entry_point="gym.envs.robotics:CollectEnv",
         max_episode_steps=16,
 )
 
@@ -365,6 +365,12 @@ register(
 register(
         id="VPG-v0",
         entry_point="gym.envs.robotics:VPGEnv",
+        max_episode_steps=16,
+)
+
+register(
+        id="VPGCollect-v0",
+        entry_point="gym.envs.robotics:VPGCollectEnv",
         max_episode_steps=16,
 )
 
@@ -402,8 +408,16 @@ for reward_type in ["sparse", "dense"]:
 
     # DIY
     register(
-        id="PlaceHrl{}-v0".format(suffix),
-        entry_point="gym.envs.robotics:PlaceHrlEnv",
+        id="CollectHrl{}-v0".format(suffix),
+        entry_point="gym.envs.robotics:CollectHrlEnv",
+        kwargs=kwargs,
+        max_episode_steps=64,
+    )
+
+    # DIY
+    register(
+        id="VPGCollectHrl{}-v0".format(suffix),
+        entry_point="gym.envs.robotics:VPGCollectHrlEnv",
         kwargs=kwargs,
         max_episode_steps=64,
     )

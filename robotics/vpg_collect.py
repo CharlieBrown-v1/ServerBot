@@ -29,9 +29,9 @@ def xpos_distance(goal_a: np.ndarray, goal_b: np.ndarray):
     return np.linalg.norm(goal_a - goal_b, axis=-1)
 
 
-class VPGEnv(gym.Env):
+class VPGCollectEnv(gym.Env):
     def __init__(self, agent_path=None, push_path=None, device=None):
-        super(VPGEnv, self).__init__()
+        super(VPGCollectEnv, self).__init__()
 
         if agent_path is None:
             self.agent = None
@@ -43,7 +43,7 @@ class VPGEnv(gym.Env):
         else:
             self.push = HybridPPO.load(push_path, device=device)
 
-        self.model = gym.make('VPGHrlDense-v0')
+        self.model = gym.make('VPGCollectHrlDense-v0')
 
         size_inf = 0.05
 
@@ -60,10 +60,8 @@ class VPGEnv(gym.Env):
 
         self.training_mode = True
 
+        self.success_reward = 1
         self.fail_reward = -1
-        self.grasp_reward = 1
-        self.push_reward = 0.5
-        self.time_reward = -0.5
 
         self.action_space = spaces.Discrete(np.prod(action_shape_list))
         self.observation_space = copy.deepcopy(self.model.observation_space)
@@ -127,24 +125,20 @@ class VPGEnv(gym.Env):
             self.render()  # show which point and object agent has just selected
 
         obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal)
-        _, _, done, info = self.model.macro_step(agent=agent, obs=obs, macro_action=planning_action)
+        obs, reward, done, info = self.model.macro_step(agent=agent, obs=obs, macro_action=planning_action)
 
-        obs = self.model.get_obs(achieved_name=None, goal=None)
+        info['is_success'] = self.model.is_collect_success()
+
+        done = done or info['is_success']
 
         if info['is_fail']:
             return obs, self.fail_reward, done, info
-        elif info['push_mode']:  # push reward
-            if info['is_good_push']:
-                return obs, self.push_reward, done, info
-            else:
-                return obs, self.time_reward, done, info
-        else:  # grasp reward
-            if info['train_is_success']:
-                return obs, self.grasp_reward, done, info
-            elif done:
-                return obs, self.fail_reward, done, info
-            else:
-                return obs, self.time_reward, done, info
+        elif info['is_success']:
+            return obs, self.success_reward, done, info
+        elif done:
+            return obs, self.fail_reward, done, info
+        else:
+            return obs, reward, done, info
 
     def render(self, mode="human", width=500, height=500):
         return self.model.render(mode=mode, width=width, height=height)

@@ -65,7 +65,7 @@
 		<body name="target_object" pos="21.0 20.0 0.05">
 			<joint name="target_object:joint" type="free" damping="0.01" />
 			<geom size="0.025 0.025 0.025" type="box" condim="3" name="target_object" material="block_mat" mass="2" rgba="0 1 1 1" />
-			<site name="target_object" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
+			<site name="target_object" pos="0 0 0" size="0.1 0.1 0.1" rgba="1 0 0 0.1" type="sphere" />
 		</body>
 
 		<body name="target_object_capsule" pos="22.0 20.0 0.05">

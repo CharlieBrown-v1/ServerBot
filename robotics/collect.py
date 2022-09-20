@@ -22,16 +22,16 @@ def xpos_distance(goal_a: np.ndarray, goal_b: np.ndarray):
     return np.linalg.norm(goal_a - goal_b, axis=-1)
 
 
-class PlaceEnv(gym.Env):
+class CollectEnv(gym.Env):
     def __init__(self, agent_path=None, device=None):
-        super(PlaceEnv, self).__init__()
+        super(CollectEnv, self).__init__()
 
         if agent_path is None:
             self.agent = None
         else:
             self.agent = HybridPPO.load(agent_path, device=device)
 
-        self.model = gym.make('PlaceHrlDense-v0')
+        self.model = gym.make('CollectHrlDense-v0')
 
         self.action_space = spaces.Box(-1.0, 1.0, shape=(len(action_list),), dtype="float32")
         self.observation_space = copy.deepcopy(self.model.observation_space)
@@ -91,7 +91,7 @@ class PlaceEnv(gym.Env):
         obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal)
         obs, reward, done, info = self.model.macro_step(agent=self.agent, obs=obs)
 
-        info['is_success'] = self.model.is_place_success()
+        info['is_success'] = self.model.is_collect_success()
 
         done = done or info['is_success']
 

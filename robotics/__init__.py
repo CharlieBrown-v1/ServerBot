@@ -17,14 +17,16 @@ from gym.envs.robotics.hrl.grasp import GraspEnv
 from gym.envs.robotics.hrl.hrl import HrlEnv
 from gym.envs.robotics.hrl.render_hrl import RenderHrlEnv
 from gym.envs.robotics.hrl.test_hrl import TestHrlEnv
-from gym.envs.robotics.hrl.stack_hrl import StackHrlEnv
-from gym.envs.robotics.hrl.place_hrl import PlaceHrlEnv
 from gym.envs.robotics.hrl.vpg_hrl import VPGHrlEnv
+from gym.envs.robotics.hrl.stack_hrl import StackHrlEnv
+from gym.envs.robotics.hrl.collect_hrl import CollectHrlEnv
+from gym.envs.robotics.hrl.vpg_collect_hrl import VPGCollectHrlEnv
 
 from gym.envs.robotics.hrl.push import PushEnv
 from gym.envs.robotics.hrl.move import MoveEnv
 
 from gym.envs.robotics.vpg_env import VPGEnv
 from gym.envs.robotics.stack import StackEnv
-from gym.envs.robotics.place import PlaceEnv
+from gym.envs.robotics.collect import CollectEnv
+from gym.envs.robotics.vpg_collect import VPGCollectEnv
 from gym.envs.robotics.planning_env import PlanningEnv

@@ -43,7 +43,7 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.storage_box_lower_bound = self.storage_box_center_xy - self.storage_box_size_xy
         self.storage_box_upper_bound = self.storage_box_center_xy + self.storage_box_size_xy
         self.push_step = np.array([0.10, 0, 0])
-        self.pre_push_step = np.array([0.06, 0, 0])
+        self.pre_push_step = np.array([0.05, 0, 0])
 
         self.prev_blocked_count = None
 
@@ -72,7 +72,7 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             hrl_mode=True,
             random_mode=True,
             train_upper_mode=True,
-            test_mode=True,
+            # test_mode=True,
         )
         utils.EzPickle.__init__(self, reward_type=reward_type)
 
@@ -84,7 +84,6 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
     def reset(self):
         obs = super(VPGHrlEnv, self).reset()
-        self.prev_blocked_count = 0
         return obs
 
     def reset_indicate(self):
@@ -104,6 +103,7 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         so remove name in this can ensure grasp_mode remain True!
         """
         if self.grasp_mode:
+            assert self.achieved_name != 'target_object'
             self.object_name_list.remove(self.achieved_name)
 
         new_achieved_name = 'target_object'
@@ -201,7 +201,6 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         info = {
             'is_fail': False,
             'is_success': False,
-            'is_good_push': False,
         }
 
         i = 0
@@ -244,6 +243,7 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         info['frames'] = frames
         info['is_fail'] = self._is_fail()
+        info['push_mode'] = self.push_mode
         info['is_good_push'] = self._is_good_push()
 
         self.grasp_mode = False
@@ -298,31 +298,34 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             new_goal = self.global_goal.copy()
 
         tmp_obstacle_name_list = self.object_name_list.copy()
-        try:
-            tmp_obstacle_name_list.remove(self.achieved_name)
-        except ValueError:  # some obstacles are removed during macro_step
-            pass
+        tmp_obstacle_name_list.remove(self.achieved_name)
         self.obstacle_name_list = tmp_obstacle_name_list.copy()
         self.init_obstacle_xpos_list = [self.sim.data.get_geom_xpos(name).copy() for name in self.obstacle_name_list]
 
         self._state_init(new_goal.copy())
         return self._get_obs()
 
+    def _state_init(self, goal_xpos: np.ndarray = None):
+        grip_xpos = self.sim.data.get_site_xpos("robot0:grip").copy()
+        achieved_xpos = self.sim.data.get_geom_xpos(self.achieved_name).copy()
+        self.prev_grip_achi_dist = xpos_distance(grip_xpos, achieved_xpos)
+        self.prev_achi_desi_dist = xpos_distance(achieved_xpos, goal_xpos)
+        self.prev_blocked_count = np.sum([xpos_distance(achieved_xpos, self.sim.data.get_geom_xpos(name))
+                                          <= 1.5 * self.distance_threshold for name in self.object_name_list])
+
     def _is_good_push(self):
         achieved_xpos = self.sim.data.get_geom_xpos('target_object').copy()
-        curr_blocked_count = 0
-        for name in self.object_name_list:
-            obstacle_xpos = self.sim.data.get_geom_xpos(name).copy()
-            curr_blocked_count += int(xpos_distance(achieved_xpos, obstacle_xpos) <= 1.25 * self.distance_threshold)
-        flag = self.prev_blocked_count > curr_blocked_count
+        curr_blocked_count = np.sum([xpos_distance(achieved_xpos, self.sim.data.get_geom_xpos(name))
+                                     <= 2 * self.distance_threshold for name in self.object_name_list])
+        flag = self.push_mode and self.prev_blocked_count > curr_blocked_count
         self.prev_blocked_count = curr_blocked_count
         return flag
 
     def _is_success(self, achieved_goal, desired_goal):
         if self.grasp_mode:
             return np.logical_and(
-                np.all(achieved_goal[:2] >= self.storage_box_lower_bound + 1.5 * self.object_generator.size_sup),
-                np.all(achieved_goal[:2] <= self.storage_box_upper_bound - 1.5 * self.object_generator.size_sup),
+                np.all(achieved_goal[:2] >= self.storage_box_lower_bound + 2 * self.object_generator.size_sup),
+                np.all(achieved_goal[:2] <= self.storage_box_upper_bound - 2 * self.object_generator.size_sup),
             )
         else:
             d = xpos_distance(achieved_goal, desired_goal)
