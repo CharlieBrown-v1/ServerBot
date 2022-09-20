@@ -61,6 +61,8 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.prev_max_dist = None
         self.prev_highest_height = None
 
+        self.policy_removal_goal = None
+
         self.trick_xy_scale = np.array([0.32, 0.32]) * self.distance_threshold
         self.desired_xy = np.array([1.30, 0.65])
         self.target_height = 0.425 + self.object_generator.size_sup * 2 * 2 - self.distance_threshold
@@ -112,6 +114,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         else:
             target_height = self.height_offset
         removal_goal = np.array([macro_action[desk_x], macro_action[desk_y], target_height])
+        self.policy_removal_goal = removal_goal.copy()
         action_xpos = np.array([macro_action[pos_x], macro_action[pos_y], macro_action[pos_z]])
 
         achieved_name = None
@@ -264,8 +267,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         curr_highest_height = self.compute_highest_height()
         height_reward = curr_highest_height - prev_highest_height
 
-        assert goal is not None
-        goal_dist = xpos_distance(goal[:self.desired_xy.size], self.desired_xy)
+        goal_dist = xpos_distance(self.policy_removal_goal[:self.desired_xy.size], self.desired_xy)
         return -self.reward_factor * goal_dist
 
     def is_stack_success(self):
