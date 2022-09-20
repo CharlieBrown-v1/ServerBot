@@ -280,7 +280,6 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         sites_offset = (self.sim.data.site_xpos - self.sim.model.site_pos).copy()
         global_target_site_id = self.sim.model.site_name2id("global_target")
         removal_target_site_id = self.sim.model.site_name2id("removal_target")
-        achieved_site_id = self.sim.model.site_name2id("achieved_site")
 
         if self.removal_goal_indicate is not None:
             self.sim.model.site_pos[global_target_site_id] = self.removal_goal_indicate - sites_offset[global_target_site_id]

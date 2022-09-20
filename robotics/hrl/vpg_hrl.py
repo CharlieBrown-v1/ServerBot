@@ -13,7 +13,7 @@ grasp = 0
 push = 1
 action_mode = 0
 angle = -1
-MODEL_XML_PATH = os.path.join("hrl", "render_hrl.xml")
+MODEL_XML_PATH = os.path.join("hrl", "vpg_hrl.xml")
 
 
 def xpos_distance(goal_a, goal_b):
@@ -31,15 +31,21 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.mocap_name = 'robot0:mocap'
 
         self.training_mode = True
+        self.grasp_mode = False
         self.push_mode = False
-        self.invalid_mode = False
 
         self.achieved_name_indicate = None
         self.removal_goal_indicate = None
         self.removal_xpos_indicate = None
 
+        self.storage_box_center_xy = np.array([1.3, 0.3])
+        self.storage_box_size_xy = np.array([0.1, 0.1])
+        self.storage_box_lower_bound = self.storage_box_center_xy - self.storage_box_size_xy
+        self.storage_box_upper_bound = self.storage_box_center_xy + self.storage_box_size_xy
         self.push_step = np.array([0.10, 0, 0])
         self.pre_push_step = np.array([0.06, 0, 0])
+
+        self.prev_blocked_count = None
 
         initial_qpos = {
             "robot0:slide0": 0.405,
@@ -66,7 +72,7 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             hrl_mode=True,
             random_mode=True,
             train_upper_mode=True,
-            # test_mode=True,
+            test_mode=True,
         )
         utils.EzPickle.__init__(self, reward_type=reward_type)
 
@@ -75,6 +81,11 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             self.training_mode = mode
         else:
             raise NotImplementedError
+
+    def reset(self):
+        obs = super(VPGHrlEnv, self).reset()
+        self.prev_blocked_count = 0
+        return obs
 
     def reset_indicate(self):
         self.achieved_name_indicate = None
@@ -87,6 +98,13 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         if goal is None:
             goal = self.global_goal.copy()
+
+        """
+        fn called only by step when self.is_removal_success = True,
+        so remove name in this can ensure grasp_mode remain True!
+        """
+        if self.grasp_mode:
+            self.object_name_list.remove(self.achieved_name)
 
         new_achieved_name = 'target_object'
         new_obstacle_name_list = self.object_name_list.copy()
@@ -119,7 +137,7 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             return not_in_desk_count * self.punish_factor
 
     def macro_step_setup(self, macro_action):
-        assert not self.invalid_mode and not self.push_mode and not self.block_gripper
+        assert not self.grasp_mode and not self.push_mode and not self.block_gripper
         chosen_macro_action = macro_action[action_mode]
         chosen_xpos = macro_action[action_mode + 1: angle].copy()
         chosen_angle = macro_action[angle]
@@ -133,16 +151,20 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             if dist < min_dist:
                 min_dist = dist
                 achieved_name = name
+        if len(name_list) == 0:
+            achieved_name = 'target_object'
         assert achieved_name is not None
 
         # obstacle grasp
         if achieved_name != 'target_object' and chosen_macro_action == grasp:
-            self.invalid_mode = True
-            self.removal_goal = None
+            self.grasp_mode = True
+            self.achieved_name = achieved_name
+            removal_goal = np.r_[self.storage_box_center_xy.copy(), 0.55]
             self.reset_indicate()
-            achieved_name = None
-            removal_goal = None
-            min_dist = None
+            self.removal_goal = removal_goal.copy()
+            self.achieved_name_indicate = achieved_name
+            self.removal_goal_indicate = removal_goal.copy()
+            self.removal_xpos_indicate = chosen_xpos.copy()
         # both push
         elif chosen_macro_action == push:
             self.push_mode = True
@@ -179,12 +201,8 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         info = {
             'is_fail': False,
             'is_success': False,
-            'is_invalid': True,
+            'is_good_push': False,
         }
-
-        if self.invalid_mode:
-            self.invalid_mode = False
-            return obs, 0, False, info
 
         i = 0
         frames = []
@@ -202,6 +220,11 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                 break
 
         if i < self.spec.max_episode_steps:
+            if self.grasp_mode:
+                release_action = np.zeros(self.action_space.shape)
+                release_action[-1] = self.action_space.high[-1]
+                for _ in range(2):
+                    obs, _, _, _ = self.step(release_action)
             if self.push_mode:
                 chosen_angle = macro_action[angle]
                 rotation_mat = rotate_mat(chosen_angle)
@@ -219,12 +242,13 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         if info['is_removal_success']:
             self.reset_gripper_position()
 
+        info['frames'] = frames
+        info['is_fail'] = self._is_fail()
+        info['is_good_push'] = self._is_good_push()
+
+        self.grasp_mode = False
         self.push_mode = False
         self.block_gripper = False
-
-        info['frames'] = frames
-        info['is_invalid'] = False
-        info['is_fail'] = self._is_fail()
 
         if info['is_fail']:
             return obs, 0, True, info
@@ -235,7 +259,7 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
     def reset_gripper_position(self):
         desired_gripper_xpos = np.array(
-            [-0.1, 0.0, 0.1]
+            [-0.1, 0.0, 0.2]
         ) + self.initial_gripper_xpos.copy()
         desired_gripper_rotation = np.array([1.0, 0.0, 1.0, 0.0])
 
@@ -274,12 +298,35 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             new_goal = self.global_goal.copy()
 
         tmp_obstacle_name_list = self.object_name_list.copy()
-        tmp_obstacle_name_list.remove(self.achieved_name)
+        try:
+            tmp_obstacle_name_list.remove(self.achieved_name)
+        except ValueError:  # some obstacles are removed during macro_step
+            pass
         self.obstacle_name_list = tmp_obstacle_name_list.copy()
         self.init_obstacle_xpos_list = [self.sim.data.get_geom_xpos(name).copy() for name in self.obstacle_name_list]
 
         self._state_init(new_goal.copy())
         return self._get_obs()
+
+    def _is_good_push(self):
+        achieved_xpos = self.sim.data.get_geom_xpos('target_object').copy()
+        curr_blocked_count = 0
+        for name in self.object_name_list:
+            obstacle_xpos = self.sim.data.get_geom_xpos(name).copy()
+            curr_blocked_count += int(xpos_distance(achieved_xpos, obstacle_xpos) <= 1.25 * self.distance_threshold)
+        flag = self.prev_blocked_count > curr_blocked_count
+        self.prev_blocked_count = curr_blocked_count
+        return flag
+
+    def _is_success(self, achieved_goal, desired_goal):
+        if self.grasp_mode:
+            return np.logical_and(
+                np.all(achieved_goal[:2] >= self.storage_box_lower_bound + 1.5 * self.object_generator.size_sup),
+                np.all(achieved_goal[:2] <= self.storage_box_upper_bound - 1.5 * self.object_generator.size_sup),
+            )
+        else:
+            d = xpos_distance(achieved_goal, desired_goal)
+            return d < self.distance_threshold
 
     def _get_obs(self):
         obs_dict = super(VPGHrlEnv, self)._get_obs()
@@ -298,12 +345,12 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         cube_site_id = self.sim.model.site_name2id("cube_site")
         self.sim.model.site_pos[global_target_site_id] = self.global_goal - sites_offset[global_target_site_id]
 
-        # if self.removal_goal_indicate is not None:
-        #     self.sim.model.site_pos[removal_target_site_id] = self.removal_goal_indicate - sites_offset[removal_target_site_id]
-        # elif self.removal_goal is not None:
-        #     self.sim.model.site_pos[removal_target_site_id] = self.removal_goal - sites_offset[removal_target_site_id]
-        # else:
-        #     self.sim.model.site_pos[removal_target_site_id] = np.array([20, 20, 0.5])
+        if self.removal_goal_indicate is not None:
+            self.sim.model.site_pos[removal_target_site_id] = self.removal_goal_indicate - sites_offset[removal_target_site_id]
+        elif self.removal_goal is not None:
+            self.sim.model.site_pos[removal_target_site_id] = self.removal_goal - sites_offset[removal_target_site_id]
+        else:
+            self.sim.model.site_pos[removal_target_site_id] = np.array([20, 20, 0.5])
 
         if self.removal_xpos_indicate is not None:
             self.sim.model.site_pos[removal_indicate_site_id] = self.removal_xpos_indicate - sites_offset[removal_indicate_site_id]

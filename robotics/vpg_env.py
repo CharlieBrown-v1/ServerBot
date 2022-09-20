@@ -60,13 +60,13 @@ class VPGEnv(gym.Env):
 
         self.training_mode = True
 
-        self.success_reward = 1
         self.fail_reward = -1
-        self.suitable_step_reward = -0.2
+        self.grasp_reward = 1
+        self.push_reward = 0.5
         self.step_reward = -0.5
 
-        self.action_space = spaces.MultiDiscrete(action_shape_list)
-        self.action_space = spaces.Discrete(np.prod(action_list))
+        # self.action_space = spaces.MultiDiscrete(action_shape_list)
+        self.action_space = spaces.Discrete(np.prod(action_shape_list))
         self.observation_space = copy.deepcopy(self.model.observation_space)
 
     def set_mode(self, name: str, mode: bool):
@@ -79,8 +79,8 @@ class VPGEnv(gym.Env):
         obs = self.model.reset()
         return obs
 
-    def action_mapping(self, action: np.ndarray):
-        tmp_action = action.copy()
+    def action_mapping(self, action):
+        tmp_action = action
 
         action_mode = tmp_action // np.prod(action_shape_list[1:])
         tmp_action -= action_mode * np.prod(action_shape_list[1:])
@@ -113,10 +113,10 @@ class VPGEnv(gym.Env):
 
         return planning_action
 
-    def step(self, action: np.ndarray):
+    def step(self, action):
         assert self.agent is not None and self.push is not None, "You must load agent before step!"
 
-        planning_action = self.action_mapping(action.copy())
+        planning_action = self.action_mapping(action)
 
         if planning_action[macro_action] == grasp:
             agent = self.agent
@@ -132,35 +132,16 @@ class VPGEnv(gym.Env):
 
         obs = self.model.get_obs(achieved_name=None, goal=None)
 
-        is_good_goal = False
-        # valid_mode
-        if self.model.env.removal_xpos_indicate is not None:
-            # obstacle
-            if achieved_name is not None:
-                suitable_achieved_name = self.model.env.achieved_name_indicate
-                suitable_removal_goal = self.model.env.removal_goal_indicate.copy()
-                is_good_goal = self.is_step_suitable(achieved_name=suitable_achieved_name,
-                                                     removal_goal=suitable_removal_goal)
-            # target
-            else:
-                assert self.model.env.achieved_name == 'target_object'
-                suitable_achieved_name = self.model.env.achieved_name
-                # target push
-                if self.model.env.removal_goal_indicate is not None:
-                    suitable_removal_goal = self.model.env.removal_goal_indicate.copy()
-                    is_good_goal = self.is_step_suitable(achieved_name=suitable_achieved_name,
-                                                         removal_goal=suitable_removal_goal)
-
         if info['is_fail']:
             return obs, self.fail_reward, done, info
-        elif info['is_success']:
-            return obs, self.success_reward, done, info
+        elif info['train_is_success']:
+            return obs, self.grasp_reward, done, info
         elif done:
             return obs, self.fail_reward, done, info
-        elif not info['is_invalid'] and is_good_goal:
-            return obs, self.suitable_step_reward, done, info
+        elif info['is_good_push']:
+            return obs, self.push_reward, done, info
         else:
-            return obs, self.step_reward, done, info
+            return obs, self.time_reward, done, info
 
     def is_step_suitable(self, achieved_name, removal_goal):
         name_list = self.model.env.object_name_list.copy()
