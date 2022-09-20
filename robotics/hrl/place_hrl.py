@@ -117,7 +117,7 @@ class PlaceHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                 achieved_name = name
         assert achieved_name is not None
 
-        np.save(f'/home/stalin/robot/result/collect/{self.count}', removal_goal)
+        # np.save(f'/home/stalin/robot/result/collect/{self.count}', removal_goal)
         self.count += 1
 
         self.achieved_name = achieved_name
@@ -211,6 +211,7 @@ class PlaceHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
     def reset(self):
         self.prev_valid_count = 0
+        self.count = 0
         return super(PlaceHrlEnv, self).reset()
 
     def place_compute_reward(self, achieved_goal, goal, info):

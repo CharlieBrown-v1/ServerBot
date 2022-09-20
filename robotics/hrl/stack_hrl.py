@@ -174,7 +174,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             if info['train_done']:
                 break
         info['frames'] = frames
-        reward = self.stack_compute_reward(achieved_goal=None, goal=None, info=info)
+        reward = self.stack_compute_reward(achieved_goal=None, goal=removal_goal, info=info)
         if info['is_removal_success']:
             release_action = np.zeros(self.action_space.shape)
             up_action = np.zeros(self.action_space.shape)
@@ -263,7 +263,10 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         prev_highest_height = self.prev_highest_height
         curr_highest_height = self.compute_highest_height()
         height_reward = curr_highest_height - prev_highest_height
-        return self.reward_factor * (dist_reward + height_reward)
+
+        assert goal is not None
+        goal_dist = xpos_distance(goal[:self.desired_xy.size], self.desired_xy)
+        return -self.reward_factor * goal_dist
 
     def is_stack_success(self):
         sorted_height_list = list(sorted([self.sim.data.get_geom_xpos(name)[2] for name in self.object_name_list]))
