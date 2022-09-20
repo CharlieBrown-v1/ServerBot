@@ -66,6 +66,7 @@ class VPGEnv(gym.Env):
         self.step_reward = -0.5
 
         self.action_space = spaces.MultiDiscrete(action_shape_list)
+        self.action_space = spaces.Discrete(np.prod(action_list))
         self.observation_space = copy.deepcopy(self.model.observation_space)
 
     def set_mode(self, name: str, mode: bool):
@@ -80,10 +81,18 @@ class VPGEnv(gym.Env):
 
     def action_mapping(self, action: np.ndarray):
         tmp_action = action.copy()
-        planning_action = np.array([tmp_action[macro_action]])
+
+        action_mode = tmp_action // np.prod(action_shape_list[1:])
+        tmp_action -= action_mode * np.prod(action_shape_list[1:])
+
+        chosen_xpos = tmp_action // np.prod(action_shape_list[2:])
+        tmp_action -= chosen_xpos * np.prod(action_shape_list[2:])
+
+        chosen_rotation = min(tmp_action, action_shape_list[2] - 1)
+
+        planning_action = np.array(action_mode)
 
         # action for choosing obstacle's position
-        chosen_xpos = tmp_action[xpos]
         x_coefficient = chosen_xpos // np.prod(scaled_cube_shape[1:])
         chosen_x = min(x_coefficient * length_scale, cube_shape[0] - 1)
 
@@ -99,7 +108,7 @@ class VPGEnv(gym.Env):
         planning_action = np.r_[planning_action, cube_box_xpos.copy()]
 
         # rotation for macro action execution
-        rotation_angle = 2 * np.pi * tmp_action[rotation] / action_shape_list[rotation]
+        rotation_angle = 2 * np.pi * chosen_rotation / action_shape_list[rotation]
         planning_action = np.r_[planning_action, rotation_angle]
 
         return planning_action

@@ -297,19 +297,22 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         achieved_site_id = self.sim.model.site_name2id("achieved_site")
         cube_site_id = self.sim.model.site_name2id("cube_site")
         self.sim.model.site_pos[global_target_site_id] = self.global_goal - sites_offset[global_target_site_id]
-        if self.removal_goal_indicate is not None:
-            self.sim.model.site_pos[removal_target_site_id] = self.removal_goal_indicate - sites_offset[removal_target_site_id]
-        elif self.removal_goal is not None:
-            self.sim.model.site_pos[removal_target_site_id] = self.removal_goal - sites_offset[removal_target_site_id]
-        else:
-            self.sim.model.site_pos[removal_target_site_id] = np.array([20, 20, 0.5])
+
+        # if self.removal_goal_indicate is not None:
+        #     self.sim.model.site_pos[removal_target_site_id] = self.removal_goal_indicate - sites_offset[removal_target_site_id]
+        # elif self.removal_goal is not None:
+        #     self.sim.model.site_pos[removal_target_site_id] = self.removal_goal - sites_offset[removal_target_site_id]
+        # else:
+        #     self.sim.model.site_pos[removal_target_site_id] = np.array([20, 20, 0.5])
+
         if self.removal_xpos_indicate is not None:
             self.sim.model.site_pos[removal_indicate_site_id] = self.removal_xpos_indicate - sites_offset[removal_indicate_site_id]
         else:
             self.sim.model.site_pos[removal_indicate_site_id] = np.array([20, 20, 0.5])
+
         if self.achieved_name_indicate is not None:
             self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(self.achieved_name_indicate).copy() - sites_offset[achieved_site_id]
         else:
             self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(self.achieved_name).copy() - sites_offset[achieved_site_id]
-        self.sim.model.site_pos[cube_site_id] = self.cube_starting_point.copy() - sites_offset[cube_site_id]
+        self.sim.model.site_pos[cube_site_id] = np.array([50, 60, 0])
         self.sim.forward()
