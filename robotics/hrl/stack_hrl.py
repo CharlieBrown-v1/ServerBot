@@ -178,6 +178,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                 break
         info['frames'] = frames
         reward = self.stack_compute_reward(achieved_goal=None, goal=removal_goal, info=info)
+        info['lower_reward'] = reward
         if info['is_removal_success']:
             release_action = np.zeros(self.action_space.shape)
             up_action = np.zeros(self.action_space.shape)

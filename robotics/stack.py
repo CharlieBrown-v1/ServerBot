@@ -113,16 +113,21 @@ class StackEnv(gym.Env):
 
         info['is_success'] = self.model.is_stack_success()
 
+        reward = self.compute_reward(achieved_goal=None, desired_goal=None, info=info)
         done = info['is_fail'] or info['is_success']
 
+        return obs, reward, done, info
+
+    def compute_reward(self, achieved_goal, desired_goal, info):
+        assert achieved_goal is None and desired_goal is None
         if info['is_fail']:
-            return obs, self.fail_reward, done, info
+            return self.fail_reward
         elif info['is_success']:
-            return obs, self.success_reward, done, info
+            return self.success_reward
         elif info['is_removal_success']:
-            return obs, reward, done, info
+            return info['lower_reward']
         else:  # invalid action
-            return obs, self.time_reward, done, info
+            return self.time_reward
 
     def render(self, mode="human", width=500, height=500):
         return self.model.render(mode=mode, width=width, height=height)
