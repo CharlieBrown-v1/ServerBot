@@ -119,7 +119,6 @@ class StackEnv(gym.Env):
         return obs, reward, done, info
 
     def compute_reward(self, achieved_goal, desired_goal, info):
-        assert achieved_goal is None and desired_goal is None
         if info['is_fail']:
             return self.fail_reward
         elif info['is_success']:
