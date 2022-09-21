@@ -217,8 +217,8 @@ class ObjectGenerator:
 
         self.step = 0.05
         self.delta_obstacle_qpos_list = [
-            # np.r_[np.array([1.40, 0.88, 0.475]) - np.array([1.30, 0.88, 0.425]), self.qpos_postfix],
-            # np.r_[np.array([1.20, 0.88, 0.475]) - np.array([1.30, 0.88, 0.425]), self.qpos_postfix],
+            np.r_[np.array([1.40, 0.88, 0.475]) - np.array([1.30, 0.88, 0.425]), self.qpos_postfix],
+            np.r_[np.array([1.20, 0.88, 0.475]) - np.array([1.30, 0.88, 0.425]), self.qpos_postfix],
 
             np.r_[np.array([1.30 - 0.20, 0.75 + 0.20, 0.425]) - np.array([1.30 - 0.20, 0.75 - 0.20, 0.425]), self.qpos_postfix],
             # np.r_[np.array([1.30 + 0.20, 0.75 - 0.20, 0.425]) - np.array([1.30 - 0.20, 0.75 - 0.20, 0.425]), self.qpos_postfix],
@@ -242,6 +242,11 @@ class ObjectGenerator:
             np.r_[[0, -self.step, 0], self.qpos_postfix],
             np.r_[[0, self.step, 0], self.qpos_postfix],
         ]
+
+        # filter the first two elements
+        if self.collect_mode:
+            self.delta_obstacle_qpos_list = self.delta_obstacle_qpos_list[2:]
+
         self.obstacle_count = 3
         if self.stack_mode:
             self.obstacle_count = 2

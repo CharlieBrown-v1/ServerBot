@@ -7,6 +7,7 @@ from gym.envs.robotics import fetch_env
 from stable_baselines3 import HybridPPO
 
 
+epsilon = 1e-3
 desk_x = 0
 desk_y = 1
 pos_x = 2
@@ -66,9 +67,8 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.trick_xy_scale = np.array([0.32, 0.32]) * self.distance_threshold
         self.desired_xy = np.array([1.30, 0.65])
         self.target_height = 0.425 + self.object_generator.size_sup * 2 * 2 - self.distance_threshold
+        self.max_dist_threshold = 0.2
         
-        self.reward_factor = 3
-
     def set_mode(self, name: str, mode: bool):
         if name == 'training':
             self.training_mode = mode
@@ -187,9 +187,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             # Image.fromarray(self.render(mode='rgb_array', width=300, height=300)).save(f'/home/stalin/robot/result/RL+RL/{count}.png')
             obs, _, _, _ = self.step(release_action)
             obs, _, _, _ = self.step(up_action)
-            return obs, reward, False, info
-        else:
-            return obs, reward, True, info
+        return obs, reward, False, info
 
     def judge(self, name_list: list, xpos_list: list, mode: str):
         assert len(name_list) == len(xpos_list)
@@ -268,12 +266,17 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         height_reward = curr_highest_height - prev_highest_height
 
         goal_dist = xpos_distance(self.policy_removal_goal[:self.desired_xy.size], self.desired_xy)
-        return -self.reward_factor * goal_dist
+        goal_dist = min(goal_dist, self.max_dist_threshold)
+        return self.max_dist_threshold - goal_dist
 
     def is_stack_success(self):
-        sorted_height_list = list(sorted([self.sim.data.get_geom_xpos(name)[2] for name in self.object_name_list]))
-        return abs(sorted_height_list[-1] - sorted_height_list[-2]) <= 1.25 * 2 * self.object_generator.size_sup\
-               and sorted_height_list[-1] >= self.target_height
+        object_xpos_list = [self.sim.data.get_geom_xpos(name).copy() for name in self.object_name_list]
+        object_xy_list = [xpos[:2].copy() for xpos in object_xpos_list]
+        sorted_height_list = list(sorted(xpos[2] for xpos in object_xpos_list))
+        xy_flag = np.sum(np.var(object_xy_list, axis=0)) < epsilon
+        z_flag = abs(sorted_height_list[-1] - sorted_height_list[-2]) <= 1.25 * 2 * self.object_generator.size_sup\
+                 and sorted_height_list[-1] >= self.target_height
+        return xy_flag and z_flag
 
     def _render_callback(self):
         # Visualize target.

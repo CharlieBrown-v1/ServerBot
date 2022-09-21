@@ -38,7 +38,7 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.removal_goal_indicate = None
         self.removal_xpos_indicate = None
 
-        self.storage_box_center_xy = np.array([1.3, 0.3])
+        self.storage_box_center_xy = np.array([1.3, 0.22])
         self.storage_box_size_xy = np.array([0.1, 0.1])
         self.storage_box_lower_bound = self.storage_box_center_xy - self.storage_box_size_xy
         self.storage_box_upper_bound = self.storage_box_center_xy + self.storage_box_size_xy
@@ -323,13 +323,10 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
     def _is_success(self, achieved_goal, desired_goal):
         if self.grasp_mode:
-            return np.logical_and(
-                np.all(achieved_goal[:2] >= self.storage_box_lower_bound + 2 * self.object_generator.size_sup),
-                np.all(achieved_goal[:2] <= self.storage_box_upper_bound - 2 * self.object_generator.size_sup),
-            )
+            d = xpos_distance(achieved_goal[:2], desired_goal[:2]) / 1.5
         else:
             d = xpos_distance(achieved_goal, desired_goal)
-            return d < self.distance_threshold
+        return d < self.distance_threshold
 
     def _get_obs(self):
         obs_dict = super(VPGHrlEnv, self)._get_obs()

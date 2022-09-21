@@ -8,6 +8,7 @@ from stable_baselines3 import HybridPPO
 
 epsilon = 1e-3
 
+test_mode = False
 desk_x = 1
 desk_y = 2
 pos_x = 3
@@ -54,6 +55,7 @@ class StackEnv(gym.Env):
         self.count = 0
         self.success_reward = 1
         self.fail_reward = -1
+        self.time_reward = -0.1
 
     def set_mode(self, name: str, mode: bool):
         if name == 'training':
@@ -88,6 +90,14 @@ class StackEnv(gym.Env):
         else:
             planning_action = self.action_mapping(action.copy())
 
+        if test_mode:
+            if self.count == 0:
+                planning_action = np.r_[self.model.desired_xy, self.model.sim.data.get_geom_xpos('obstacle_object_0').copy()]
+            elif self.count == 1:
+                planning_action = np.r_[self.model.desired_xy, self.model.sim.data.get_geom_xpos('obstacle_object_1').copy()]
+            else:
+                planning_action = np.r_[self.model.desired_xy, self.model.sim.data.get_geom_xpos('target_object').copy()]
+
         self.count += 1
 
         achieved_name, removal_goal, min_dist = self.model.macro_step_setup(planning_action)
@@ -103,14 +113,16 @@ class StackEnv(gym.Env):
 
         info['is_success'] = self.model.is_stack_success()
 
+        done = info['is_fail'] or info['is_success']
+
         if info['is_fail']:
             return obs, self.fail_reward, done, info
         elif info['is_success']:
             return obs, self.success_reward, done, info
-        elif done:
-            return obs, self.fail_reward, done, info
-        else:
+        elif info['is_removal_success']:
             return obs, reward, done, info
+        else:  # invalid action
+            return obs, self.time_reward, done, info
 
     def render(self, mode="human", width=500, height=500):
         return self.model.render(mode=mode, width=width, height=height)

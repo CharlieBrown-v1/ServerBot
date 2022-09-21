@@ -61,9 +61,9 @@ class VPGEnv(gym.Env):
         self.training_mode = True
 
         self.fail_reward = -1
-        self.grasp_reward = 1
-        self.push_reward = 0.5
-        self.time_reward = -0.5
+        self.success_reward = 1
+        self.push_reward = 0.1
+        self.time_reward = -0.1
 
         self.action_space = spaces.Discrete(np.prod(action_shape_list))
         self.observation_space = copy.deepcopy(self.model.observation_space)
@@ -136,11 +136,13 @@ class VPGEnv(gym.Env):
         elif info['push_mode']:  # push reward
             if info['is_good_push']:
                 return obs, self.push_reward, done, info
+            elif done:
+                return obs, self.fail_reward, done, info
             else:
                 return obs, self.time_reward, done, info
         else:  # grasp reward
-            if info['train_is_success']:
-                return obs, self.grasp_reward, done, info
+            if info['is_success']:
+                return obs, self.success_reward, done, info
             elif done:
                 return obs, self.fail_reward, done, info
             else:
