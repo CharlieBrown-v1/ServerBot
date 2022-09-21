@@ -102,19 +102,11 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         count = 0
         for name in self.object_name_list:
             xy = self.sim.data.get_geom_xpos(name)[:2].copy()
-            count += int(xpos_distance(xy, target_xy) <= 2 * self.distance_threshold)
+            count += int(xpos_distance(xy, target_xy) <= 2.5 * self.distance_threshold)
         return count
 
     def macro_step_setup(self, macro_action):
-        same_xpos_object_count = self.counting_object(np.array([macro_action[desk_x], macro_action[desk_y]]))
-        if same_xpos_object_count == 1:
-            target_height = self.height_offset + 2.60 * self.object_generator.size_sup
-        elif same_xpos_object_count == 2:
-            target_height = self.height_offset + 4.85 * self.object_generator.size_sup
-        else:
-            target_height = self.height_offset
-        removal_goal = np.array([macro_action[desk_x], macro_action[desk_y], target_height])
-        self.policy_removal_goal = removal_goal.copy()
+        self.policy_removal_goal = np.array([macro_action[desk_x], macro_action[desk_y], self.height_offset])
         action_xpos = np.array([macro_action[pos_x], macro_action[pos_y], macro_action[pos_z]])
 
         achieved_name = None
@@ -125,7 +117,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         for name in name_list:
             xpos = self.sim.data.get_geom_xpos(name).copy()
             dist = xpos_distance(action_xpos, xpos)
-            stacked_dist = xpos_distance(removal_goal, xpos)
+            stacked_dist = xpos_distance(self.policy_removal_goal, xpos)
             if dist < min_dist:
                 min_dist = dist
                 achieved_name = name
@@ -135,13 +127,26 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         assert achieved_name is not None
         assert stacked_name is not None
 
+        if stacked_min_dist < 2.5 * self.distance_threshold:
+            new_removal_goal = self.sim.data.get_geom_xpos(stacked_name).copy()
+        else:
+            new_removal_goal = self.policy_removal_goal.copy()
+
+        same_xpos_object_count = self.counting_object(new_removal_goal[:self.trick_xy_scale.size])
+        if same_xpos_object_count == 1:
+            target_height = self.height_offset + 2.60 * self.object_generator.size_sup
+        elif same_xpos_object_count == 2:
+            target_height = self.height_offset + 4.85 * self.object_generator.size_sup
+        else:
+            target_height = self.height_offset
+
+        removal_goal = np.r_[new_removal_goal[:self.trick_xy_scale.size].copy(), target_height]
         if same_xpos_object_count > 0:
             achieved_xpos = self.sim.data.get_geom_xpos(achieved_name).copy()
             xy_offset = removal_goal[:self.trick_xy_scale.size] - achieved_xpos[:self.trick_xy_scale.size]
             trick_xy_sign = np.sign(xy_offset)
             delta_trick_xy = self.trick_xy_scale * trick_xy_sign
 
-            new_removal_goal = self.sim.data.get_geom_xpos(stacked_name).copy()
             new_removal_goal[:self.trick_xy_scale.size] += delta_trick_xy[:self.trick_xy_scale.size]
             removal_goal[:self.trick_xy_scale.size] = new_removal_goal[:self.trick_xy_scale.size]
 
