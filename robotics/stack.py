@@ -120,14 +120,28 @@ class StackEnv(gym.Env):
         return obs, reward, done, info
 
     def compute_reward(self, achieved_goal, desired_goal, info):
-        reward = 0
-        if info['is_fail']:
-            reward += self.fail_reward
-        elif info['is_success']:
-            reward += self.success_reward
-        elif info['is_removal_success']:
-            reward += info['lower_reward'] + self.step_finish_reward
-        return reward + self.time_reward
+        if isinstance(info, dict):
+            reward = 0
+            if info['is_fail']:
+                reward += self.fail_reward
+            elif info['is_success']:
+                reward += self.success_reward
+            elif info['is_removal_success']:
+                reward += info['lower_reward'] + self.step_finish_reward
+            return reward + self.time_reward
+        else:
+            assert isinstance(info, np.ndarray)
+            reward_arr = np.zeros_like(info)
+            for idx in np.arange(info.size):
+                reward = 0
+                if info[idx]['is_fail']:
+                    reward += self.fail_reward
+                elif info[idx]['is_success']:
+                    reward += self.success_reward
+                elif info[idx]['is_removal_success']:
+                    reward += info[idx]['lower_reward'] + self.step_finish_reward
+                reward_arr[idx] = reward
+            return reward_arr
 
     def render(self, mode="human", width=500, height=500):
         return self.model.render(mode=mode, width=width, height=height)

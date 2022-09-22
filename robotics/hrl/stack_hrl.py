@@ -98,9 +98,11 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         self._state_init(goal.copy())
 
-    def counting_object(self, target_xy: np.ndarray):
+    def counting_object(self, target_xy: np.ndarray, achieved_name='target_object'):
         count = 0
-        for name in self.object_name_list:
+        tmp_object_name_list = self.object_name_list.copy()
+        tmp_object_name_list.remove(achieved_name)
+        for name in tmp_object_name_list:
             xy = self.sim.data.get_geom_xpos(name)[:2].copy()
             count += int(xpos_distance(xy, target_xy) <= 2.5 * self.distance_threshold)
         return count
@@ -132,7 +134,8 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         else:
             new_removal_goal = self.policy_removal_goal.copy()
 
-        same_xpos_object_count = self.counting_object(new_removal_goal[:self.trick_xy_scale.size])
+        same_xpos_object_count = self.counting_object(new_removal_goal[:self.trick_xy_scale.size],
+                                                      achieved_name=achieved_name)
         if same_xpos_object_count == 1:
             target_height = self.height_offset + 2.60 * self.object_generator.size_sup
         elif same_xpos_object_count == 2:
@@ -265,23 +268,28 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
     def stack_compute_reward(self, achieved_goal, goal, info):
         prev_max_dist = self.prev_max_dist
         curr_max_dist = self.compute_max_dist()
+        self.prev_max_dist = curr_max_dist
         dist_reward = prev_max_dist - curr_max_dist
 
         prev_highest_height = self.prev_highest_height
         curr_highest_height = self.compute_highest_height()
+        self.prev_highest_height = curr_highest_height
         height_reward = curr_highest_height - prev_highest_height
 
         goal_dist = xpos_distance(self.policy_removal_goal[:self.desired_xy.size], self.desired_xy)
         goal_dist = min(goal_dist, self.max_dist_threshold)
-        return self.max_dist_threshold - goal_dist
+        # return self.max_dist_threshold - goal_dist
+        return self.max_dist_threshold - goal_dist + height_reward
 
     def is_stack_success(self):
         object_xpos_list = [self.sim.data.get_geom_xpos(name).copy() for name in self.object_name_list]
         object_xy_list = [xpos[:2].copy() for xpos in object_xpos_list]
         sorted_height_list = list(sorted(xpos[2] for xpos in object_xpos_list))
         xy_flag = np.sum(np.var(object_xy_list, axis=0)) < epsilon
-        z_flag = abs(sorted_height_list[-1] - sorted_height_list[-2]) <= 1.25 * 2 * self.object_generator.size_sup\
-                 and sorted_height_list[-1] >= self.target_height
+        z_flag = sorted_height_list[-1] >= self.target_height and \
+                 abs(sorted_height_list[1] - sorted_height_list[0]) <= 1.05 * 2 * self.object_generator.size_sup and \
+                 abs(sorted_height_list[2] - sorted_height_list[1]) <= 1.25 * 2 * self.object_generator.size_sup
+
         return xy_flag and z_flag
 
     def _render_callback(self):
