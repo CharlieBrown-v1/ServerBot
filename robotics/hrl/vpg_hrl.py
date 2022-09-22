@@ -38,7 +38,7 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.removal_goal_indicate = None
         self.removal_xpos_indicate = None
 
-        self.storage_box_center_xy = np.array([1.3, 0.22])
+        self.storage_box_center_xy = np.array([1.3, 0.25])
         self.storage_box_size_xy = np.array([0.1, 0.1])
         self.storage_box_lower_bound = self.storage_box_center_xy - self.storage_box_size_xy
         self.storage_box_upper_bound = self.storage_box_center_xy + self.storage_box_size_xy

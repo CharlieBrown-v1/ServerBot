@@ -28,27 +28,27 @@
 			<geom name="table" size="0.25 0.35 0.2" type="box" mass="2000" material="table_mat" />
 		</body>
 
-        <body pos="1.3 0.22 0.2" name="storage_table">
+        <body pos="1.3 0.25 0.2" name="storage_table">
 			<geom name="storage_table" size="0.1 0.1 0.2" type="box" mass="2000" material="table_mat"/>
 		</body>
 
-		<body pos="1.3 0.22 0.4005" name="storage_box_bottom">
+		<body pos="1.3 0.25 0.4005" name="storage_box_bottom">
 			<site name="storage_box_bottom" size="0.1 0.1 0.001" type="box" rgba="1 0 1 1"/>
 		</body>
 
-		<body pos="1.3 0.319 0.46" name="storage_box_0">
+		<body pos="1.3 0.349 0.46" name="storage_box_0">
 			<geom name="storage_box_0" size="0.1 0.001 0.06" type="box" mass="2000" rgba="1 0 1 1"/>
 		</body>
 
-		<body pos="1.3 0.121 0.46" name="storage_box_1">
+		<body pos="1.3 0.151 0.46" name="storage_box_1">
 			<geom name="storage_box_1" size="0.1 0.001 0.06" type="box" mass="2000" rgba="1 0 1 1"/>
 		</body>
 
-		<body pos="1.399 0.22 0.46" name="storage_box_2">
+		<body pos="1.399 0.25 0.46" name="storage_box_2">
 			<geom name="storage_box_2" size="0.001 0.1 0.06" type="box" mass="2000" rgba="1 0 1 1"/>
 		</body>
 
-		<body pos="1.201 0.22 0.46" name="storage_box_3">
+		<body pos="1.201 0.25 0.46" name="storage_box_3">
 			<geom name="storage_box_3" size="0.001 0.1 0.06" type="box" mass="2000" rgba="1 0 1 1"/>
 		</body>
 

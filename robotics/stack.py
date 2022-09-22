@@ -55,7 +55,8 @@ class StackEnv(gym.Env):
         self.count = 0
         self.success_reward = 1
         self.fail_reward = -1
-        self.time_reward = -0.1
+        self.step_finish_reward = 0.1
+        self.time_reward = -0.05
 
     def set_mode(self, name: str, mode: bool):
         if name == 'training':
@@ -119,14 +120,14 @@ class StackEnv(gym.Env):
         return obs, reward, done, info
 
     def compute_reward(self, achieved_goal, desired_goal, info):
+        reward = 0
         if info['is_fail']:
-            return self.fail_reward
+            reward += self.fail_reward
         elif info['is_success']:
-            return self.success_reward
+            reward += self.success_reward
         elif info['is_removal_success']:
-            return info['lower_reward']
-        else:  # invalid action
-            return self.time_reward
+            reward += info['lower_reward'] + self.step_finish_reward
+        return reward + self.time_reward
 
     def render(self, mode="human", width=500, height=500):
         return self.model.render(mode=mode, width=width, height=height)
