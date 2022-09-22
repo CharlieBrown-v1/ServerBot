@@ -36,49 +36,49 @@
 
 		<body name="target_object" pos="21.0 20.0 0.05">
 			<joint name="target_object:joint" type="free" damping="0.01" />
-			<geom size="0.025 0.025 0.025" type="box" condim="3" name="target_object" material="block_mat" mass="2" rgba="0 1 1 1" />
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="target_object" margin="0.001" material="block_mat" mass="2" rgba="0 1 1 1" />
 			<site name="target_object" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
 		</body>
 
 		<body name="obstacle_object_0" pos="20.0 20.5 0.05">
 			<joint name="obstacle_object_0:joint" type="free" damping="0.01" />
-			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_0" material="block_mat" mass="2" rgba="1 0.4 0.4 1"/>
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_0" margin="0.001" material="block_mat" mass="2" rgba="1 0.4 0.4 1"/>
 			<site name="obstacle_object_0" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
 		</body>
 
 		<body name="obstacle_object_1" pos="20.0 21.0 0.05">
 			<joint name="obstacle_object_1:joint" type="free" damping="0.01" />
-			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_1" material="block_mat" mass="2" rgba="1 0.4 0.4 1"/>
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_1" margin="0.001" material="block_mat" mass="2" rgba="1 0.4 0.4 1"/>
 			<site name="obstacle_object_1" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
 		</body>
 
 		<body name="obstacle_object_2" pos="20.0 21.5 0.05">
 			<joint name="obstacle_object_2:joint" type="free" damping="0.01" />
-			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_2" material="block_mat" mass="2" rgba="1 0.4 0.4 1"/>
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_2" margin="0.001" material="block_mat" mass="2" rgba="1 0.4 0.4 1"/>
 			<site name="obstacle_object_2" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
 		</body>
 
 		<body name="obstacle_object_3" pos="20.0 22.0 0.05">
 			<joint name="obstacle_object_3:joint" type="free" damping="0.01" />
-			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_3" material="block_mat" mass="2" rgba="1 0.4 0.4 1"/>
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_3" margin="0.001" material="block_mat" mass="2" rgba="1 0.4 0.4 1"/>
 			<site name="obstacle_object_3" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
 		</body>
 
 		<body name="obstacle_object_4" pos="20.0 22.5 0.05">
 			<joint name="obstacle_object_4:joint" type="free" damping="0.01" />
-			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_4" material="block_mat" mass="2" rgba="1 0.4 0.4 1"/>
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_4" margin="0.001" material="block_mat" mass="2" rgba="1 0.4 0.4 1"/>
 			<site name="obstacle_object_4" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
 		</body>
 
 		<body name="obstacle_object_5" pos="20.0 23.0 0.05">
 			<joint name="obstacle_object_5:joint" type="free" damping="0.01" />
-			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_5" material="block_mat" mass="2" rgba="1 0.4 0.4 1"/>
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_5" margin="0.001" material="block_mat" mass="2" rgba="1 0.4 0.4 1"/>
 			<site name="obstacle_object_5" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
 		</body>
 
 		<body name="obstacle_object_6" pos="20.0 23.5 0.05">
 			<joint name="obstacle_object_6:joint" type="free" damping="0.01" />
-			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_6" material="block_mat" mass="2" rgba="1 0.4 0.4 1"/>
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_6" margin="0.001" material="block_mat" mass="2" rgba="1 0.4 0.4 1"/>
 			<site name="obstacle_object_6" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
 		</body>
 
