@@ -75,6 +75,18 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         else:
             raise NotImplementedError
 
+    def reset(self):
+        obs = super(StackHrlEnv, self).reset()
+
+        self.reset_indicate()
+        self.removal_goal = None
+        self.achieved_name = None
+
+        self.reset_max_dist()
+        self.reset_highest_height()
+
+        return obs
+
     def reset_indicate(self):
         self.achieved_name_indicate = None
         self.removal_goal_indicate = None
@@ -83,20 +95,6 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
     def reset_after_removal(self, goal=None):
         assert self.hrl_mode
         assert self.is_removal_success
-
-        if goal is None:
-            goal = self.global_goal.copy()
-
-        new_achieved_name = 'target_object'
-        new_obstacle_name_list = self.object_name_list.copy()
-        new_obstacle_name_list.remove(new_achieved_name)
-
-        self.achieved_name = copy.deepcopy(new_achieved_name)
-        self.obstacle_name_list = new_obstacle_name_list.copy()
-        self.init_obstacle_xpos_list = [self.sim.data.get_geom_xpos(obstacle_name).copy() for obstacle_name
-                                        in self.obstacle_name_list]
-
-        self._state_init(goal.copy())
 
     def counting_object(self, target_xy: np.ndarray, achieved_name='target_object'):
         count = 0
@@ -139,7 +137,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         if same_xpos_object_count == 1:
             target_height = self.height_offset + 2.60 * self.object_generator.size_sup
         elif same_xpos_object_count == 2:
-            target_height = self.height_offset + 4.85 * self.object_generator.size_sup
+            target_height = self.height_offset + 5.12 * self.object_generator.size_sup
         else:
             target_height = self.height_offset
 
@@ -190,12 +188,26 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         if info['is_removal_success']:
             release_action = np.zeros(self.action_space.shape)
             up_action = np.zeros(self.action_space.shape)
+            close_action = np.zeros(self.action_space.shape)
             release_action[-1] = self.action_space.high[-1]
             up_action[-2] = self.action_space.high[-2]
+            close_action[-1] = self.action_space.low[-1]
             from PIL import Image
             # Image.fromarray(self.render(mode='rgb_array', width=300, height=300)).save(f'/home/stalin/robot/result/RL+RL/{count}.png')
             obs, _, _, _ = self.step(release_action)
-            obs, _, _, _ = self.step(up_action)
+            self.render()
+
+            for _ in range(2):
+                obs, _, _, _ = self.step(up_action)
+                self.render()
+
+            if count != 1:
+                obs, _, _, _ = self.step(close_action)
+                self.render()
+
+        self.achieved_name = None
+        self.removal_goal = None
+
         return obs, reward, False, info
 
     def judge(self, name_list: list, xpos_list: list, mode: str):
@@ -295,25 +307,25 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
     def _render_callback(self):
         # Visualize target.
         sites_offset = (self.sim.data.site_xpos - self.sim.model.site_pos).copy()
-        global_target_site_id = self.sim.model.site_name2id("global_target")
         removal_target_site_id = self.sim.model.site_name2id("removal_target")
+        achieved_site_id = self.sim.model.site_name2id("achieved_site")
 
-        if self.removal_goal_indicate is not None:
-            self.sim.model.site_pos[global_target_site_id] = self.removal_goal_indicate - sites_offset[global_target_site_id]
-        elif self.removal_goal is not None:
-            self.sim.model.site_pos[global_target_site_id] = self.removal_goal - sites_offset[global_target_site_id]
-        else:
-            self.sim.model.site_pos[global_target_site_id] = np.array([20, 20, 0.5])
-
-        self.sim.model.site_pos[global_target_site_id] = np.array([20, 20, 0.5])
-
-        if self.removal_goal_indicate is not None:
-            self.sim.model.site_pos[removal_target_site_id] = self.removal_goal_indicate - sites_offset[
-                removal_target_site_id]
-        elif self.removal_goal is not None:
+        # if self.removal_goal_indicate is not None:
+        #     self.sim.model.site_pos[removal_target_site_id] = self.removal_goal_indicate - sites_offset[
+        #         removal_target_site_id]
+        if self.removal_goal is not None:
             self.sim.model.site_pos[removal_target_site_id] = self.removal_goal - sites_offset[
                 removal_target_site_id]
         else:
             self.sim.model.site_pos[removal_target_site_id] = np.array([20, 20, 0.5])
+
+        # if self.achieved_name_indicate is not None:
+        #     self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(
+        #         self.achieved_name_indicate).copy() - sites_offset[achieved_site_id]
+        if self.achieved_name is not None:
+            self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(self.achieved_name).copy() - \
+                                                        sites_offset[achieved_site_id]
+        else:
+            self.sim.model.site_pos[achieved_site_id] = np.array([20, 20, 0.5])
 
         self.sim.forward()

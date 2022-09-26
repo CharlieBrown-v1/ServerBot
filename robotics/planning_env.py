@@ -1,3 +1,5 @@
+import time
+
 import gym
 import copy
 
@@ -82,21 +84,41 @@ class PlanningEnv(gym.Env):
         assert self.agent is not None, "You must load agent before step!"
 
         if action is None:  # used by RL + None
-            planning_action = np.r_[np.array([0, 0]),
-                                    self.model.sim.data.get_geom_xpos(self.model.object_generator.global_achieved_name)]
+            planning_action = np.r_[np.array([0, 0]), self.model.sim.data.get_geom_xpos(self.model.object_generator.global_achieved_name)]
         else:
             planning_action = self.action_mapping(action.copy())
 
         achieved_name, removal_goal, min_dist = self.model.macro_step_setup(planning_action)
         if not self.training_mode:
-            self.render()  # show which point and object agent has just selected
+            tmp_achieved_name = self.model.achieved_name
+            tmp_removal_goal = self.model.removal_goal
+
+            if not self.model.test_mode:
+                # demo target object
+                fine_tuning_flag = 1
+                if fine_tuning_flag:
+                    time_threshold = 0
+                    medium_time = 0
+                    final_time = 0
+                    factor = 1.5
+                else:
+                    time_threshold = 1 / 3
+                    medium_time = 0.5
+                    final_time = 0.2
+                    factor = 1.5
+                self.model.set_attr(name='removal_goal', value=None)
+                for i in range(6):
+                    start_time = time.time()
+                self.model.set_attr(name='removal_goal', value=tmp_removal_goal)
+            else:
+                self.render()
 
         obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal)
         _, _, done, info = self.model.macro_step(agent=self.agent, obs=obs)
 
         obs = self.model.get_obs(achieved_name=None, goal=None)
 
-        is_obstacle_chosen = achieved_name is not None
+        is_obstacle_chosen = achieved_name != self.model.object_generator.global_achieved_name
         is_good_goal = False
         if is_obstacle_chosen:
             suitable_achieved_name = self.model.env.achieved_name_indicate  # achieved name of this macro-step

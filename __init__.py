@@ -351,7 +351,7 @@ register(
 register(
         id="Stack-v0",
         entry_point="gym.envs.robotics:StackEnv",
-        max_episode_steps=8,
+        max_episode_steps=5,
 )
 
 # DIY
@@ -411,7 +411,7 @@ for reward_type in ["sparse", "dense"]:
         id="CollectHrl{}-v0".format(suffix),
         entry_point="gym.envs.robotics:CollectHrlEnv",
         kwargs=kwargs,
-        max_episode_steps=64,
+        max_episode_steps=40,
     )
 
     # DIY

@@ -1,3 +1,4 @@
+import time
 import gym
 import copy
 
@@ -8,7 +9,7 @@ from stable_baselines3 import HybridPPO
 
 epsilon = 1e-3
 
-test_mode = False
+test_mode = True
 desk_x = 1
 desk_y = 2
 pos_x = 3
@@ -67,8 +68,6 @@ class StackEnv(gym.Env):
     def reset(self):
         obs = self.model.reset()
         self.count = 0
-        self.model.reset_max_dist()
-        self.model.reset_highest_height()
         return obs
 
     def action_mapping(self, action: np.ndarray):
@@ -82,7 +81,7 @@ class StackEnv(gym.Env):
                               + (self.table_start_xyz + self.table_end_xyz) / 2
         return planning_action
 
-    def step(self, action: np.ndarray):
+    def step(self, action: np.ndarray, count:int):
         assert self.agent is not None, "You must load agent before step!"
 
         if action is None:  # used by RL + None
@@ -103,14 +102,10 @@ class StackEnv(gym.Env):
 
         achieved_name, removal_goal, min_dist = self.model.macro_step_setup(planning_action)
         if not self.training_mode:
-            self.render()  # show which point and object agent has just selected
-
-        from PIL import Image
+            self.render()
 
         obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal)
-        obs, reward, done, info = self.model.macro_step(agent=self.agent, obs=obs, count=self.count)
-
-        obs = self.model.get_obs(achieved_name=None, goal=None)
+        obs, reward, done, info = self.model.macro_step(agent=self.agent, obs=obs, count=count)
 
         info['is_success'] = self.model.is_stack_success()
 

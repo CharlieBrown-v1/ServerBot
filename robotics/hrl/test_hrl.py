@@ -1,5 +1,7 @@
 import os
 import copy
+import time
+
 import numpy as np
 
 from gym import utils
@@ -40,12 +42,12 @@ class TestHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             target_offset=0.0,
             obj_range=0.15,
             target_range=0.15,
-            distance_threshold=0.05,
+            distance_threshold=0.04,
             initial_qpos=initial_qpos,
             reward_type=reward_type,
             single_count_sup=18,
             hrl_mode=True,
-            random_mode=True,  # True for testing, False for fine-tuning
+            # random_mode=True,  # True for testing, False for fine-tuning
             test_mode=True,
         )
         utils.EzPickle.__init__(self, reward_type=reward_type)
@@ -68,6 +70,13 @@ class TestHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         else:
             raise NotImplementedError
 
+    def reset(self):
+        obs = super(TestHrlEnv, self).reset()
+        self.reset_indicate()
+        self.removal_goal = None
+        self.achieved_name = None
+        return obs
+
     def reset_indicate(self):
         self.achieved_name_indicate = None
         self.removal_goal_indicate = None
@@ -76,20 +85,6 @@ class TestHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
     def reset_after_removal(self, goal=None):
         assert self.hrl_mode
         assert self.is_removal_success
-
-        if goal is None:
-            goal = self.global_goal.copy()
-
-        new_achieved_name = self.object_generator.global_achieved_name
-        new_obstacle_name_list = self.object_name_list.copy()
-        new_obstacle_name_list.remove(new_achieved_name)
-
-        self.achieved_name = copy.deepcopy(new_achieved_name)
-        self.obstacle_name_list = new_obstacle_name_list.copy()
-        self.init_obstacle_xpos_list = [self.sim.data.get_geom_xpos(obstacle_name).copy() for obstacle_name
-                                        in self.obstacle_name_list]
-
-        self._state_init(goal.copy())
 
     def macro_step_setup(self, macro_action):
         removal_goal = np.array([macro_action[desk_x], macro_action[desk_y], self.height_offset])
@@ -106,7 +101,7 @@ class TestHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                 achieved_name = name
         assert achieved_name is not None
 
-        if achieved_name != 'target_object' and np.any(removal_goal != self.global_goal):
+        if achieved_name != self.object_generator.global_achieved_name and np.any(removal_goal != self.global_goal):
             self.achieved_name = achieved_name
             self.removal_goal = removal_goal.copy()
             self.achieved_name_indicate = achieved_name
@@ -117,7 +112,7 @@ class TestHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             self.removal_goal = None
             self.reset_indicate()
             self.removal_xpos_indicate = action_xpos.copy()
-            achieved_name = None
+            achieved_name = self.object_generator.global_achieved_name
             removal_goal = None
             min_dist = None
 
@@ -138,7 +133,7 @@ class TestHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             next_obs, reward, done, info = self.step(agent_action)
             obs = next_obs
             # frames.append(self.render(mode='rgb_array'))
-            if self.training_mode or self.planning_mode or self.test_mode:
+            if self.training_mode:
                 self.sim.forward()
             else:
                 self.render()
@@ -146,12 +141,33 @@ class TestHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                 break
         info['frames'] = frames
         if info['is_removal_success']:
+            self.achieved_name = None
+            self.removal_goal = None
             return obs, 0, False, info
         else:
             return obs, 0, True, info
 
     def is_fail(self):
         return self.judge(self.obstacle_name_list.copy(), self.init_obstacle_xpos_list.copy(), mode='done')
+
+    def judge(self, name_list: list, xpos_list: list, mode: str):
+        assert len(name_list) == len(xpos_list)
+
+        achieved_xpos = self.sim.data.get_geom_xpos(self.achieved_name).copy()
+
+        not_in_desk_count = int(achieved_xpos[2] <= 0.4 - 0.01)
+
+        for idx in np.arange(len(name_list)):
+            name = name_list[idx]
+            curr_xpos = self.sim.data.get_geom_xpos(name).copy()
+
+            if curr_xpos[2] <= 0.4 - 0.01:
+                not_in_desk_count += 1
+
+        if mode == 'done':
+            return not_in_desk_count > 0
+        elif mode == 'punish':
+            return not_in_desk_count * self.punish_factor
 
     def get_obs(self, achieved_name=None, goal=None):
         assert self.hrl_mode
@@ -177,7 +193,21 @@ class TestHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.init_obstacle_xpos_list = [self.sim.data.get_geom_xpos(name).copy() for name in self.obstacle_name_list]
 
         self._state_init(new_goal.copy())
-        return self._get_obs()
+
+        obs = self._get_obs()
+
+        # reset achieved_name
+        self.achieved_name = achieved_name
+
+        return obs
+
+    def set_attr(self, name: str, value):
+        if name == 'removal_goal':
+            self.removal_goal = value
+        elif name == 'achieved_name':
+            self.achieved_name = value
+        else:
+            raise NotImplementedError
 
     def _render_callback(self):
         # Visualize target.
@@ -188,27 +218,27 @@ class TestHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         achieved_site_id = self.sim.model.site_name2id("achieved_site")
         cube_site_id = self.sim.model.site_name2id("cube_site")
 
-        if self.planning_mode:
-            self.sim.model.site_pos[global_target_site_id] = self.global_goal - sites_offset[global_target_site_id]
+        # self.sim.model.site_pos[global_target_site_id] = self.global_goal - sites_offset[global_target_site_id]
 
-            if self.removal_goal_indicate is not None:
-                self.sim.model.site_pos[removal_target_site_id] = self.removal_goal_indicate - sites_offset[
-                    removal_target_site_id]
-            elif self.removal_goal is not None:
+        if self.planning_mode:
+            # if self.removal_goal_indicate is not None:
+            #     self.sim.model.site_pos[removal_target_site_id] = self.removal_goal_indicate - sites_offset[
+            #         removal_target_site_id]
+            if self.removal_goal is not None:
                 self.sim.model.site_pos[removal_target_site_id] = self.removal_goal - sites_offset[
                     removal_target_site_id]
             else:
                 self.sim.model.site_pos[removal_target_site_id] = np.array([20, 20, 0.5])
 
-            if self.achieved_name_indicate is not None:
-                self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(
-                    self.achieved_name_indicate).copy() - sites_offset[achieved_site_id]
-            else:
+            # if self.achieved_name_indicate is not None:
+            #     self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(
+            #         self.achieved_name_indicate).copy() - sites_offset[achieved_site_id]
+            if self.achieved_name is not None:
                 self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(self.achieved_name).copy() - \
                                                             sites_offset[achieved_site_id]
+            else:
+                self.sim.model.site_pos[achieved_site_id] = np.array([20, 20, 1])
         elif not self.test_mode:
-            self.sim.model.site_pos[global_target_site_id] = self.global_goal - sites_offset[global_target_site_id]
-
             if self.removal_goal_indicate is not None:
                 self.sim.model.site_pos[removal_target_site_id] = self.removal_goal_indicate - sites_offset[
                     removal_target_site_id]
@@ -226,9 +256,11 @@ class TestHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             if self.achieved_name_indicate is not None:
                 self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(
                     self.achieved_name_indicate).copy() - sites_offset[achieved_site_id]
-            else:
+            elif self.achieved_name is not None:
                 self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(self.achieved_name).copy() - \
                                                             sites_offset[achieved_site_id]
+            else:
+                self.sim.model.site_pos[achieved_site_id] = np.array([20, 20, 1])
             self.sim.model.site_pos[cube_site_id] = self.cube_starting_point.copy() - sites_offset[cube_site_id]
         else:
             self.sim.model.site_pos[achieved_site_id] = np.array([30, 30, 0.5])

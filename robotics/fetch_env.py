@@ -571,11 +571,10 @@ class FetchEnv(robot_env.RobotEnv):
     def _viewer_setup(self):
         object_flag = False
 
-        body_id = self.sim.model.body_name2id("robot0:gripper_link")
-        lookat = self.sim.data.body_xpos[body_id]
+        lookat = np.array([1.24823324, 0.74582649, 0.5438157])
 
         if object_flag:
-            lookat = np.array([1.30, 0.75, 0.4])
+            lookat = np.array([1.30, 0.75, 0.6])
 
         for idx, value in enumerate(lookat):
             self.viewer.cam.lookat[idx] = value
@@ -585,9 +584,9 @@ class FetchEnv(robot_env.RobotEnv):
             self.viewer.cam.azimuth = 0
             self.viewer.cam.elevation = -50.0
 
-        self.viewer.cam.distance = 1.08
-        self.viewer.cam.azimuth = 180  # + 40
-        self.viewer.cam.elevation = -32.0
+        self.viewer.cam.distance = 1.121563628111705
+        self.viewer.cam.azimuth = -130.73910840932112
+        self.viewer.cam.elevation = -21.50607902735562
 
     def _render_callback(self):
         # Visualize target.
@@ -635,10 +634,12 @@ class FetchEnv(robot_env.RobotEnv):
         gripper_rotation = np.array([1.0, 0.0, 1.0, 0.0])
         self.sim.data.set_mocap_pos("robot0:mocap", gripper_target)
         self.sim.data.set_mocap_quat("robot0:mocap", gripper_rotation)
+
         for _ in range(10):
             self.sim.step()
 
         self.sim.set_state(self.initial_state)
+
         # Randomize start position of object.
         object_xpos = self.initial_gripper_xpos.copy()
         if self.has_object:
