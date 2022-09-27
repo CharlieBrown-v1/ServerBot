@@ -1,4 +1,5 @@
 import os
+import mujoco_py
 import numpy as np
 from gym import utils
 from gym.envs.robotics import fetch_env
@@ -15,6 +16,13 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             "robot0:slide1": 0.48,
             "robot0:slide2": 0.0,
         }
+        self.image_width = 224
+        self.image_height = 224
+        self.image_shape = [self.image_width, self.image_height]
+        self.physical_dim = 10
+
+        self.depth = False
+
         fetch_env.FetchEnv.__init__(
             self,
             MODEL_XML_PATH,
@@ -37,11 +45,14 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         )
         utils.EzPickle.__init__(self, reward_type=reward_type)
 
-    def get_image(self) -> np.ndarray:
+    def get_image(self, camera_name='gripper_camera_rgb') -> np.ndarray:
         mode = 'rgb_array'
-        width = 500
-        height = 500
-        image = self._get_viewer(mode).read_pixels(width, height, depth=False)
+        width = self.image_width
+        height = self.image_height
+        depth = self.depth
+        camera_id = self.sim.model.camera_name2id(camera_name)
+        self._get_viewer(mode).render(width, height, camera_id=camera_id)
+        image = self._get_viewer(mode).read_pixels(width, height, depth=depth)
         # original image is upside-down, so flip it
         return image[::-1, :, :]
 
@@ -63,12 +74,14 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         cube_obs = self.get_image()
         physical_obs = [grip_pos, gripper_state, grip_velp, gripper_vel]
+        physical_obs = np.concatenate(physical_obs)
+        assert physical_obs.size == self.physical_dim
         achieved_goal = cube_achieved_pos.copy()
 
         obs = np.concatenate(
             [
                 cube_obs.flatten(),
-                np.concatenate(physical_obs),
+                physical_obs,
             ]
         )
 
