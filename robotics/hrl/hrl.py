@@ -16,8 +16,8 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             "robot0:slide1": 0.48,
             "robot0:slide2": 0.0,
         }
-        self.image_width = 224
-        self.image_height = 224
+        self.image_width = 64
+        self.image_height = 64
         self.image_shape = [self.image_width, self.image_height]
         self.physical_dim = 10
 
