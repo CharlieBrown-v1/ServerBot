@@ -15,7 +15,7 @@
 		</body>
 
 		<body name="floor1" pos="-0.8 -0.75 0">
-			<site name="removal_target" pos="0 0 0.5" size="0.025 0.025 0.025" rgba="1 0 0 1" type="box" />
+			<site name="removal_target" pos="0 0 0.5" size="0.025 0.025 0.025" rgba="1 0 0 1" type="sphere" />
 		</body>
 
 		<include file="robot.xml" />
@@ -26,10 +26,6 @@
 
 		<body name="achieved_site" pos="0 0 0">
 			<site name="achieved_site" pos="0 0 1" rgba="1 1 0 0.32" size="0.032 0.032 0.032" type="box" />
-		</body>
-
-		<body name="cube_site" pos="0 0 0">
-			<site name="cube_site" pos="0 0 1" rgba="0 0.5 0 0.32" size="0.25 0.35 0.17" type="box" />
 		</body>
 
 		<light directional="true" ambient="0.2 0.2 0.2" diffuse="0.8 0.8 0.8" specular="0.3 0.3 0.3" castshadow="false" pos="0 0 4" dir="0 0 -1" name="light0" />

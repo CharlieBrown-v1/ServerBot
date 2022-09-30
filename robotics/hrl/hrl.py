@@ -51,10 +51,36 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         height = self.image_height
         depth = self.depth
         camera_id = self.sim.model.camera_name2id(camera_name)
-        self._get_viewer(mode).render(width, height, camera_id=camera_id)
+        self._get_viewer(mode).render(width, height)
         image = self._get_viewer(mode).read_pixels(width, height, depth=depth)
         # original image is upside-down, so flip it
         return image[::-1, :, :]
+
+    def _render_callback(self):
+        # Visualize target.
+        sites_offset = (self.sim.data.site_xpos - self.sim.model.site_pos).copy()
+        global_target_site_id = self.sim.model.site_name2id("global_target")
+        removal_target_site_id = self.sim.model.site_name2id("removal_target")
+        achieved_site_id = self.sim.model.site_name2id("achieved_site")
+        if self.removal_goal is not None:
+            self.sim.model.site_pos[removal_target_site_id] = self.removal_goal - sites_offset[removal_target_site_id]
+            self.sim.model.site_pos[global_target_site_id] = np.array([32, 32, 0.5])
+        else:
+            self.sim.model.site_pos[removal_target_site_id] = np.array([20, 20, 0.5])
+            self.sim.model.site_pos[global_target_site_id] = self.global_goal - sites_offset[global_target_site_id]
+        self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(self.achieved_name).copy() - \
+                                                    sites_offset[achieved_site_id]
+        self.sim.forward()
+
+    def _viewer_setup(self):
+        lookat = np.array([1.30, 0.75, 0.4])
+
+        for idx, value in enumerate(lookat):
+            self.viewer.cam.lookat[idx] = value
+
+        self.viewer.cam.distance = 1.0
+        self.viewer.cam.azimuth = 180 + 40
+        self.viewer.cam.elevation = -32.0
 
     def _get_obs(self):
         # positions
@@ -77,6 +103,9 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         physical_obs = np.concatenate(physical_obs)
         assert physical_obs.size == self.physical_dim
         achieved_goal = cube_achieved_pos.copy()
+
+        # TODO: update it
+        achieved_goal = np.zeros_like(achieved_goal)
 
         obs = np.concatenate(
             [
