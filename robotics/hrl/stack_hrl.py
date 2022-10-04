@@ -10,11 +10,11 @@ from stable_baselines3 import HybridPPO
 epsilon = 1e-3
 desk_x = 0
 desk_y = 1
-pos_x = 2
-pos_y = 3
-pos_z = 4
+desk_z = 2
+pos_x = 3
+pos_y = 4
+pos_z = 5
 
-action_list = [desk_x, desk_y, pos_x, pos_y, pos_z]
 MODEL_XML_PATH = os.path.join("hrl", "stack_hrl.xml")
 
 
@@ -59,15 +59,12 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.removal_goal_indicate = None
         self.removal_xpos_indicate = None
 
-        self.prev_max_dist = None
-        self.prev_highest_height = None
-
-        self.policy_removal_goal = None
-
-        self.trick_xy_scale = np.array([0.32, 0.32]) * self.distance_threshold
-        self.desired_xy = np.array([1.30, 0.65])
-        self.target_height = 0.425 + self.object_generator.size_sup * 2 * 2 - self.distance_threshold
-        self.max_dist_threshold = 0.2
+        self.success_dist_threshold = 0.045
+        self.stack_reward_factor = 0.1
+        step_size = 0.07
+        self.obstacle_goal_0 = np.array([1.30, 0.65, 0.430 + 0 * step_size])
+        self.obstacle_goal_1 = np.array([1.30, 0.65, 0.430 + 1 * step_size])
+        self.target_goal     = np.array([1.30, 0.65, 0.430 + 2 * step_size])
         
     def set_mode(self, name: str, mode: bool):
         if name == 'training':
@@ -98,60 +95,20 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         self._state_init(goal.copy())
 
-    def counting_object(self, target_xy: np.ndarray, achieved_name='target_object'):
-        count = 0
-        tmp_object_name_list = self.object_name_list.copy()
-        tmp_object_name_list.remove(achieved_name)
-        for name in tmp_object_name_list:
-            xy = self.sim.data.get_geom_xpos(name)[:2].copy()
-            count += int(xpos_distance(xy, target_xy) <= 2.5 * self.distance_threshold)
-        return count
-
     def macro_step_setup(self, macro_action):
-        self.policy_removal_goal = np.array([macro_action[desk_x], macro_action[desk_y], self.height_offset])
+        removal_goal = np.array([macro_action[desk_x], macro_action[desk_y], macro_action[desk_z]])
         action_xpos = np.array([macro_action[pos_x], macro_action[pos_y], macro_action[pos_z]])
 
         achieved_name = None
-        stacked_name = None
         min_dist = np.inf
-        stacked_min_dist = np.inf
         name_list = self.object_name_list
         for name in name_list:
             xpos = self.sim.data.get_geom_xpos(name).copy()
             dist = xpos_distance(action_xpos, xpos)
-            stacked_dist = xpos_distance(self.policy_removal_goal, xpos)
             if dist < min_dist:
                 min_dist = dist
                 achieved_name = name
-            if stacked_dist < stacked_min_dist:
-                stacked_min_dist = stacked_dist
-                stacked_name = name
         assert achieved_name is not None
-        assert stacked_name is not None
-
-        if stacked_min_dist < 2.5 * self.distance_threshold:
-            new_removal_goal = self.sim.data.get_geom_xpos(stacked_name).copy()
-        else:
-            new_removal_goal = self.policy_removal_goal.copy()
-
-        same_xpos_object_count = self.counting_object(new_removal_goal[:self.trick_xy_scale.size],
-                                                      achieved_name=achieved_name)
-        if same_xpos_object_count == 1:
-            target_height = self.height_offset + 2.60 * self.object_generator.size_sup
-        elif same_xpos_object_count == 2:
-            target_height = self.height_offset + 4.85 * self.object_generator.size_sup
-        else:
-            target_height = self.height_offset
-
-        removal_goal = np.r_[new_removal_goal[:self.trick_xy_scale.size].copy(), target_height]
-        if same_xpos_object_count > 0:
-            achieved_xpos = self.sim.data.get_geom_xpos(achieved_name).copy()
-            xy_offset = removal_goal[:self.trick_xy_scale.size] - achieved_xpos[:self.trick_xy_scale.size]
-            trick_xy_sign = np.sign(xy_offset)
-            delta_trick_xy = self.trick_xy_scale * trick_xy_sign
-
-            new_removal_goal[:self.trick_xy_scale.size] += delta_trick_xy[:self.trick_xy_scale.size]
-            removal_goal[:self.trick_xy_scale.size] = new_removal_goal[:self.trick_xy_scale.size]
 
         self.achieved_name = achieved_name
         self.removal_goal = removal_goal.copy()
@@ -243,77 +200,51 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self._state_init(new_goal.copy())
         return self._get_obs()
 
-    def reset_max_dist(self):
-        self.prev_max_dist = self.compute_max_dist()
-
-    def reset_highest_height(self):
-        self.prev_highest_height = self.compute_highest_height()
-
-    def compute_max_dist(self):
-        max_dist = -np.inf
-        for name in self.object_name_list:
-            object_xpos = self.sim.data.get_geom_xpos(name).copy()
-            object_xy = object_xpos[:2].copy()
-            dist = xpos_distance(object_xy, self.desired_xy)
-            if dist > max_dist:
-                max_dist = dist
-        assert max_dist != -np.inf
-        return max_dist
-
-    def compute_highest_height(self):
-        height_list = [self.sim.data.get_geom_xpos(name).copy()[2] for name in self.object_name_list]
-        highest_height = min(np.max(height_list), self.target_height)
-        return highest_height
-
     def stack_compute_reward(self, achieved_goal, goal, info):
-        prev_max_dist = self.prev_max_dist
-        curr_max_dist = self.compute_max_dist()
-        self.prev_max_dist = curr_max_dist
-        dist_reward = prev_max_dist - curr_max_dist
+        target_xpos = self.sim.data.get_geom_xpos('target_object').copy()
+        obstacle_xpos_0 = self.sim.data.get_geom_xpos('obstacle_object_0').copy()
+        obstacle_xpos_1 = self.sim.data.get_geom_xpos('obstacle_object_1').copy()
 
-        prev_highest_height = self.prev_highest_height
-        curr_highest_height = self.compute_highest_height()
-        self.prev_highest_height = curr_highest_height
-        height_reward = curr_highest_height - prev_highest_height
-
-        goal_dist = xpos_distance(self.policy_removal_goal[:self.desired_xy.size], self.desired_xy)
-        goal_dist = min(goal_dist, self.max_dist_threshold)
-        # return self.max_dist_threshold - goal_dist
-        return self.max_dist_threshold - goal_dist + height_reward
+        if self.reward_type == 'dense':
+            target_reward     = -xpos_distance(target_xpos, self.target_goal)
+            obstacle_reward_0 = -xpos_distance(obstacle_xpos_0, self.obstacle_goal_0)
+            obstacle_reward_1 = -xpos_distance(obstacle_xpos_1, self.obstacle_goal_1)
+        elif self.reward_type == 'sparse':
+            target_reward     = -bool(xpos_distance(target_xpos, self.target_goal) >= self.success_dist_threshold)
+            obstacle_reward_0 = -bool(xpos_distance(obstacle_xpos_0, self.obstacle_goal_0) >= self.success_dist_threshold)
+            obstacle_reward_1 = -bool(xpos_distance(obstacle_xpos_1, self.obstacle_goal_1) >= self.success_dist_threshold)
+        else:
+            raise NotImplementedError
+        return self.stack_reward_factor * (target_reward + obstacle_reward_0 + obstacle_reward_1)
 
     def is_stack_success(self):
-        object_xpos_list = [self.sim.data.get_geom_xpos(name).copy() for name in self.object_name_list]
-        object_xy_list = [xpos[:2].copy() for xpos in object_xpos_list]
-        sorted_height_list = list(sorted(xpos[2] for xpos in object_xpos_list))
-        xy_flag = np.sum(np.var(object_xy_list, axis=0)) < epsilon
-        z_flag = sorted_height_list[-1] >= self.target_height and \
-                 abs(sorted_height_list[1] - sorted_height_list[0]) <= 1.05 * 2 * self.object_generator.size_sup and \
-                 abs(sorted_height_list[2] - sorted_height_list[1]) <= 1.25 * 2 * self.object_generator.size_sup
+        target_xpos     = self.sim.data.get_geom_xpos('target_object').copy()
+        obstacle_xpos_0 = self.sim.data.get_geom_xpos('obstacle_object_0').copy()
+        obstacle_xpos_1 = self.sim.data.get_geom_xpos('obstacle_object_1').copy()
 
-        return xy_flag and z_flag
+        target_flag = xpos_distance(target_xpos, self.target_goal) < self.success_dist_threshold
+        obstacle_flag_0 = xpos_distance(obstacle_xpos_0, self.obstacle_goal_0) < self.success_dist_threshold
+        obstacle_flag_1 = xpos_distance(obstacle_xpos_1, self.obstacle_goal_1) < self.success_dist_threshold
+        return target_flag and obstacle_flag_0 and obstacle_flag_1
 
     def _render_callback(self):
         # Visualize target.
         sites_offset = (self.sim.data.site_xpos - self.sim.model.site_pos).copy()
-        global_target_site_id = self.sim.model.site_name2id("global_target")
         removal_target_site_id = self.sim.model.site_name2id("removal_target")
 
-        if self.removal_goal_indicate is not None:
-            self.sim.model.site_pos[global_target_site_id] = self.removal_goal_indicate - sites_offset[global_target_site_id]
-        elif self.removal_goal is not None:
-            self.sim.model.site_pos[global_target_site_id] = self.removal_goal - sites_offset[global_target_site_id]
-        else:
-            self.sim.model.site_pos[global_target_site_id] = np.array([20, 20, 0.5])
-
-        self.sim.model.site_pos[global_target_site_id] = np.array([20, 20, 0.5])
+        target_goal_id    = self.sim.model.site_name2id("target_goal")
+        obstacle_goal_0_id = self.sim.model.site_name2id("obstacle_goal_0")
+        obstacle_goal_1_id = self.sim.model.site_name2id("obstacle_goal_1")
 
         if self.removal_goal_indicate is not None:
-            self.sim.model.site_pos[removal_target_site_id] = self.removal_goal_indicate - sites_offset[
-                removal_target_site_id]
+            self.sim.model.site_pos[removal_target_site_id] = self.removal_goal_indicate - sites_offset[removal_target_site_id]
         elif self.removal_goal is not None:
-            self.sim.model.site_pos[removal_target_site_id] = self.removal_goal - sites_offset[
-                removal_target_site_id]
+            self.sim.model.site_pos[removal_target_site_id] = self.removal_goal - sites_offset[removal_target_site_id]
         else:
             self.sim.model.site_pos[removal_target_site_id] = np.array([20, 20, 0.5])
+        
+        self.sim.model.site_pos[target_goal_id] = self.target_goal - sites_offset[target_goal_id]
+        self.sim.model.site_pos[obstacle_goal_0_id] = self.obstacle_goal_0 - sites_offset[obstacle_goal_0_id]
+        self.sim.model.site_pos[obstacle_goal_1_id] = self.obstacle_goal_1 - sites_offset[obstacle_goal_1_id]
 
         self.sim.forward()

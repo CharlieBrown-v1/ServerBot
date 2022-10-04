@@ -9,13 +9,14 @@ from stable_baselines3 import HybridPPO
 epsilon = 1e-3
 
 test_mode = False
-desk_x = 1
-desk_y = 2
+desk_x = 0
+desk_y = 1
+desk_z = 2
 pos_x = 3
 pos_y = 4
 pos_z = 5
 
-action_list = [desk_x, desk_y, pos_x, pos_y, pos_z]
+action_list = [desk_x, desk_y, desk_z, pos_x, pos_y, pos_z]
 
 
 def xpos_distance(goal_a: np.ndarray, goal_b: np.ndarray):
@@ -33,6 +34,7 @@ class StackEnv(gym.Env):
             self.agent = HybridPPO.load(agent_path, device=device)
 
         self.model = gym.make('StackHrlDense-v0')
+        # self.model = gym.make('StackHrl-v0')
 
         self.action_space = spaces.Box(-1.0, 1.0, shape=(len(action_list),), dtype="float32")
         self.observation_space = copy.deepcopy(self.model.observation_space)
@@ -67,18 +69,16 @@ class StackEnv(gym.Env):
     def reset(self):
         obs = self.model.reset()
         self.count = 0
-        self.model.reset_max_dist()
-        self.model.reset_highest_height()
         return obs
 
     def action_mapping(self, action: np.ndarray):
         planning_action = action.copy()
 
         # action for choosing desk's position
-        planning_action[:2] = (self.table_end_xyz[:2] - self.table_start_xyz[:2]) * planning_action[:2] / 2 \
-                              + (self.table_start_xyz[:2] + self.table_end_xyz[:2]) / 2
+        planning_action[:3] = (self.table_end_xyz[:3] - self.table_start_xyz[:3]) * planning_action[:3] / 2 \
+                              + (self.table_start_xyz[:3] + self.table_end_xyz[:3]) / 2
         # action for choosing obstacle's position
-        planning_action[2:] = (self.table_end_xyz - self.table_start_xyz) * planning_action[2:] / 2 \
+        planning_action[3:] = (self.table_end_xyz - self.table_start_xyz) * planning_action[3:] / 2 \
                               + (self.table_start_xyz + self.table_end_xyz) / 2
         return planning_action
 
@@ -86,20 +86,20 @@ class StackEnv(gym.Env):
         assert self.agent is not None, "You must load agent before step!"
 
         if action is None:  # used by RL + None
-            planning_action = np.r_[np.array([0, 0]),
+            planning_action = np.r_[np.array([0, 0, 0]),
                                     self.model.sim.data.get_geom_xpos(self.model.object_generator.global_achieved_name)]
         else:
             planning_action = self.action_mapping(action.copy())
 
         if test_mode:
             if self.count == 0:
-                planning_action = np.r_[self.model.desired_xy, self.model.sim.data.get_geom_xpos('obstacle_object_0').copy()]
+                planning_action = np.r_[self.model.obstacle_goal_0, self.model.sim.data.get_geom_xpos('obstacle_object_0').copy()]
             elif self.count == 1:
-                planning_action = np.r_[self.model.desired_xy, self.model.sim.data.get_geom_xpos('obstacle_object_1').copy()]
+                planning_action = np.r_[self.model.obstacle_goal_1, self.model.sim.data.get_geom_xpos('obstacle_object_1').copy()]
             else:
-                planning_action = np.r_[self.model.desired_xy, self.model.sim.data.get_geom_xpos('target_object').copy()]
+                planning_action = np.r_[self.model.target_goal, self.model.sim.data.get_geom_xpos('target_object').copy()]
 
-        self.count += 1
+        self.count += 1            
 
         achieved_name, removal_goal, min_dist = self.model.macro_step_setup(planning_action)
         if not self.training_mode:
@@ -121,13 +121,14 @@ class StackEnv(gym.Env):
 
     def compute_reward(self, achieved_goal, desired_goal, info):
         if isinstance(info, dict):
-            reward = 0
             if info['is_fail']:
-                reward += self.fail_reward
+                reward = self.fail_reward
             elif info['is_success']:
-                reward += self.success_reward
-            elif info['is_removal_success']:
-                reward += info['lower_reward'] + self.step_finish_reward
+                reward = self.success_reward
+            else:
+                reward = info['lower_reward']
+                if info['is_removal_success']:
+                    reward += self.step_finish_reward
             return reward + self.time_reward
         else:
             assert isinstance(info, np.ndarray)
