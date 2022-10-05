@@ -128,7 +128,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         info = {'is_success': False}
         frames = []
         assert self.removal_goal is not None
-        removal_goal = self.removal_goal.copy()
+        removal_goal = self.removal_goal_indicate.copy()
         while i < self.spec.max_episode_steps:
             i += 1
             agent_action = agent.predict(observation=obs, deterministic=True)[0]
@@ -142,8 +142,6 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             if info['train_done']:
                 break
         info['frames'] = frames
-        reward = self.stack_compute_reward(achieved_goal=None, goal=removal_goal, info=info)
-        info['lower_reward'] = reward
         if info['is_removal_success']:
             release_action = np.zeros(self.action_space.shape)
             up_action = np.zeros(self.action_space.shape)
@@ -153,6 +151,10 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             # Image.fromarray(self.render(mode='rgb_array', width=300, height=300)).save(f'/home/stalin/robot/result/RL+RL/{count}.png')
             obs, _, _, _ = self.step(release_action)
             obs, _, _, _ = self.step(up_action)
+
+        reward = self.stack_compute_reward(achieved_goal=None, goal=removal_goal, info=info)
+        info['lower_reward'] = reward
+
         return obs, reward, False, info
 
     def judge(self, name_list: list, xpos_list: list, mode: str):
@@ -201,21 +203,23 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         return self._get_obs()
 
     def stack_compute_reward(self, achieved_goal, goal, info):
-        target_xpos = self.sim.data.get_geom_xpos('target_object').copy()
-        obstacle_xpos_0 = self.sim.data.get_geom_xpos('obstacle_object_0').copy()
-        obstacle_xpos_1 = self.sim.data.get_geom_xpos('obstacle_object_1').copy()
-
-        if self.reward_type == 'dense':
-            target_reward     = -xpos_distance(target_xpos, self.target_goal)
-            obstacle_reward_0 = -xpos_distance(obstacle_xpos_0, self.obstacle_goal_0)
-            obstacle_reward_1 = -xpos_distance(obstacle_xpos_1, self.obstacle_goal_1)
-        elif self.reward_type == 'sparse':
-            target_reward     = -bool(xpos_distance(target_xpos, self.target_goal) >= self.success_dist_threshold)
-            obstacle_reward_0 = -bool(xpos_distance(obstacle_xpos_0, self.obstacle_goal_0) >= self.success_dist_threshold)
-            obstacle_reward_1 = -bool(xpos_distance(obstacle_xpos_1, self.obstacle_goal_1) >= self.success_dist_threshold)
+        selected_object_xpos = self.sim.data.get_geom_xpos(self.achieved_name_indicate).copy()
+        if self.achieved_name_indicate == 'target_object':
+            selected_goal_xpos = self.target_goal.copy()
+        elif self.achieved_name_indicate == 'obstacle_object_0':
+            selected_goal_xpos = self.obstacle_goal_0.copy()
+        elif self.achieved_name_indicate == 'obstacle_object_1':
+            selected_goal_xpos = self.obstacle_goal_1.copy()
         else:
             raise NotImplementedError
-        return self.stack_reward_factor * (target_reward + obstacle_reward_0 + obstacle_reward_1)
+
+        if self.reward_type == 'dense':
+            reward = -xpos_distance(selected_object_xpos, selected_goal_xpos)
+        elif self.reward_type == 'sparse':
+            reward = -int(xpos_distance(selected_object_xpos, selected_goal_xpos) >= self.success_dist_threshold)
+        else:
+            raise NotImplementedError
+        return self.stack_reward_factor * reward
 
     def is_stack_success(self):
         target_xpos     = self.sim.data.get_geom_xpos('target_object').copy()
