@@ -8,7 +8,7 @@ from stable_baselines3 import HybridPPO
 
 epsilon = 1e-3
 
-test_mode = False
+test_mode = True
 desk_x = 0
 desk_y = 1
 desk_z = 2
@@ -25,7 +25,7 @@ def xpos_distance(goal_a: np.ndarray, goal_b: np.ndarray):
 
 
 class StackEnv(gym.Env):
-    def __init__(self, agent_path=None, device=None):
+    def __init__(self, agent_path=None, device=None, reward_type='dense'):
         super(StackEnv, self).__init__()
 
         if agent_path is None:
@@ -33,8 +33,13 @@ class StackEnv(gym.Env):
         else:
             self.agent = HybridPPO.load(agent_path, device=device)
 
-        self.model = gym.make('StackHrlDense-v0')
-        # self.model = gym.make('StackHrl-v0')
+        self.reward_type = reward_type
+        if self.reward_type == 'dense':
+            self.model = gym.make('StackHrlDense-v0')
+        elif self.reward_type == 'sparse':
+            self.model = gym.make('StackHrl-v0')
+        else:
+            raise NotImplementedError
 
         self.action_space = spaces.Box(-1.0, 1.0, shape=(len(action_list),), dtype="float32")
         self.observation_space = copy.deepcopy(self.model.observation_space)
@@ -57,8 +62,8 @@ class StackEnv(gym.Env):
         self.count = 0
         self.success_reward = 1
         self.fail_reward = -1
-        self.step_finish_reward = 0.1
-        self.time_reward = -0.05
+        self.step_finish_reward = 0.01 / 3
+        self.time_reward = -0.005 / 3
 
     def set_mode(self, name: str, mode: bool):
         if name == 'training':

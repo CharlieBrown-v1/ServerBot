@@ -18,8 +18,10 @@ pos_z = 5
 MODEL_XML_PATH = os.path.join("hrl", "stack_hrl.xml")
 
 
-def xpos_distance(goal_a, goal_b):
+def xpos_distance(goal_a, goal_b, dist_sup=None):
     assert goal_a.shape == goal_b.shape
+    if dist_sup is None:
+        dist_sup = np.inf
     return np.linalg.norm(goal_a - goal_b, axis=-1)
 
 
@@ -41,7 +43,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             target_offset=0.0,
             obj_range=0.15,
             target_range=0.15,
-            distance_threshold=0.02,
+            distance_threshold=0.01,
             initial_qpos=initial_qpos,
             reward_type=reward_type,
             single_count_sup=7,
@@ -59,12 +61,14 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.removal_goal_indicate = None
         self.removal_xpos_indicate = None
 
+        self.lower_reward_sup = 0.12
+        self.valid_dist_sup   = 0.3
+
         self.success_dist_threshold = 0.045
-        self.stack_reward_factor = 0.1
         step_size = 0.07
-        self.obstacle_goal_0 = np.array([1.30, 0.65, 0.430 + 0 * step_size])
-        self.obstacle_goal_1 = np.array([1.30, 0.65, 0.430 + 1 * step_size])
-        self.target_goal     = np.array([1.30, 0.65, 0.430 + 2 * step_size])
+        self.obstacle_goal_0 = np.array([1.30, 0.65, 0.425 + 0 * step_size])
+        self.obstacle_goal_1 = np.array([1.30, 0.65, 0.425 + 1 * step_size])
+        self.target_goal     = np.array([1.30, 0.65, 0.425 + 2 * step_size])
         
     def set_mode(self, name: str, mode: bool):
         if name == 'training':
@@ -142,15 +146,16 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             if info['train_done']:
                 break
         info['frames'] = frames
-        if info['is_removal_success']:
-            release_action = np.zeros(self.action_space.shape)
-            up_action = np.zeros(self.action_space.shape)
-            release_action[-1] = self.action_space.high[-1]
-            up_action[-2] = self.action_space.high[-2]
-            from PIL import Image
-            # Image.fromarray(self.render(mode='rgb_array', width=300, height=300)).save(f'/home/stalin/robot/result/RL+RL/{count}.png')
-            obs, _, _, _ = self.step(release_action)
-            obs, _, _, _ = self.step(up_action)
+
+        # if info['is_removal_success']:
+        #     release_action = np.zeros(self.action_space.shape)
+        #     up_action = np.zeros(self.action_space.shape)
+        #     release_action[-1] = self.action_space.high[-1]
+        #     up_action[-2] = self.action_space.high[-2]
+        #     from PIL import Image
+        #     # Image.fromarray(self.render(mode='rgb_array', width=300, height=300)).save(f'/home/stalin/robot/result/RL+RL/{count}.png')
+        #     obs, _, _, _ = self.step(release_action)
+        #     obs, _, _, _ = self.step(up_action)
 
         reward = self.stack_compute_reward(achieved_goal=None, goal=removal_goal, info=info)
         info['lower_reward'] = reward
@@ -162,19 +167,25 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         achieved_xpos = self.sim.data.get_geom_xpos(self.achieved_name).copy()
 
+        move_count = 0
         not_in_desk_count = int(achieved_xpos[2] <= 0.4 - 0.01)
 
         for idx in np.arange(len(name_list)):
             name = name_list[idx]
+            init_xpos = xpos_list[idx].copy()
             curr_xpos = self.sim.data.get_geom_xpos(name).copy()
+            delta_xpos = xpos_distance(init_xpos, curr_xpos)
+
+            if delta_xpos > self.distance_threshold:
+                move_count += 1
 
             if curr_xpos[2] <= 0.4 - 0.01:
                 not_in_desk_count += 1
 
         if mode == 'done':
-            return not_in_desk_count > 0
+            return move_count + not_in_desk_count > 0
         elif mode == 'punish':
-            return not_in_desk_count * self.punish_factor
+            return (move_count + not_in_desk_count) * self.punish_factor
 
     def get_obs(self, achieved_name=None, goal=None):
         assert self.hrl_mode
@@ -203,23 +214,26 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         return self._get_obs()
 
     def stack_compute_reward(self, achieved_goal, goal, info):
-        selected_object_xpos = self.sim.data.get_geom_xpos(self.achieved_name_indicate).copy()
-        if self.achieved_name_indicate == 'target_object':
-            selected_goal_xpos = self.target_goal.copy()
-        elif self.achieved_name_indicate == 'obstacle_object_0':
-            selected_goal_xpos = self.obstacle_goal_0.copy()
-        elif self.achieved_name_indicate == 'obstacle_object_1':
-            selected_goal_xpos = self.obstacle_goal_1.copy()
-        else:
-            raise NotImplementedError
+        target_xpos = self.sim.data.get_geom_xpos('target_object').copy()
+        obstacle_xpos_0 = self.sim.data.get_geom_xpos('obstacle_object_0').copy()
+        obstacle_xpos_1 = self.sim.data.get_geom_xpos('obstacle_object_1').copy()
 
+        target_dist = xpos_distance(target_xpos, self.target_goal, self.valid_dist_sup)
+        obstacle_dist_0 = xpos_distance(obstacle_xpos_0, self.obstacle_goal_0, self.valid_dist_sup)
+        obstacle_dist_1 = xpos_distance(obstacle_xpos_1, self.obstacle_goal_1, self.valid_dist_sup)
+
+        reward = 0
         if self.reward_type == 'dense':
-            reward = -xpos_distance(selected_object_xpos, selected_goal_xpos)
+            reward += self.lower_reward_sup * ((self.valid_dist_sup - target_dist) / self.valid_dist_sup) / 3
+            reward += self.lower_reward_sup * ((self.valid_dist_sup - obstacle_dist_0) / self.valid_dist_sup) / 3
+            reward += self.lower_reward_sup * ((self.valid_dist_sup - obstacle_dist_1) / self.valid_dist_sup) / 3
         elif self.reward_type == 'sparse':
-            reward = -int(xpos_distance(selected_object_xpos, selected_goal_xpos) >= self.success_dist_threshold)
+            reward += self.lower_reward_sup * int(target_dist < self.success_dist_threshold) / 3
+            reward += self.lower_reward_sup * int(obstacle_dist_0 < self.success_dist_threshold) / 3
+            reward += self.lower_reward_sup * int(obstacle_dist_1 < self.success_dist_threshold) / 3
         else:
             raise NotImplementedError
-        return self.stack_reward_factor * reward
+        return min(reward, self.lower_reward_sup)
 
     def is_stack_success(self):
         target_xpos     = self.sim.data.get_geom_xpos('target_object').copy()

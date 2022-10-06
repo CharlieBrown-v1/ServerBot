@@ -123,7 +123,6 @@ class RobotEnv(gym.GoalEnv):
             self.is_removal_success = self._is_success(obs["achieved_goal"], self.removal_goal)
 
             if self.is_removal_success:
-                self.reset_after_removal()
                 info['is_removal_success'] = True
                 self.removal_goal = None
 
@@ -131,7 +130,8 @@ class RobotEnv(gym.GoalEnv):
         removal_done = self.removal_goal is None or self.is_removal_success
         # done for reset sim
         if removal_done:
-            info['is_success'] = self._is_success(obs["achieved_goal"], self.global_goal)
+            achieved_xpos = self.sim.data.get_geom_xpos(self.achieved_name).copy()
+            info['is_success'] = self._is_success(achieved_xpos, self.global_goal)
         done = info['is_fail'] or info['is_success']
         # train_* for train a new trial
         info['train_done'] = info['is_fail'] or info['is_success'] or info['is_removal_success']
@@ -150,6 +150,10 @@ class RobotEnv(gym.GoalEnv):
             goal = self.removal_goal.copy()
 
         reward = self.compute_reward(obs["achieved_goal"], goal, info)
+
+        if info['is_removal_success']:
+            self.reset_after_removal()
+
         return obs, reward, done, info
 
     # DIY

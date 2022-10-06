@@ -769,7 +769,9 @@ class FetchEnv(robot_env.RobotEnv):
 
     def _is_success(self, achieved_goal, desired_goal):
         d = xpos_distance(achieved_goal, desired_goal)
-        return d < self.distance_threshold
+        is_success = bool(d < self.distance_threshold)
+
+        return is_success
 
     # DIY
     def _is_fail(self) -> bool:

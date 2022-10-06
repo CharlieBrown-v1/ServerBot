@@ -217,8 +217,8 @@ class ObjectGenerator:
 
         self.step = 0.05
         self.delta_obstacle_qpos_list = [
-            np.r_[np.array([1.40, 0.88, 0.475]) - np.array([1.30, 0.88, 0.425]), self.qpos_postfix],
-            np.r_[np.array([1.20, 0.88, 0.475]) - np.array([1.30, 0.88, 0.425]), self.qpos_postfix],
+            np.r_[np.array([1.30, 0.65, 0.425]) - np.array([1.34, 0.88, 0.425]), self.qpos_postfix],
+            np.r_[np.array([1.24, 0.88, 0.425]) - np.array([1.34, 0.88, 0.425]), self.qpos_postfix],
 
             np.r_[np.array([1.30 - 0.20, 0.75 + 0.20, 0.425]) - np.array([1.30 - 0.20, 0.75 - 0.20, 0.425]), self.qpos_postfix],
             # np.r_[np.array([1.30 + 0.20, 0.75 - 0.20, 0.425]) - np.array([1.30 - 0.20, 0.75 - 0.20, 0.425]), self.qpos_postfix],
@@ -336,7 +336,7 @@ class ObjectGenerator:
             if self.random_mode:
                 achieved_qpos = np.r_[np.random.uniform(self.desktop_lower_boundary, self.desktop_upper_boundary), self.qpos_postfix]
             else:
-                achieved_qpos = np.r_[np.array([1.30 - 0.20, 0.75 - 0.20, 0.425]), self.qpos_postfix]
+                achieved_qpos = np.r_[np.array([1.34, 0.88, 0.425]), self.qpos_postfix]
         elif self.random_mode:
             if np.random.uniform() < self.object_stacked_probability:
                 achieved_qpos = np.r_[
@@ -381,12 +381,12 @@ class ObjectGenerator:
         else:
             obstacle_count = self.obstacle_count
             self.obstacle_count = 3 + (self.obstacle_count + 1) % 3
-            achieved_qpos = np.r_[[1.34, 0.55, 0.425], self.qpos_postfix]
+            achieved_qpos = np.r_[np.array([1.34, 0.88, 0.425]), self.qpos_postfix]
 
         object_name_list.insert(0, achieved_name)
         object_qpos_list.insert(0, achieved_qpos.copy())
 
-        if self.random_mode or self.stack_mode or self.collect_mode:
+        if self.random_mode or self.collect_mode:
             new_obstacle_name_list = list(np.random.choice(tmp_object_name_list, size=obstacle_count, replace=False))
         else:
             new_obstacle_name_list = tmp_object_name_list[:obstacle_count].copy()
