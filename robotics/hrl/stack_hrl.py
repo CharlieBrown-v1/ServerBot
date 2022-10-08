@@ -22,7 +22,7 @@ def xpos_distance(goal_a, goal_b, dist_sup=None):
     assert goal_a.shape == goal_b.shape
     if dist_sup is None:
         dist_sup = np.inf
-    return np.linalg.norm(goal_a - goal_b, axis=-1)
+    return min(np.linalg.norm(goal_a - goal_b, axis=-1), dist_sup)
 
 
 class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
@@ -62,10 +62,10 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.removal_xpos_indicate = None
 
         self.lower_reward_sup = 0.12
-        self.valid_dist_sup   = 0.3
+        self.valid_dist_sup   = 0.24
 
-        self.success_dist_threshold = 0.045
-        step_size = 0.07
+        self.success_dist_threshold = 0.01
+        step_size = 0.05
         self.obstacle_goal_0 = np.array([1.30, 0.65, 0.425 + 0 * step_size])
         self.obstacle_goal_1 = np.array([1.30, 0.65, 0.425 + 1 * step_size])
         self.target_goal     = np.array([1.30, 0.65, 0.425 + 2 * step_size])
@@ -147,16 +147,6 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                 break
         info['frames'] = frames
 
-        # if info['is_removal_success']:
-        #     release_action = np.zeros(self.action_space.shape)
-        #     up_action = np.zeros(self.action_space.shape)
-        #     release_action[-1] = self.action_space.high[-1]
-        #     up_action[-2] = self.action_space.high[-2]
-        #     from PIL import Image
-        #     # Image.fromarray(self.render(mode='rgb_array', width=300, height=300)).save(f'/home/stalin/robot/result/RL+RL/{count}.png')
-        #     obs, _, _, _ = self.step(release_action)
-        #     obs, _, _, _ = self.step(up_action)
-
         reward = self.stack_compute_reward(achieved_goal=None, goal=removal_goal, info=info)
         info['lower_reward'] = reward
 
@@ -172,7 +162,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         for idx in np.arange(len(name_list)):
             name = name_list[idx]
-            init_xpos = xpos_list[idx].copy()
+            init_xpos = np.array(xpos_list[idx].copy())
             curr_xpos = self.sim.data.get_geom_xpos(name).copy()
             delta_xpos = xpos_distance(init_xpos, curr_xpos)
 
@@ -222,7 +212,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         obstacle_dist_0 = xpos_distance(obstacle_xpos_0, self.obstacle_goal_0, self.valid_dist_sup)
         obstacle_dist_1 = xpos_distance(obstacle_xpos_1, self.obstacle_goal_1, self.valid_dist_sup)
 
-        reward = 0
+        reward = 0.0
         if self.reward_type == 'dense':
             reward += self.lower_reward_sup * ((self.valid_dist_sup - target_dist) / self.valid_dist_sup) / 3
             reward += self.lower_reward_sup * ((self.valid_dist_sup - obstacle_dist_0) / self.valid_dist_sup) / 3

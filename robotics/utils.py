@@ -217,7 +217,7 @@ class ObjectGenerator:
 
         self.step = 0.05
         self.delta_obstacle_qpos_list = [
-            np.r_[np.array([1.30, 0.65, 0.425]) - np.array([1.34, 0.88, 0.425]), self.qpos_postfix],
+            np.r_[np.array([1.44, 0.88, 0.425]) - np.array([1.34, 0.88, 0.425]), self.qpos_postfix],
             np.r_[np.array([1.24, 0.88, 0.425]) - np.array([1.34, 0.88, 0.425]), self.qpos_postfix],
 
             np.r_[np.array([1.30 - 0.20, 0.75 + 0.20, 0.425]) - np.array([1.30 - 0.20, 0.75 - 0.20, 0.425]), self.qpos_postfix],
