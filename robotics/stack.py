@@ -8,7 +8,7 @@ from stable_baselines3 import HybridPPO
 
 epsilon = 1e-3
 
-test_mode = True
+test_mode = False
 desk_x = 0
 desk_y = 1
 desk_z = 2
