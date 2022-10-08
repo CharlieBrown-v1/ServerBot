@@ -82,12 +82,16 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
     def reset_after_removal(self, goal=None):
         assert self.hrl_mode
-        assert self.is_removal_success
 
-        if goal is None:
-            goal = self.global_goal.copy()
+        if self.achieved_name == 'obstacle_object_0':
+            goal = self.obstacle_goal_1.copy()
+            new_achieved_name = 'obstacle_object_1'
+        elif self.achieved_name == 'obstacle_object_1':
+            goal = self.target_goal.copy()
+            new_achieved_name = 'target_object'
+        else:
+            raise NotImplementedError
 
-        new_achieved_name = 'target_object'
         new_obstacle_name_list = self.object_name_list.copy()
         new_obstacle_name_list.remove(new_achieved_name)
 
@@ -97,6 +101,63 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                                         in self.obstacle_name_list]
 
         self._state_init(goal.copy())
+
+    def hrl_step(self, obs, action):
+        info = {
+            "is_grasp": False,
+            "is_removal_success": False,
+            "is_success": False,
+            "is_fail": self._is_fail(),
+        }
+
+        # DIY
+        if not self.is_grasp:
+            self.is_grasp = self._judge_is_grasp(obs['achieved_goal'].copy(), action.copy())
+
+            if self.is_grasp:
+                info['is_grasp'] = True
+
+        # DIY
+        if self.removal_goal is not None and not self.is_removal_success:
+            is_removal_success = self._is_success(obs["achieved_goal"], self.removal_goal)
+
+            if is_removal_success:
+                info['is_removal_success'] = True
+                if self.achieved_name == 'obstacle_object_0':
+                    self.removal_goal = self.obstacle_goal_1.copy()
+                else:
+                    self.removal_goal = None
+                    self.is_removal_success = True
+
+        # DIY
+        removal_done = self.removal_goal is None or self.is_removal_success
+        # done for reset sim
+        if removal_done:
+            achieved_xpos = self.sim.data.get_geom_xpos(self.achieved_name).copy()
+            info['is_success'] = self._is_success(achieved_xpos, self.global_goal)
+        done = info['is_fail'] or info['is_success']
+        # train_* for train a new trial
+        info['train_done'] = info['is_fail'] or info['is_success'] or info['is_removal_success']
+        info['train_is_success'] = info['is_success'] or info['is_removal_success']
+
+        # DIY
+        info['removal_done'] = (not removal_done and info['is_fail']) or info['is_removal_success']
+        info['removal_success'] = info['is_removal_success']
+        info['global_done'] = (removal_done and info['is_fail']) or info['is_success']
+        info['global_success'] = info['is_success']
+
+        # DIY
+        if self.removal_goal is None or self.is_removal_success:
+            goal = self.global_goal.copy()
+        else:
+            goal = self.removal_goal.copy()
+
+        reward = self.compute_reward(obs["achieved_goal"], goal, info)
+
+        if info['is_removal_success']:
+            self.reset_after_removal()
+
+        return obs, reward, done, info
 
     def macro_step_setup(self, macro_action):
         removal_goal = np.array([macro_action[desk_x], macro_action[desk_y], macro_action[desk_z]])
@@ -146,16 +207,6 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                 break
         info['frames'] = frames
 
-        # if info['is_removal_success']:
-        #     release_action = np.zeros(self.action_space.shape)
-        #     up_action = np.zeros(self.action_space.shape)
-        #     release_action[-1] = self.action_space.high[-1]
-        #     up_action[-2] = self.action_space.high[-2]
-        #     from PIL import Image
-        #     # Image.fromarray(self.render(mode='rgb_array', width=300, height=300)).save(f'/home/stalin/robot/result/RL+RL/{count}.png')
-        #     obs, _, _, _ = self.step(release_action)
-        #     obs, _, _, _ = self.step(up_action)
-
         reward = self.stack_compute_reward(achieved_goal=None, goal=removal_goal, info=info)
         info['lower_reward'] = reward
 
@@ -171,7 +222,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         for idx in np.arange(len(name_list)):
             name = name_list[idx]
-            init_xpos = xpos_list[idx].copy()
+            init_xpos = np.array(xpos_list[idx].copy())
             curr_xpos = self.sim.data.get_geom_xpos(name).copy()
             delta_xpos = xpos_distance(init_xpos, curr_xpos)
 
@@ -221,7 +272,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         obstacle_dist_0 = xpos_distance(obstacle_xpos_0, self.obstacle_goal_0, self.valid_dist_sup)
         obstacle_dist_1 = xpos_distance(obstacle_xpos_1, self.obstacle_goal_1, self.valid_dist_sup)
 
-        reward = 0
+        reward = 0.0
         if self.reward_type == 'dense':
             reward += self.lower_reward_sup * ((self.valid_dist_sup - target_dist) / self.valid_dist_sup) / 3
             reward += self.lower_reward_sup * ((self.valid_dist_sup - obstacle_dist_0) / self.valid_dist_sup) / 3
@@ -247,7 +298,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
     def reset_removal(self, goal: np.ndarray, removal_goal=None, is_removal=True):
         self.is_grasp = False
         self.is_removal_success = False
-        self.removal_goal = self.obstacle_goal_1.copy()
+        self.removal_goal = self.obstacle_goal_0.copy()
         self._state_init(self.removal_goal.copy())
 
     def _sample_goal(self):
@@ -255,8 +306,8 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.reset_removal(goal=goal.copy())
 
         self.macro_step_setup(macro_action=np.r_[
-            self.obstacle_goal_1.copy(),
-            self.sim.data.get_geom_xpos('obstacle_object_1').copy(),
+            self.obstacle_goal_0.copy(),
+            self.sim.data.get_geom_xpos('obstacle_object_0').copy(),
         ])
 
         return goal.copy()
