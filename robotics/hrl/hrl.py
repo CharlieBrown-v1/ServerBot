@@ -17,6 +17,7 @@ desk_z = 2
 pos_x = 3
 pos_y = 4
 pos_z = 5
+action_list = [desk_x, desk_y, desk_z, pos_x, pos_y, pos_z]
 
 
 def xpos_distance(goal_a, goal_b, dist_sup=None):
@@ -344,7 +345,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
     def reset_removal(self, goal: np.ndarray, removal_goal=None, is_removal=True):
         self.is_grasp = False
         self.is_removal_success = False
-        self.removal_goal = self.obstacle_goal_0.copy()
+        self.removal_goal = removal_goal.copy()
         self._state_init(self.removal_goal.copy())
 
     def _sample_goal(self):
@@ -353,11 +354,17 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             removal_goal = self.obstacle_goal_0.copy()
             achieved_xpos = self.sim.data.get_geom_xpos('obstacle_object_0').copy()
         else:
-            goal = np.random.uniform(self.table_start_xyz, self.table_end_xyz)
-            removal_goal = np.random.uniform(self.table_start_xyz, self.table_end_xyz)
-            achieved_xpos = self.sim.data.get_geom_xpos(np.random.choice(self.object_name_list)).copy()
+            global_action = self.upper_action_space.sample()
+            macro_action = self.action_mapping(action=global_action)
+            new_achieved_name, goal, min_dist = self.action2feature(macro_action=macro_action)
 
-        self.reset_removal(goal=goal.copy())
+            removal_action = self.upper_action_space.sample()
+            macro_action = self.action_mapping(action=removal_action)
+            new_achieved_name, removal_goal, min_dist = self.action2feature(macro_action=macro_action)
+
+            achieved_xpos = self.sim.data.get_geom_xpos(new_achieved_name).copy()
+
+        self.reset_removal(goal=goal.copy(), removal_goal=removal_goal)
         self.macro_step_setup(macro_action=np.r_[
             removal_goal.copy(),
             achieved_xpos.copy(),
