@@ -314,7 +314,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
     def reset_removal(self, goal: np.ndarray, removal_goal=None, is_removal=True):
         self.is_grasp = False
         self.is_removal_success = False
-        self.removal_goal = self.obstacle_goal_0.copy()
+        self.removal_goal = removal_goal.copy()
         self._state_init(self.removal_goal.copy())
 
     def _sample_goal(self):
@@ -327,7 +327,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             removal_goal = np.random.uniform(self.table_start_xyz, self.table_end_xyz)
             achieved_xpos = self.sim.data.get_geom_xpos(np.random.choice(self.object_name_list)).copy()
 
-        self.reset_removal(goal=goal.copy())
+        self.reset_removal(goal=goal.copy(), removal_goal=removal_goal.copy())
         self.macro_step_setup(macro_action=np.r_[
             removal_goal.copy(),
             achieved_xpos.copy(),
