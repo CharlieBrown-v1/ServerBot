@@ -18,8 +18,6 @@ pos_x = 3
 pos_y = 4
 pos_z = 5
 
-action_list = [desk_x, desk_y, desk_z, pos_x, pos_y, pos_z]
-
 
 def xpos_distance(goal_a, goal_b, dist_sup=None):
     assert goal_a.shape == goal_b.shape
@@ -109,9 +107,19 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
     def reset_after_removal(self, goal=None):
         assert self.hrl_mode
 
-        upper_action = self.upper_action_space.sample()
-        macro_action = self.action_mapping(action=upper_action)
-        new_achieved_name, goal, min_dist = self.action2feature(macro_action=macro_action)
+        if np.random.uniform() < self.deterministic_probability:
+            if self.achieved_name == 'obstacle_object_0':
+                goal = self.obstacle_goal_1.copy()
+                new_achieved_name = 'obstacle_object_1'
+            elif self.achieved_name == 'obstacle_object_1':
+                goal = self.target_goal.copy()
+                new_achieved_name = 'target_object'
+            else:
+                raise NotImplementedError
+        else:
+            upper_action = self.upper_action_space.sample()
+            macro_action = self.action_mapping(action=upper_action)
+            new_achieved_name, goal, min_dist = self.action2feature(macro_action=macro_action)
 
         new_obstacle_name_list = self.object_name_list.copy()
         new_obstacle_name_list.remove(new_achieved_name)
@@ -200,6 +208,17 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
     def macro_step_setup(self, macro_action):
         achieved_name, removal_goal, min_dist = self.action2feature(macro_action=macro_action)
         action_xpos = np.array([macro_action[pos_x], macro_action[pos_y], macro_action[pos_z]])
+
+        achieved_name = None
+        min_dist = np.inf
+        name_list = self.object_name_list
+        for name in name_list:
+            xpos = self.sim.data.get_geom_xpos(name).copy()
+            dist = xpos_distance(action_xpos, xpos)
+            if dist < min_dist:
+                min_dist = dist
+                achieved_name = name
+        assert achieved_name is not None
 
         self.achieved_name = achieved_name
         self.removal_goal = removal_goal.copy()
@@ -329,12 +348,19 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self._state_init(self.removal_goal.copy())
 
     def _sample_goal(self):
-        goal = self.target_goal.copy()
-        self.reset_removal(goal=goal.copy())
+        if np.random.uniform() < self.deterministic_probability:
+            goal = self.target_goal.copy()
+            removal_goal = self.obstacle_goal_0.copy()
+            achieved_xpos = self.sim.data.get_geom_xpos('obstacle_object_0').copy()
+        else:
+            goal = np.random.uniform(self.table_start_xyz, self.table_end_xyz)
+            removal_goal = np.random.uniform(self.table_start_xyz, self.table_end_xyz)
+            achieved_xpos = self.sim.data.get_geom_xpos(np.random.choice(self.object_name_list)).copy()
 
+        self.reset_removal(goal=goal.copy())
         self.macro_step_setup(macro_action=np.r_[
-            self.obstacle_goal_0.copy(),
-            self.sim.data.get_geom_xpos('obstacle_object_0').copy(),
+            removal_goal.copy(),
+            achieved_xpos.copy(),
         ])
 
         return goal.copy()
