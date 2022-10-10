@@ -46,6 +46,18 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.obstacle_goal_1 = np.array([1.30, 0.65, 0.425 + 1 * step_size])
         self.target_goal = np.array([1.30, 0.65, 0.425 + 2 * step_size])
 
+        table_xy = np.array([1.3, 0.75])
+        table_size = np.array([0.25, 0.35])
+
+        table_start_xy = table_xy - table_size + step_size
+        table_end_xy = table_xy + table_size - step_size
+        table_start_z = 0.425
+        table_end_z = 0.425 + 0.3
+
+        self.table_start_xyz = np.r_[table_start_xy, table_start_z]
+        self.table_end_xyz = np.r_[table_end_xy, table_end_z]
+        self.deterministic_probability = 0.16
+
         fetch_env.FetchEnv.__init__(
             self,
             MODEL_XML_PATH,
@@ -83,14 +95,18 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
     def reset_after_removal(self, goal=None):
         assert self.hrl_mode
 
-        if self.achieved_name == 'obstacle_object_0':
-            goal = self.obstacle_goal_1.copy()
-            new_achieved_name = 'obstacle_object_1'
-        elif self.achieved_name == 'obstacle_object_1':
-            goal = self.target_goal.copy()
-            new_achieved_name = 'target_object'
+        if np.random.uniform() < self.deterministic_probability:
+            if self.achieved_name == 'obstacle_object_0':
+                goal = self.obstacle_goal_1.copy()
+                new_achieved_name = 'obstacle_object_1'
+            elif self.achieved_name == 'obstacle_object_1':
+                goal = self.target_goal.copy()
+                new_achieved_name = 'target_object'
+            else:
+                raise NotImplementedError
         else:
-            raise NotImplementedError
+            goal = np.random.uniform(self.table_start_xyz, self.table_end_xyz)
+            new_achieved_name = np.random.choice(self.object_name_list)
 
         new_obstacle_name_list = self.object_name_list.copy()
         new_obstacle_name_list.remove(new_achieved_name)
@@ -302,12 +318,19 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self._state_init(self.removal_goal.copy())
 
     def _sample_goal(self):
-        goal = self.target_goal.copy()
-        self.reset_removal(goal=goal.copy())
+        if np.random.uniform() < self.deterministic_probability:
+            goal = self.target_goal.copy()
+            removal_goal = self.obstacle_goal_0.copy()
+            achieved_xpos = self.sim.data.get_geom_xpos('obstacle_object_0').copy()
+        else:
+            goal = np.random.uniform(self.table_start_xyz, self.table_end_xyz)
+            removal_goal = np.random.uniform(self.table_start_xyz, self.table_end_xyz)
+            achieved_xpos = self.sim.data.get_geom_xpos(np.random.choice(self.object_name_list)).copy()
 
+        self.reset_removal(goal=goal.copy())
         self.macro_step_setup(macro_action=np.r_[
-            self.obstacle_goal_0.copy(),
-            self.sim.data.get_geom_xpos('obstacle_object_0').copy(),
+            removal_goal.copy(),
+            achieved_xpos.copy(),
         ])
 
         return goal.copy()
