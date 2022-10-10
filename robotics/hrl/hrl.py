@@ -21,7 +21,7 @@ def xpos_distance(goal_a, goal_b, dist_sup=None):
     assert goal_a.shape == goal_b.shape
     if dist_sup is None:
         dist_sup = np.inf
-    return np.linalg.norm(goal_a - goal_b, axis=-1)
+    return min(np.linalg.norm(goal_a - goal_b, axis=-1), dist_sup)
 
 
 class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
