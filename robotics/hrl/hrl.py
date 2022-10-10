@@ -3,8 +3,12 @@ import copy
 import numpy as np
 
 from gym import utils
+from gym import spaces
+from typing import Tuple
 from gym.envs.robotics import fetch_env
 from stable_baselines3 import HybridPPO
+
+MODEL_XML_PATH = os.path.join("hrl", "stack_hrl.xml")
 
 epsilon = 1e-3
 desk_x = 0
@@ -14,7 +18,7 @@ pos_x = 3
 pos_y = 4
 pos_z = 5
 
-MODEL_XML_PATH = os.path.join("hrl", "stack_hrl.xml")
+action_list = [desk_x, desk_y, desk_z, pos_x, pos_y, pos_z]
 
 
 def xpos_distance(goal_a, goal_b, dist_sup=None):
@@ -45,6 +49,17 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.obstacle_goal_0 = np.array([1.30, 0.65, 0.425 + 0 * step_size])
         self.obstacle_goal_1 = np.array([1.30, 0.65, 0.425 + 1 * step_size])
         self.target_goal = np.array([1.30, 0.65, 0.425 + 2 * step_size])
+
+        table_xy = np.array([1.3, 0.75])
+        table_size = np.array([0.25, 0.35])
+        table_start_xy = table_xy - table_size + step_size
+        table_end_xy = table_xy + table_size - step_size
+        table_start_z = 0.425
+        table_end_z = 0.425 + 0.3
+        self.table_start_xyz = np.r_[table_start_xy, table_start_z]
+        self.table_end_xyz = np.r_[table_end_xy, table_end_z]
+        self.upper_action_space = spaces.Box(-1.0, 1.0, shape=(len(action_list),), dtype="float32")
+        self.deterministic_probability = 0.16
 
         fetch_env.FetchEnv.__init__(
             self,
@@ -80,17 +95,23 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.removal_goal_indicate = None
         self.removal_xpos_indicate = None
 
+    def action_mapping(self, action: np.ndarray):
+        planning_action = action.copy()
+
+        # action for choosing desk's position
+        planning_action[:3] = (self.table_end_xyz[:3] - self.table_start_xyz[:3]) * planning_action[:3] / 2 \
+                              + (self.table_start_xyz[:3] + self.table_end_xyz[:3]) / 2
+        # action for choosing obstacle's position
+        planning_action[3:] = (self.table_end_xyz - self.table_start_xyz) * planning_action[3:] / 2 \
+                              + (self.table_start_xyz + self.table_end_xyz) / 2
+        return planning_action
+
     def reset_after_removal(self, goal=None):
         assert self.hrl_mode
 
-        if self.achieved_name == 'obstacle_object_0':
-            goal = self.obstacle_goal_1.copy()
-            new_achieved_name = 'obstacle_object_1'
-        elif self.achieved_name == 'obstacle_object_1':
-            goal = self.target_goal.copy()
-            new_achieved_name = 'target_object'
-        else:
-            raise NotImplementedError
+        upper_action = self.upper_action_space.sample()
+        macro_action = self.action_mapping(action=upper_action)
+        new_achieved_name, goal, min_dist = self.action2feature(macro_action=macro_action)
 
         new_obstacle_name_list = self.object_name_list.copy()
         new_obstacle_name_list.remove(new_achieved_name)
@@ -159,7 +180,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         return obs, reward, done, info
 
-    def macro_step_setup(self, macro_action):
+    def action2feature(self, macro_action: np.ndarray) -> Tuple[str, np.ndarray, float]:
         removal_goal = np.array([macro_action[desk_x], macro_action[desk_y], macro_action[desk_z]])
         action_xpos = np.array([macro_action[pos_x], macro_action[pos_y], macro_action[pos_z]])
 
@@ -173,6 +194,12 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                 min_dist = dist
                 achieved_name = name
         assert achieved_name is not None
+
+        return achieved_name, removal_goal, min_dist
+
+    def macro_step_setup(self, macro_action):
+        achieved_name, removal_goal, min_dist = self.action2feature(macro_action=macro_action)
+        action_xpos = np.array([macro_action[pos_x], macro_action[pos_y], macro_action[pos_z]])
 
         self.achieved_name = achieved_name
         self.removal_goal = removal_goal.copy()
