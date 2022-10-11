@@ -116,6 +116,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             if self.finished_count == 0:
                 goal = self.obstacle_goal_1.copy()
                 new_achieved_name = 'obstacle_object_1'
+                self.removal_goal = goal.copy()
                 self.finished_count += 1
             elif self.finished_count == 1:
                 assert xpos_distance(self.target_goal, self.global_goal) < 1e-12
@@ -130,6 +131,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                 macro_action = self.action_mapping(action=upper_action)
                 new_achieved_name, goal, min_dist = self.action2feature(macro_action=macro_action)
                 goal[2] = 0.425  # o.t. Release = Fail!
+                self.removal_goal = goal.copy()
                 self.finished_count += 1
             elif self.finished_count == 1:
                 goal = self.global_goal.copy()
@@ -395,16 +397,15 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
     def _render_callback(self):
         # Visualize target.
         sites_offset = (self.sim.data.site_xpos - self.sim.model.site_pos).copy()
+        global_target_site_id = self.sim.model.site_name2id("global_target")
         removal_target_site_id = self.sim.model.site_name2id("removal_target")
 
         target_goal_id = self.sim.model.site_name2id("target_goal")
         obstacle_goal_0_id = self.sim.model.site_name2id("obstacle_goal_0")
         obstacle_goal_1_id = self.sim.model.site_name2id("obstacle_goal_1")
 
-        if self.removal_goal_indicate is not None:
-            self.sim.model.site_pos[removal_target_site_id] = self.removal_goal_indicate - sites_offset[
-                removal_target_site_id]
-        elif self.removal_goal is not None:
+        self.sim.model.site_pos[global_target_site_id] = self.global_goal - sites_offset[global_target_site_id]
+        if self.removal_goal is not None:
             self.sim.model.site_pos[removal_target_site_id] = self.removal_goal - sites_offset[removal_target_site_id]
         else:
             self.sim.model.site_pos[removal_target_site_id] = np.array([20, 20, 0.5])
