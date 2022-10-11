@@ -1,5 +1,6 @@
 import os
 import copy
+from typing_extensions import assert_type
 import numpy as np
 
 from gym import utils
@@ -59,6 +60,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.table_end_xyz = np.r_[table_end_xy, table_end_z]
         self.upper_action_space = spaces.Box(-1.0, 1.0, shape=(len(action_list),), dtype="float32")
         self.deterministic_probability = 0.16
+        self.deterministic_flag = None
 
         fetch_env.FetchEnv.__init__(
             self,
@@ -107,8 +109,9 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
     def reset_after_removal(self, goal=None):
         assert self.hrl_mode
+        assert self.deterministic_flag is not None
 
-        if np.random.uniform() < self.deterministic_probability:
+        if self.deterministic_flag:
             if self.achieved_name == 'obstacle_object_0':
                 goal = self.obstacle_goal_1.copy()
                 new_achieved_name = 'obstacle_object_1'
@@ -350,10 +353,12 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
     def _sample_goal(self):
         if np.random.uniform() < self.deterministic_probability:
+            self.deterministic_flag = True
             goal = self.target_goal.copy()
             removal_goal = self.obstacle_goal_0.copy()
             achieved_xpos = self.sim.data.get_geom_xpos('obstacle_object_0').copy()
         else:
+            self.deterministic_flag = False
             global_action = self.upper_action_space.sample()
             macro_action = self.action_mapping(action=global_action)
             new_achieved_name, goal, min_dist = self.action2feature(macro_action=macro_action)
