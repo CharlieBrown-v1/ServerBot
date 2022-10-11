@@ -1,6 +1,5 @@
 import os
 import copy
-from typing_extensions import assert_type
 import numpy as np
 
 from gym import utils
@@ -61,6 +60,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.upper_action_space = spaces.Box(-1.0, 1.0, shape=(len(action_list),), dtype="float32")
         self.deterministic_probability = 0.16
         self.deterministic_flag = None
+        self.finished_count = None
 
         fetch_env.FetchEnv.__init__(
             self,
@@ -109,21 +109,33 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
     def reset_after_removal(self, goal=None):
         assert self.hrl_mode
+        assert self.finished_count is not None
         assert self.deterministic_flag is not None
 
         if self.deterministic_flag:
-            if self.achieved_name == 'obstacle_object_0':
+            if self.finished_count == 0:
                 goal = self.obstacle_goal_1.copy()
                 new_achieved_name = 'obstacle_object_1'
-            elif self.achieved_name == 'obstacle_object_1':
-                goal = self.target_goal.copy()
+                self.finished_count += 1
+            elif self.finished_count == 1:
+                assert xpos_distance(self.target_goal, self.global_goal) < 1e-12
+                goal = self.global_goal.copy()
                 new_achieved_name = 'target_object'
+                self.finished_count += 1
             else:
                 raise NotImplementedError
         else:
-            upper_action = self.upper_action_space.sample()
-            macro_action = self.action_mapping(action=upper_action)
-            new_achieved_name, goal, min_dist = self.action2feature(macro_action=macro_action)
+            if self.finished_count == 0:
+                upper_action = self.upper_action_space.sample()
+                macro_action = self.action_mapping(action=upper_action)
+                new_achieved_name, goal, min_dist = self.action2feature(macro_action=macro_action)
+                self.finished_count += 1
+            elif self.finished_count == 1:
+                goal = self.global_goal.copy()
+                new_achieved_name = 'target_object'
+                self.finished_count += 1
+            else:
+                raise NotImplementedError
 
         new_obstacle_name_list = self.object_name_list.copy()
         new_obstacle_name_list.remove(new_achieved_name)
@@ -369,6 +381,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
             achieved_xpos = self.sim.data.get_geom_xpos(new_achieved_name).copy()
 
+        self.finished_count = 0
         self.reset_removal(goal=goal.copy(), removal_goal=removal_goal)
         self.macro_step_setup(macro_action=np.r_[
             removal_goal.copy(),
