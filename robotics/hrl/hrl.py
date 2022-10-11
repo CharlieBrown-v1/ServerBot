@@ -391,6 +391,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
     def _render_callback(self):
         # Visualize target.
         sites_offset = (self.sim.data.site_xpos - self.sim.model.site_pos).copy()
+        global_target_site_id = self.sim.model.site_name2id("global_target")
         removal_target_site_id = self.sim.model.site_name2id("removal_target")
 
         target_goal_id = self.sim.model.site_name2id("target_goal")
