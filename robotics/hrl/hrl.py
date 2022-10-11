@@ -57,6 +57,8 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.table_start_xyz = np.r_[table_start_xy, table_start_z]
         self.table_end_xyz = np.r_[table_end_xy, table_end_z]
         self.deterministic_probability = 0.16
+        self.deterministic_flag = None
+        self.finished_count = None
 
         fetch_env.FetchEnv.__init__(
             self,
@@ -95,18 +97,32 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
     def reset_after_removal(self, goal=None):
         assert self.hrl_mode
 
-        if np.random.uniform() < self.deterministic_probability:
-            if self.achieved_name == 'obstacle_object_0':
+        assert self.finished_count is not None
+        assert self.deterministic_flag is not None
+
+        if self.deterministic_flag:
+            if self.finished_count == 0:
                 goal = self.obstacle_goal_1.copy()
                 new_achieved_name = 'obstacle_object_1'
-            elif self.achieved_name == 'obstacle_object_1':
-                goal = self.target_goal.copy()
+                self.finished_count += 1
+            elif self.finished_count == 1:
+                assert xpos_distance(self.target_goal, self.global_goal) < 1e-12
+                goal = self.global_goal.copy()
                 new_achieved_name = 'target_object'
+                self.finished_count += 1
             else:
                 raise NotImplementedError
         else:
-            goal = np.random.uniform(self.table_start_xyz, self.table_end_xyz)
-            new_achieved_name = np.random.choice(self.object_name_list)
+            if self.finished_count == 0:
+                goal = np.random.uniform(self.table_start_xyz, self.table_end_xyz)
+                new_achieved_name = np.random.choice(self.object_name_list)
+                self.finished_count += 1
+            elif self.finished_count == 1:
+                goal = self.global_goal.copy()
+                new_achieved_name = 'target_object'
+                self.finished_count += 1
+            else:
+                raise NotImplementedError
 
         new_obstacle_name_list = self.object_name_list.copy()
         new_obstacle_name_list.remove(new_achieved_name)
@@ -319,14 +335,17 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
     def _sample_goal(self):
         if np.random.uniform() < self.deterministic_probability:
+            self.deterministic_flag = True
             goal = self.target_goal.copy()
             removal_goal = self.obstacle_goal_0.copy()
             achieved_xpos = self.sim.data.get_geom_xpos('obstacle_object_0').copy()
         else:
+            self.deterministic_flag = False
             goal = np.random.uniform(self.table_start_xyz, self.table_end_xyz)
             removal_goal = np.random.uniform(self.table_start_xyz, self.table_end_xyz)
             achieved_xpos = self.sim.data.get_geom_xpos(np.random.choice(self.object_name_list)).copy()
 
+        self.finished_count = 0
         self.reset_removal(goal=goal.copy(), removal_goal=removal_goal.copy())
         self.macro_step_setup(macro_action=np.r_[
             removal_goal.copy(),
