@@ -129,6 +129,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                 upper_action = self.upper_action_space.sample()
                 macro_action = self.action_mapping(action=upper_action)
                 new_achieved_name, goal, min_dist = self.action2feature(macro_action=macro_action)
+                goal[2] = 0.425  # o.t. Release = Fail!
                 self.finished_count += 1
             elif self.finished_count == 1:
                 goal = self.global_goal.copy()
@@ -378,6 +379,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             removal_action = self.upper_action_space.sample()
             macro_action = self.action_mapping(action=removal_action)
             new_achieved_name, removal_goal, min_dist = self.action2feature(macro_action=macro_action)
+            removal_goal[2] = 0.425  # o.t. Release = Fail!!!
 
             achieved_xpos = self.sim.data.get_geom_xpos(new_achieved_name).copy()
 
