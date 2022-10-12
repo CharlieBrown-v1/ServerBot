@@ -1,5 +1,6 @@
 import os
 import copy
+from typing_extensions import NotRequired
 import numpy as np
 
 from gym import utils
@@ -171,10 +172,8 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
             if is_removal_success:
                 info['is_removal_success'] = True
-                if self.achieved_name == 'obstacle_object_0':
-                    self.removal_goal = self.obstacle_goal_1.copy()
-                else:
-                    self.removal_goal = None
+                self.removal_goal = None
+                if self.finished_count == 1:
                     self.is_removal_success = True
 
         # DIY
@@ -386,7 +385,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             achieved_xpos = self.sim.data.get_geom_xpos(new_achieved_name).copy()
 
         self.finished_count = 0
-        self.reset_removal(goal=goal.copy(), removal_goal=removal_goal)
+        self.reset_removal(goal=goal.copy(), removal_goal=removal_goal.copy())
         self.macro_step_setup(macro_action=np.r_[
             removal_goal.copy(),
             achieved_xpos.copy(),
