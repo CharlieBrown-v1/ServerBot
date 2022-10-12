@@ -57,7 +57,6 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         table_end_z = 0.425 + 0.3
         self.table_start_xyz = np.r_[table_start_xy, table_start_z]
         self.table_end_xyz = np.r_[table_end_xy, table_end_z]
-        self.upper_action_space = spaces.Box(-1.0, 1.0, shape=(len(action_list),), dtype="float32")
         self.deterministic_probability = 0.16
         self.deterministic_flag = None
         self.finished_count = None
@@ -170,10 +169,8 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
             if is_removal_success:
                 info['is_removal_success'] = True
-                if self.achieved_name == 'obstacle_object_0':
-                    self.removal_goal = self.obstacle_goal_1.copy()
-                else:
-                    self.removal_goal = None
+                self.removal_goal = None
+                if self.finished_count == 1:
                     self.is_removal_success = True
 
         # DIY
