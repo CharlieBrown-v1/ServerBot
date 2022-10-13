@@ -69,12 +69,24 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.obstacle_goal_0 = np.array([1.30, 0.65, 0.425 + 0 * step_size])
         self.obstacle_goal_1 = np.array([1.30, 0.65, 0.425 + 1 * step_size])
         self.target_goal     = np.array([1.30, 0.65, 0.425 + 2 * step_size])
+
+        self.obstacle_flag_0 = None
+        self.obstacle_flag_1 = None
+        self.target_flag = None
+        self.finished_count = None
         
     def set_mode(self, name: str, mode: bool):
         if name == 'training':
             self.training_mode = mode
         else:
             raise NotImplementedError
+
+    def reset(self):
+        self.obstacle_flag_0 = False
+        self.obstacle_flag_1 = False
+        self.target_flag = False
+        self.finished_count = 0
+        return super(StackHrlEnv, self).reset()
 
     def reset_indicate(self):
         self.achieved_name_indicate = None
@@ -214,13 +226,19 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         reward = 0.0
         if self.reward_type == 'dense':
-            reward += self.lower_reward_sup * ((self.valid_dist_sup - target_dist) / self.valid_dist_sup) / 3
-            reward += self.lower_reward_sup * ((self.valid_dist_sup - obstacle_dist_0) / self.valid_dist_sup) / 3
-            reward += self.lower_reward_sup * ((self.valid_dist_sup - obstacle_dist_1) / self.valid_dist_sup) / 3
+            if self.finished_count == 0:
+                reward += self.lower_reward_sup * ((self.valid_dist_sup - obstacle_dist_0) / self.valid_dist_sup)
+            elif self.finished_count == 1:
+                reward += self.lower_reward_sup * ((self.valid_dist_sup - obstacle_dist_1) / self.valid_dist_sup)
+            else:
+                reward += self.lower_reward_sup * ((self.valid_dist_sup - target_dist) / self.valid_dist_sup)
         elif self.reward_type == 'sparse':
-            reward += self.lower_reward_sup * int(target_dist < self.success_dist_threshold) / 3
-            reward += self.lower_reward_sup * int(obstacle_dist_0 < self.success_dist_threshold) / 3
-            reward += self.lower_reward_sup * int(obstacle_dist_1 < self.success_dist_threshold) / 3
+            if self.finished_count == 0:
+                reward += self.lower_reward_sup * int(obstacle_dist_0 < self.success_dist_threshold)
+            elif self.finished_count == 1:
+                reward += self.lower_reward_sup * int(obstacle_dist_1 < self.success_dist_threshold)
+            else:
+                reward += self.lower_reward_sup * int(target_dist < self.success_dist_threshold)
         else:
             raise NotImplementedError
         return min(reward, self.lower_reward_sup)
@@ -233,7 +251,23 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         target_flag = xpos_distance(target_xpos, self.target_goal) < self.success_dist_threshold
         obstacle_flag_0 = xpos_distance(obstacle_xpos_0, self.obstacle_goal_0) < self.success_dist_threshold
         obstacle_flag_1 = xpos_distance(obstacle_xpos_1, self.obstacle_goal_1) < self.success_dist_threshold
-        return target_flag and obstacle_flag_0 and obstacle_flag_1
+        is_success = False
+
+        if obstacle_flag_0 and not self.obstacle_flag_0:
+            assert self.finished_count == 0
+            self.obstacle_flag_0 = True
+            self.finished_count += 1
+        if obstacle_flag_1 and not self.obstacle_flag_1:
+            assert self.finished_count == 1
+            self.obstacle_flag_1 = True
+            self.finished_count += 1
+        if target_flag and not self.target_flag:
+            assert self.finished_count == 2
+            self.target_flag = True
+            self.finished_count += 1
+            is_success = True
+
+        return is_success
 
     def _render_callback(self):
         # Visualize target.
