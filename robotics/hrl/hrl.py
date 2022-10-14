@@ -58,6 +58,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         table_end_z = 0.425 + 0.3
         self.table_start_xyz = np.r_[table_start_xy, table_start_z]
         self.table_end_xyz = np.r_[table_end_xy, table_end_z]
+        self.upper_action_space = spaces.Box(-1.0, 1.0, shape=(len(action_list),), dtype="float32")
         self.deterministic_probability = 0.16
         self.deterministic_flag = None
         self.finished_count = None
@@ -127,8 +128,9 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                 raise NotImplementedError
         else:
             if self.finished_count == 0:
-                goal = np.random.uniform(self.table_start_xyz, self.table_end_xyz)
-                new_achieved_name = np.random.choice(self.object_name_list)
+                upper_action = self.upper_action_space.sample()
+                macro_action = self.action_mapping(action=upper_action)
+                new_achieved_name, goal, min_dist = self.action2feature(macro_action=macro_action)
                 goal[2] = 0.425  # o.t. Release = Fail!
                 self.removal_goal = goal.copy()
                 self.finished_count += 1
@@ -222,7 +224,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         return achieved_name, removal_goal, min_dist
 
     def macro_step_setup(self, macro_action):
-        removal_goal = np.array([macro_action[desk_x], macro_action[desk_y], macro_action[desk_z]])
+        achieved_name, removal_goal, min_dist = self.action2feature(macro_action=macro_action)
         action_xpos = np.array([macro_action[pos_x], macro_action[pos_y], macro_action[pos_z]])
 
         achieved_name = None
@@ -371,11 +373,16 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             achieved_xpos = self.sim.data.get_geom_xpos('obstacle_object_0').copy()
         else:
             self.deterministic_flag = False
-            goal = np.random.uniform(self.table_start_xyz, self.table_end_xyz)
-            removal_goal = np.random.uniform(self.table_start_xyz, self.table_end_xyz)
+            global_action = self.upper_action_space.sample()
+            macro_action = self.action_mapping(action=global_action)
+            new_achieved_name, goal, min_dist = self.action2feature(macro_action=macro_action)
+
+            removal_action = self.upper_action_space.sample()
+            macro_action = self.action_mapping(action=removal_action)
+            new_achieved_name, removal_goal, min_dist = self.action2feature(macro_action=macro_action)
             removal_goal[2] = 0.425  # o.t. Release = Fail!!!
 
-            achieved_xpos = self.sim.data.get_geom_xpos(np.random.choice(self.object_name_list)).copy()
+            achieved_xpos = self.sim.data.get_geom_xpos(new_achieved_name).copy()
 
         self.finished_count = 0
         self.reset_removal(goal=goal.copy(), removal_goal=removal_goal.copy())
