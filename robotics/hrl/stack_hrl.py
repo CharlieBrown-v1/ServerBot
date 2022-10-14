@@ -64,16 +64,16 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.lower_reward_sup = 0.12
         self.valid_dist_sup   = 0.24
 
-        self.success_dist_threshold = 0.01
-        step_size = 0.05
-        self.obstacle_goal_0 = np.array([1.30, 0.65, 0.425 + 0 * step_size])
-        self.obstacle_goal_1 = np.array([1.30, 0.65, 0.425 + 1 * step_size])
-        self.target_goal     = np.array([1.30, 0.65, 0.425 + 2 * step_size])
+        self.step_size = 0.05
+        self.obstacle_goal_0 = np.array([1.30, 0.65, 0.425 + 0 * self.step_size])
+        self.obstacle_goal_1 = np.array([1.30, 0.65, 0.425 + 1 * self.step_size])
+        self.target_goal = np.array([1.30, 0.65, 0.425 + 2 * self.step_size])
+        self.init_removal_goal = np.array([1.30, 0.65, 0.425 + 0 * self.step_size])
+        self.achieved_name_list = ['obstacle_object_0', 'obstacle_object_1', 'target_object']
 
-        self.obstacle_flag_0 = None
-        self.obstacle_flag_1 = None
-        self.target_flag = None
+        self.prev_achi_remo_dist = None
         self.finished_count = None
+        self.removal_goal_dict = None
         
     def set_mode(self, name: str, mode: bool):
         if name == 'training':
@@ -82,11 +82,13 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             raise NotImplementedError
 
     def reset(self):
-        self.obstacle_flag_0 = False
-        self.obstacle_flag_1 = False
-        self.target_flag = False
+        obs = super(StackHrlEnv, self).reset()
         self.finished_count = 0
-        return super(StackHrlEnv, self).reset()
+        self.removal_goal_dict = {self.finished_count: self.init_removal_goal.copy()}
+        achieved_xpos = self.sim.data.get_geom_xpos(self.achieved_name_list[self.finished_count]).copy()
+        removal_goal = self.removal_goal_dict[self.finished_count].copy()
+        self.prev_achi_remo_dist = xpos_distance(achieved_xpos, removal_goal)
+        return obs
 
     def reset_indicate(self):
         self.achieved_name_indicate = None
@@ -139,12 +141,10 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         return achieved_name, removal_goal, min_dist
 
-    def macro_step(self, agent: HybridPPO, obs: dict, count: int):
+    def macro_step(self, agent: HybridPPO, obs: dict):
         i = 0
         info = {'is_success': False}
         frames = []
-        assert self.removal_goal is not None
-        removal_goal = self.removal_goal_indicate.copy()
         while i < self.spec.max_episode_steps:
             i += 1
             agent_action = agent.predict(observation=obs, deterministic=True)[0]
@@ -159,7 +159,9 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                 break
         info['frames'] = frames
 
-        reward = self.stack_compute_reward(achieved_goal=None, goal=removal_goal, info=info)
+        achieved_goal = self.sim.data.get_geom_xpos(self.achieved_name_list[self.finished_count]).copy()
+        removal_goal = self.removal_goal_dict[self.finished_count].copy()
+        reward = self.stack_compute_reward(achieved_goal=achieved_goal, goal=removal_goal.copy(), info=info)
         info['lower_reward'] = reward
 
         return obs, reward, False, info
@@ -215,57 +217,40 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self._state_init(new_goal.copy())
         return self._get_obs()
 
-    def stack_compute_reward(self, achieved_goal, goal, info):
-        target_xpos = self.sim.data.get_geom_xpos('target_object').copy()
-        obstacle_xpos_0 = self.sim.data.get_geom_xpos('obstacle_object_0').copy()
-        obstacle_xpos_1 = self.sim.data.get_geom_xpos('obstacle_object_1').copy()
-
-        target_dist = xpos_distance(target_xpos, self.target_goal, self.valid_dist_sup)
-        obstacle_dist_0 = xpos_distance(obstacle_xpos_0, self.obstacle_goal_0, self.valid_dist_sup)
-        obstacle_dist_1 = xpos_distance(obstacle_xpos_1, self.obstacle_goal_1, self.valid_dist_sup)
-
+    def stack_compute_reward(self, achieved_goal: np.ndarray, goal: np.ndarray, info: dict) -> float:
+        """
+        :param
+        achieved_goal: xpos of chosen achieved object
+        goal: target xpos of current stack stage
+        info: info
+        :return reward to upper
+        """
         reward = 0.0
+        curr_achi_remo_dist = xpos_distance(achieved_goal, goal)
+        achi_remo_reward = min(self.prev_achi_remo_dist - curr_achi_remo_dist, self.valid_dist_sup)
+        self.prev_achi_remo_dist = curr_achi_remo_dist
         if self.reward_type == 'dense':
-            if self.finished_count == 0:
-                reward += self.lower_reward_sup * ((self.valid_dist_sup - obstacle_dist_0) / self.valid_dist_sup)
-            elif self.finished_count == 1:
-                reward += self.lower_reward_sup * ((self.valid_dist_sup - obstacle_dist_1) / self.valid_dist_sup)
-            else:
-                reward += self.lower_reward_sup * ((self.valid_dist_sup - target_dist) / self.valid_dist_sup)
+            reward = self.lower_reward_sup * (achi_remo_reward / self.valid_dist_sup)
         elif self.reward_type == 'sparse':
-            if self.finished_count == 0:
-                reward += self.lower_reward_sup * int(obstacle_dist_0 < self.success_dist_threshold)
-            elif self.finished_count == 1:
-                reward += self.lower_reward_sup * int(obstacle_dist_1 < self.success_dist_threshold)
-            else:
-                reward += self.lower_reward_sup * int(target_dist < self.success_dist_threshold)
+            reward += self.lower_reward_sup * int(curr_achi_remo_dist < self.distance_threshold)
         else:
             raise NotImplementedError
         return min(reward, self.lower_reward_sup)
 
     def is_stack_success(self):
-        target_xpos     = self.sim.data.get_geom_xpos('target_object').copy()
-        obstacle_xpos_0 = self.sim.data.get_geom_xpos('obstacle_object_0').copy()
-        obstacle_xpos_1 = self.sim.data.get_geom_xpos('obstacle_object_1').copy()
-
-        target_flag = xpos_distance(target_xpos, self.target_goal) < self.success_dist_threshold
-        obstacle_flag_0 = xpos_distance(obstacle_xpos_0, self.obstacle_goal_0) < self.success_dist_threshold
-        obstacle_flag_1 = xpos_distance(obstacle_xpos_1, self.obstacle_goal_1) < self.success_dist_threshold
+        achieved_goal = self.sim.data.get_geom_xpos(self.achieved_name_list[self.finished_count]).copy()
+        removal_goal = self.removal_goal_dict[self.finished_count].copy()
+        finished_flag = xpos_distance(achieved_goal, removal_goal) < self.distance_threshold
         is_success = False
-
-        if obstacle_flag_0 and not self.obstacle_flag_0:
-            assert self.finished_count == 0
-            self.obstacle_flag_0 = True
+        if finished_flag:
             self.finished_count += 1
-        if obstacle_flag_1 and not self.obstacle_flag_1:
-            assert self.finished_count == 1
-            self.obstacle_flag_1 = True
-            self.finished_count += 1
-        if target_flag and not self.target_flag:
-            assert self.finished_count == 2
-            self.target_flag = True
-            self.finished_count += 1
-            is_success = True
+            is_success = self.finished_count >= 3
+            if not is_success:
+                new_removal_goal = self.init_removal_goal.copy()
+                new_removal_goal[2] += self.step_size * self.finished_count
+                achieved_xpos = self.sim.data.get_geom_xpos(self.achieved_name_list[self.finished_count]).copy()
+                self.prev_achi_remo_dist = xpos_distance(achieved_xpos, new_removal_goal)
+                self.removal_goal_dict[self.finished_count] = new_removal_goal.copy()
 
         return is_success
 
@@ -285,7 +270,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         else:
             self.sim.model.site_pos[removal_target_site_id] = np.array([20, 20, 0.5])
         
-        self.sim.model.site_pos[target_goal_id] = self.target_goal - sites_offset[target_goal_id]
+        self.sim.model.site_pos[target_goal_id]     = self.target_goal - sites_offset[target_goal_id]
         self.sim.model.site_pos[obstacle_goal_0_id] = self.obstacle_goal_0 - sites_offset[obstacle_goal_0_id]
         self.sim.model.site_pos[obstacle_goal_1_id] = self.obstacle_goal_1 - sites_offset[obstacle_goal_1_id]
 

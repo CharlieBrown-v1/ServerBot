@@ -59,7 +59,6 @@ class StackEnv(gym.Env):
 
         self.training_mode = True
 
-        self.count = 0
         self.success_reward = 1
         self.fail_reward = -1
         self.step_finish_reward = 0.01 / 3
@@ -73,7 +72,6 @@ class StackEnv(gym.Env):
 
     def reset(self):
         obs = self.model.reset()
-        self.count = 0
         return obs
 
     def action_mapping(self, action: np.ndarray):
@@ -97,23 +95,24 @@ class StackEnv(gym.Env):
             planning_action = self.action_mapping(action.copy())
 
         if test_mode:
-            if self.count == 0:
-                planning_action = np.r_[self.model.obstacle_goal_0, self.model.sim.data.get_geom_xpos('obstacle_object_0').copy()]
-            elif self.count == 1:
-                planning_action = np.r_[self.model.obstacle_goal_1, self.model.sim.data.get_geom_xpos('obstacle_object_1').copy()]
+            target_removal_goal = self.model.removal_goal_dict[self.model.finished_count].copy()
+            if self.model.finished_count == 0:
+                planning_action = np.r_[target_removal_goal.copy(), self.model.sim.data.get_geom_xpos('obstacle_object_0').copy()]
+            elif self.model.finished_count == 1:
+                planning_action = np.r_[target_removal_goal.copy(), self.model.sim.data.get_geom_xpos('obstacle_object_1').copy()]
             else:
-                planning_action = np.r_[self.model.target_goal, self.model.sim.data.get_geom_xpos('target_object').copy()]
-
-        self.count += 1            
+                planning_action = np.r_[target_removal_goal.copy(), self.model.sim.data.get_geom_xpos('target_object').copy()]
 
         achieved_name, removal_goal, min_dist = self.model.macro_step_setup(planning_action)
         if not self.training_mode:
             self.render()  # show which point and object agent has just selected
+        else:
+            self.model.sim.forward()
 
         from PIL import Image
 
         obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal)
-        obs, reward, done, info = self.model.macro_step(agent=self.agent, obs=obs, count=self.count)
+        obs, reward, done, info = self.model.macro_step(agent=self.agent, obs=obs)
 
         obs = self.model.get_obs(achieved_name=None, goal=None)
 
