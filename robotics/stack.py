@@ -61,8 +61,8 @@ class StackEnv(gym.Env):
 
         self.success_reward = 1
         self.fail_reward = -1
-        self.step_finish_reward = 0.01 / 3
-        self.time_reward = -0.005 / 3
+        self.step_finish_reward = 0.05
+        self.time_reward = -0.1
 
     def set_mode(self, name: str, mode: bool):
         if name == 'training':

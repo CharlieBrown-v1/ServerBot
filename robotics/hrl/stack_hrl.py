@@ -6,7 +6,6 @@ from gym import utils
 from gym.envs.robotics import fetch_env
 from stable_baselines3 import HybridPPO
 
-
 epsilon = 1e-3
 desk_x = 0
 desk_y = 1
@@ -43,7 +42,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             target_offset=0.0,
             obj_range=0.15,
             target_range=0.15,
-            distance_threshold=0.01,
+            distance_threshold=0.02,
             initial_qpos=initial_qpos,
             reward_type=reward_type,
             single_count_sup=7,
@@ -61,8 +60,8 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.removal_goal_indicate = None
         self.removal_xpos_indicate = None
 
-        self.lower_reward_sup = 0.12
-        self.valid_dist_sup   = 0.24
+        self.lower_reward_sup = 0.3
+        self.valid_dist_sup = 0.24
 
         self.step_size = 0.05
         self.obstacle_goal_0 = np.array([1.30, 0.65, 0.425 + 0 * self.step_size])
@@ -74,7 +73,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.prev_achi_remo_dist = None
         self.finished_count = None
         self.removal_goal_dict = None
-        
+
     def set_mode(self, name: str, mode: bool):
         if name == 'training':
             self.training_mode = mode
@@ -180,7 +179,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             curr_xpos = self.sim.data.get_geom_xpos(name).copy()
             delta_xpos = xpos_distance(init_xpos, curr_xpos)
 
-            if delta_xpos > self.distance_threshold:
+            if delta_xpos > 5 * self.distance_threshold:
                 move_count += 1
 
             if curr_xpos[2] <= 0.4 - 0.01:
@@ -242,6 +241,8 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         removal_goal = self.removal_goal_dict[self.finished_count].copy()
         finished_flag = xpos_distance(achieved_goal, removal_goal) < self.distance_threshold
         is_success = False
+        # if self.achieved_name_indicate == 'obstacle_object_0':
+        #     print(f'dist: {xpos_distance(achieved_goal, removal_goal)}')
         if finished_flag:
             self.finished_count += 1
             is_success = self.finished_count >= 3
@@ -259,18 +260,19 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         sites_offset = (self.sim.data.site_xpos - self.sim.model.site_pos).copy()
         removal_target_site_id = self.sim.model.site_name2id("removal_target")
 
-        target_goal_id    = self.sim.model.site_name2id("target_goal")
+        target_goal_id = self.sim.model.site_name2id("target_goal")
         obstacle_goal_0_id = self.sim.model.site_name2id("obstacle_goal_0")
         obstacle_goal_1_id = self.sim.model.site_name2id("obstacle_goal_1")
 
         if self.removal_goal_indicate is not None:
-            self.sim.model.site_pos[removal_target_site_id] = self.removal_goal_indicate - sites_offset[removal_target_site_id]
+            self.sim.model.site_pos[removal_target_site_id] = self.removal_goal_indicate - sites_offset[
+                removal_target_site_id]
         elif self.removal_goal is not None:
             self.sim.model.site_pos[removal_target_site_id] = self.removal_goal - sites_offset[removal_target_site_id]
         else:
             self.sim.model.site_pos[removal_target_site_id] = np.array([20, 20, 0.5])
-        
-        self.sim.model.site_pos[target_goal_id]     = self.target_goal - sites_offset[target_goal_id]
+
+        self.sim.model.site_pos[target_goal_id] = self.target_goal - sites_offset[target_goal_id]
         self.sim.model.site_pos[obstacle_goal_0_id] = self.obstacle_goal_0 - sites_offset[obstacle_goal_0_id]
         self.sim.model.site_pos[obstacle_goal_1_id] = self.obstacle_goal_1 - sites_offset[obstacle_goal_1_id]
 
