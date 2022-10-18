@@ -31,6 +31,26 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             "robot0:slide1": 0.48,
             "robot0:slide2": 0.0,
         }
+        self.training_mode = True
+
+        self.achieved_name_indicate = None
+        self.removal_goal_indicate = None
+        self.removal_xpos_indicate = None
+
+        self.lower_reward_sup = 0.3
+        self.valid_dist_sup = 0.24
+
+        self.step_size = 0.05
+        self.obstacle_goal_0 = np.array([1.30, 0.65, 0.425 + 0 * self.step_size])
+        self.obstacle_goal_1 = np.array([1.30, 0.65, 0.425 + 1 * self.step_size])
+        self.target_goal = np.array([1.30, 0.65, 0.425 + 2 * self.step_size])
+        self.init_removal_goal = np.array([1.30, 0.65, 0.425 + 0 * self.step_size])
+        self.achieved_name_list = ['obstacle_object_0', 'obstacle_object_1', 'target_object']
+
+        self.prev_achi_remo_dist = None
+        self.finished_count = None
+        self.removal_goal_dict = None
+
         fetch_env.FetchEnv.__init__(
             self,
             MODEL_XML_PATH,
@@ -53,26 +73,6 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             stack_mode=True,
         )
         utils.EzPickle.__init__(self, reward_type=reward_type)
-
-        self.training_mode = True
-
-        self.achieved_name_indicate = None
-        self.removal_goal_indicate = None
-        self.removal_xpos_indicate = None
-
-        self.lower_reward_sup = 0.3
-        self.valid_dist_sup = 0.24
-
-        self.step_size = 0.05
-        self.obstacle_goal_0 = np.array([1.30, 0.65, 0.425 + 0 * self.step_size])
-        self.obstacle_goal_1 = np.array([1.30, 0.65, 0.425 + 1 * self.step_size])
-        self.target_goal = np.array([1.30, 0.65, 0.425 + 2 * self.step_size])
-        self.init_removal_goal = np.array([1.30, 0.65, 0.425 + 0 * self.step_size])
-        self.achieved_name_list = ['obstacle_object_0', 'obstacle_object_1', 'target_object']
-
-        self.prev_achi_remo_dist = None
-        self.finished_count = None
-        self.removal_goal_dict = None
 
     def set_mode(self, name: str, mode: bool):
         if name == 'training':
@@ -179,7 +179,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             curr_xpos = self.sim.data.get_geom_xpos(name).copy()
             delta_xpos = xpos_distance(init_xpos, curr_xpos)
 
-            if delta_xpos > 5 * self.distance_threshold:
+            if delta_xpos > 0.05:
                 move_count += 1
 
             if curr_xpos[2] <= 0.4 - 0.01:
@@ -241,8 +241,6 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         removal_goal = self.removal_goal_dict[self.finished_count].copy()
         finished_flag = xpos_distance(achieved_goal, removal_goal) < self.distance_threshold
         is_success = False
-        # if self.achieved_name_indicate == 'obstacle_object_0':
-        #     print(f'dist: {xpos_distance(achieved_goal, removal_goal)}')
         if finished_flag:
             self.finished_count += 1
             is_success = self.finished_count >= 3
@@ -254,6 +252,21 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                 self.removal_goal_dict[self.finished_count] = new_removal_goal.copy()
 
         return is_success
+
+    def reset_removal(self, goal: np.ndarray, removal_goal=None, is_removal=True):
+        self.is_grasp = False
+        self.is_removal_success = False
+        self.removal_goal = removal_goal.copy()
+        self._state_init(self.removal_goal.copy())
+
+    def _sample_goal(self):
+        goal = self.target_goal.copy()
+        removal_goal = self.obstacle_goal_0.copy()
+
+        self.finished_count = 0
+        self.reset_removal(goal=goal.copy(), removal_goal=removal_goal.copy())
+
+        return goal.copy()
 
     def _render_callback(self):
         # Visualize target.
