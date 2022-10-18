@@ -37,7 +37,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.removal_goal_indicate = None
         self.removal_xpos_indicate = None
 
-        self.lower_reward_sup = 0.3
+        self.lower_reward_sup = 0.15
         self.valid_dist_sup = 0.24
 
         self.step_size = 0.05
@@ -224,17 +224,20 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         info: info
         :return reward to upper
         """
-        reward = 0.0
         curr_achi_remo_dist = xpos_distance(achieved_goal, goal)
         achi_remo_reward = min(self.prev_achi_remo_dist - curr_achi_remo_dist, self.valid_dist_sup)
         self.prev_achi_remo_dist = curr_achi_remo_dist
+        removal_goal = self.removal_goal_indicate.copy()
+        remo_desi_dist = xpos_distance(removal_goal, goal, self.valid_dist_sup)
         if self.reward_type == 'dense':
-            reward = self.lower_reward_sup * (achi_remo_reward / self.valid_dist_sup)
+            reward = self.lower_reward_sup * ((achi_remo_reward + self.valid_dist_sup - remo_desi_dist)
+                                              / self.valid_dist_sup)
         elif self.reward_type == 'sparse':
-            reward += self.lower_reward_sup * int(curr_achi_remo_dist < self.distance_threshold)
+            reward = self.lower_reward_sup * (int(curr_achi_remo_dist < self.distance_threshold)
+                                              + int(remo_desi_dist < self.distance_threshold))
         else:
             raise NotImplementedError
-        return min(reward, self.lower_reward_sup)
+        return min(reward, 2 * self.lower_reward_sup)
 
     def is_stack_success(self):
         achieved_goal = self.sim.data.get_geom_xpos(self.achieved_name_list[self.finished_count]).copy()
