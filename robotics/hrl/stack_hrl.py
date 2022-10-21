@@ -180,7 +180,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             delta_xpos = xpos_distance(init_xpos, curr_xpos)
 
             if delta_xpos > 0.05:
-                move_count += 0
+                move_count += 1
 
             if curr_xpos[2] <= 0.4 - 0.01:
                 not_in_desk_count += 1

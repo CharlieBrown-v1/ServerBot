@@ -351,7 +351,7 @@ register(
 register(
         id="Stack-v0",
         entry_point="gym.envs.robotics:StackEnv",
-        max_episode_steps=32,
+        max_episode_steps=16,
 )
 
 # DIY
