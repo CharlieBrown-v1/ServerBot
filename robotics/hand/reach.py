@@ -74,7 +74,7 @@ class HandReachEnv(hand_env.HandEnv, utils.EzPickle):
         )
 
     def _get_achieved_goal(self):
-        goal = [self.sim.data.get_site_xpos(name) for name in FINGERTIP_SITE_NAMES]
+        goal = [self._get_xpos(name).copy() for name in FINGERTIP_SITE_NAMES]
         return np.array(goal).flatten()
 
     # GoalEnv methods

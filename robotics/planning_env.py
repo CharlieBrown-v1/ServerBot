@@ -83,7 +83,7 @@ class PlanningEnv(gym.Env):
 
         if action is None:  # used by RL + None
             planning_action = np.r_[np.array([0, 0]),
-                                    self.model.sim.data.get_geom_xpos(self.model.object_generator.global_achieved_name)]
+                                    self._get_xpos(name=self.model.object_generator.global_achieved_name).copy()]
         else:
             planning_action = self.action_mapping(action.copy())
 
@@ -137,7 +137,7 @@ class PlanningEnv(gym.Env):
         name_list = self.model.env.object_name_list.copy()
         for name in name_list:
             if name != achieved_name:  # obstacle_name of this macro-step
-                xpos = self.model.env.sim.data.get_geom_xpos(name).copy()
+                xpos = self.model._get_xpos(name).copy()
                 delta_xpos = xpos_distance(removal_goal, xpos)
 
                 if delta_xpos <= 1.5 * self.model.env.distance_threshold:

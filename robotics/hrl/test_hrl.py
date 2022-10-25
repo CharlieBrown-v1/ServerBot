@@ -86,7 +86,7 @@ class TestHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         self.achieved_name = copy.deepcopy(new_achieved_name)
         self.obstacle_name_list = new_obstacle_name_list.copy()
-        self.init_obstacle_xpos_list = [self.sim.data.get_geom_xpos(obstacle_name).copy() for obstacle_name
+        self.init_obstacle_xpos_list = [self._get_xpos(obstacle_name).copy() for obstacle_name
                                         in self.obstacle_name_list]
 
         self._state_init(goal.copy())
@@ -99,7 +99,7 @@ class TestHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         min_dist = np.inf
         name_list = self.object_name_list
         for name in name_list:
-            xpos = self.sim.data.get_geom_xpos(name).copy()
+            xpos = self._get_xpos(name).copy()
             dist = xpos_distance(action_xpos, xpos)
             if dist < min_dist:
                 min_dist = dist
@@ -124,7 +124,7 @@ class TestHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         tmp_obstacle_name_list = self.object_name_list.copy()
         tmp_obstacle_name_list.remove(self.achieved_name)
         self.obstacle_name_list = tmp_obstacle_name_list.copy()
-        self.init_obstacle_xpos_list = [self.sim.data.get_geom_xpos(name).copy() for name in self.obstacle_name_list]
+        self.init_obstacle_xpos_list = [self._get_xpos(name).copy() for name in self.obstacle_name_list]
 
         return achieved_name, removal_goal, min_dist
 
@@ -174,7 +174,7 @@ class TestHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         tmp_obstacle_name_list = self.object_name_list.copy()
         tmp_obstacle_name_list.remove(self.achieved_name)
         self.obstacle_name_list = tmp_obstacle_name_list.copy()
-        self.init_obstacle_xpos_list = [self.sim.data.get_geom_xpos(name).copy() for name in self.obstacle_name_list]
+        self.init_obstacle_xpos_list = [self._get_xpos(name).copy() for name in self.obstacle_name_list]
 
         self._state_init(new_goal.copy())
         return self._get_obs()
@@ -201,10 +201,10 @@ class TestHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                 self.sim.model.site_pos[removal_target_site_id] = np.array([20, 20, 0.5])
 
             if self.achieved_name_indicate is not None:
-                self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(
+                self.sim.model.site_pos[achieved_site_id] = self._get_xpos(
                     self.achieved_name_indicate).copy() - sites_offset[achieved_site_id]
             else:
-                self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(self.achieved_name).copy() - \
+                self.sim.model.site_pos[achieved_site_id] = self._get_xpos(name=self.achieved_name).copy() - \
                                                             sites_offset[achieved_site_id]
         elif not self.test_mode:
             self.sim.model.site_pos[global_target_site_id] = self.global_goal - sites_offset[global_target_site_id]
@@ -224,10 +224,10 @@ class TestHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                 self.sim.model.site_pos[removal_indicate_site_id] = np.array([20, 20, 0.5])
 
             if self.achieved_name_indicate is not None:
-                self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(
+                self.sim.model.site_pos[achieved_site_id] = self._get_xpos(
                     self.achieved_name_indicate).copy() - sites_offset[achieved_site_id]
             else:
-                self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(self.achieved_name).copy() - \
+                self.sim.model.site_pos[achieved_site_id] = self._get_xpos(name=self.achieved_name).copy() - \
                                                             sites_offset[achieved_site_id]
             self.sim.model.site_pos[cube_site_id] = self.cube_starting_point.copy() - sites_offset[cube_site_id]
         else:

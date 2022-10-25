@@ -206,7 +206,7 @@ class FetchEnv(robot_env.RobotEnv):
     def judge(self, name_list: list, xpos_list: list, mode: str):
         assert len(name_list) == len(xpos_list)
 
-        achieved_xpos = self.sim.data.get_geom_xpos(self.achieved_name).copy()
+        achieved_xpos = self._get_xpos(name=self.achieved_name).copy()
 
         move_count = 0
         not_in_desk_count = int(achieved_xpos[2] <= 0.4 - 0.01)
@@ -214,7 +214,7 @@ class FetchEnv(robot_env.RobotEnv):
         for idx in np.arange(len(name_list)):
             name = name_list[idx]
             init_xpos = xpos_list[idx].copy()
-            curr_xpos = self.sim.data.get_geom_xpos(name).copy()
+            curr_xpos = self._get_xpos(name).copy()
             delta_xpos = xpos_distance(init_xpos, curr_xpos)
 
             if delta_xpos > 2 * self.distance_threshold:
@@ -230,7 +230,7 @@ class FetchEnv(robot_env.RobotEnv):
 
     # DIY
     def _judge_is_grasp(self, achieved_goal: np.array, action: np.array):
-        grip_site_xpos = self.sim.data.get_site_xpos("robot0:grip").copy()
+        grip_site_xpos = self._get_xpos("robot0:grip").copy()
         grip_ctrl = action[-1]
         flag = (grip_ctrl < epsilon) and (xpos_distance(achieved_goal, grip_site_xpos) < self.distance_threshold)
         return flag
@@ -239,7 +239,7 @@ class FetchEnv(robot_env.RobotEnv):
     def hrl_reward(self, achieved_goal, goal, info):
         assert self.reward_type == 'dense'
 
-        grip_pos = self.sim.data.get_site_xpos("robot0:grip").copy()
+        grip_pos = self._get_xpos("robot0:grip").copy()
 
         curr_grip_achi_dist = xpos_distance(np.broadcast_to(grip_pos, achieved_goal.shape), achieved_goal)
         grip_achi_reward = self.prev_grip_achi_dist - curr_grip_achi_dist
@@ -379,7 +379,7 @@ class FetchEnv(robot_env.RobotEnv):
 
     def _get_obs(self):
         # positions
-        grip_pos = self.sim.data.get_site_xpos("robot0:grip").copy()
+        grip_pos = self._get_xpos("robot0:grip").copy()
         dt = self.sim.nsubsteps * self.sim.model.opt.timestep
         grip_velp = self.sim.data.get_site_xvelp("robot0:grip").copy() * dt
         robot_qpos, robot_qvel = utils.robot_get_obs(self.sim)
@@ -399,19 +399,19 @@ class FetchEnv(robot_env.RobotEnv):
 
                 starting_point = self.cube_starting_point.copy()
 
-                achieved_goal_pos = self.sim.data.get_geom_xpos(self.achieved_name).copy()
+                achieved_goal_pos = self._get_xpos(name=self.achieved_name).copy()
 
                 cube_achieved_pos = np.squeeze(achieved_goal_pos.copy())
 
                 cube_obs = np.zeros((length_scale, width_scale, height_scale))
 
-                gripper_link_xpos = self.sim.data.get_geom_xpos('robot0:gripper_link').copy()
+                gripper_link_xpos = self._get_xpos('robot0:gripper_link').copy()
                 gripper_link_tuple = (gripper_link_xpos, gripper_link_xpos - gripper_link_size,
                                       gripper_link_xpos + gripper_link_size)
 
                 gripper_finger_xpos_list = [
-                    self.sim.data.get_geom_xpos('robot0:l_gripper_finger_link').copy(),
-                    self.sim.data.get_geom_xpos('robot0:r_gripper_finger_link').copy(),
+                    self._get_xpos('robot0:l_gripper_finger_link').copy(),
+                    self._get_xpos('robot0:r_gripper_finger_link').copy(),
                 ]
                 gripper_finger_tuple_list = [
                     (gripper_finger_xpos, gripper_finger_xpos - gripper_finger_size,
@@ -429,7 +429,7 @@ class FetchEnv(robot_env.RobotEnv):
                     achieved_goal_xpos, achieved_goal_xpos - achieved_goal_size,
                     achieved_goal_xpos + achieved_goal_size)
 
-                obstacle_xpos_list = [self.sim.data.get_geom_xpos(obstacle_name).copy() for obstacle_name
+                obstacle_xpos_list = [self._get_xpos(obstacle_name).copy() for obstacle_name
                                       in self.obstacle_name_list]
                 obstacle_xpos_tuple_list = [
                     (obstacle_xpos, obstacle_xpos - obstacle_size, obstacle_xpos + obstacle_size) for obstacle_xpos in
@@ -447,7 +447,7 @@ class FetchEnv(robot_env.RobotEnv):
 
                 physical_obs = [grip_pos, gripper_state, grip_velp, gripper_vel]
 
-                achieved_goal_pos = self.sim.data.get_site_xpos(self.achieved_name).copy()
+                achieved_goal_pos = self._get_xpos(self.achieved_name).copy()
                 # rotations
                 achieved_goal_rot = rotations.mat2euler(self.sim.data.get_site_xmat(self.achieved_name).copy())
                 # velocities
@@ -463,7 +463,7 @@ class FetchEnv(robot_env.RobotEnv):
                 physical_obs.append(achieved_goal_velr.flatten().copy())
                 physical_obs.append(achieved_goal_rel_pos.flatten().copy())
             else:
-                object_pos = self.sim.data.get_site_xpos("object0")
+                object_pos = self._get_xpos("object0").copy()
                 # rotations
                 object_rot = rotations.mat2euler(self.sim.data.get_site_xmat("object0"))
                 # velocities
@@ -523,6 +523,16 @@ class FetchEnv(robot_env.RobotEnv):
             "desired_goal": goal.copy(),
         }
 
+    def _get_xpos(self, name: str) -> np.ndarray:
+        if name in self.sim.model.site_names:
+            xpos = self.sim.data.get_site_xpos(name).copy()
+        elif name in self.sim.model.geom_names:
+            xpos = self.sim.data.get_geom_xpos(name).copy()
+        else:
+            raise NotImplementedError
+
+        return xpos.copy()
+
     def macro_step_setup(self, macro_action):
         removal_goal = np.array([macro_action[desk_x], macro_action[desk_y], self.height_offset])
         action_xpos = np.array([macro_action[pos_x], macro_action[pos_y], macro_action[pos_z]])
@@ -530,7 +540,7 @@ class FetchEnv(robot_env.RobotEnv):
         achieved_name = None
         min_dist = np.inf
         for name in self.obstacle_name_list:
-            xpos = self.sim.data.get_geom_xpos(name).copy()
+            xpos = self._get_xpos(name).copy()
             dist = xpos_distance(action_xpos, xpos)
             if dist < min_dist:
                 min_dist = dist
@@ -563,7 +573,7 @@ class FetchEnv(robot_env.RobotEnv):
         tmp_obstacle_name_list = self.object_name_list.copy()
         tmp_obstacle_name_list.remove(self.achieved_name)
         self.obstacle_name_list = tmp_obstacle_name_list.copy()
-        self.init_obstacle_xpos_list = [self.sim.data.get_geom_xpos(name).copy() for name in self.obstacle_name_list]
+        self.init_obstacle_xpos_list = [self._get_xpos(name).copy() for name in self.obstacle_name_list]
 
         self._state_init(goal.copy())
         return self._get_obs()
@@ -601,7 +611,7 @@ class FetchEnv(robot_env.RobotEnv):
             self.sim.model.site_pos[removal_target_site_id] = self.removal_goal - sites_offset[removal_target_site_id]
         else:
             self.sim.model.site_pos[removal_target_site_id] = np.array([20, 20, 0.5])
-        self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(self.achieved_name).copy() - \
+        self.sim.model.site_pos[achieved_site_id] = self._get_xpos(name=self.achieved_name).copy() - \
                                                     sites_offset[achieved_site_id]
         self.sim.model.site_pos[cube_site_id] = self.cube_starting_point.copy() - sites_offset[cube_site_id]
         # self.sim.model.site_pos[achieved_site_id] = np.array([20, 20, 0.5])
@@ -667,7 +677,7 @@ class FetchEnv(robot_env.RobotEnv):
                 while not done:
                     self.sim.step()
 
-                    curr_object_xpos_list = [self.sim.data.get_geom_xpos(object_name).copy() for object_name in
+                    curr_object_xpos_list = [self._get_xpos(object_name).copy() for object_name in
                                              self.object_name_list]
                     done = np.linalg.norm(
                         np.concatenate(curr_object_xpos_list) - np.concatenate(self.init_object_xpos_list),
@@ -685,7 +695,7 @@ class FetchEnv(robot_env.RobotEnv):
                     self.sim.data.set_joint_qpos(f"{object_name}:joint", object_qpos)
                 self.sim.forward()
 
-            self.init_obstacle_xpos_list = [self.sim.data.get_geom_xpos(obstacle_name).copy() for obstacle_name
+            self.init_obstacle_xpos_list = [self._get_xpos(obstacle_name).copy() for obstacle_name
                                             in self.obstacle_name_list]
 
         return True
@@ -717,14 +727,14 @@ class FetchEnv(robot_env.RobotEnv):
         if goal is None:
             goal = self.global_goal.copy()
 
-        object_xpos_list = [self.sim.data.get_geom_xpos(object_name).copy() for object_name in self.object_name_list]
+        object_xpos_list = [self._get_xpos(object_name).copy() for object_name in self.object_name_list]
         new_achieved_name, new_obstacle_name_list = sample_after_removal(object_name_list=self.object_name_list.copy(),
                                                                          object_xpos_list=object_xpos_list.copy(),
                                                                          achieved_name=copy.deepcopy(self.achieved_name))
 
         self.achieved_name = copy.deepcopy(new_achieved_name)
         self.obstacle_name_list = new_obstacle_name_list.copy()
-        self.init_obstacle_xpos_list = [self.sim.data.get_geom_xpos(obstacle_name).copy() for obstacle_name
+        self.init_obstacle_xpos_list = [self._get_xpos(obstacle_name).copy() for obstacle_name
                                         in self.obstacle_name_list]
 
         self._state_init(goal.copy())
@@ -786,7 +796,7 @@ class FetchEnv(robot_env.RobotEnv):
         # Move end effector into position.
         gripper_target = np.array(
             [-0.498, 0.005, -0.431 + self.gripper_extra_height]
-        ) + self.sim.data.get_site_xpos("robot0:grip").copy()
+        ) + self._get_xpos("robot0:grip").copy()
         gripper_rotation = np.array([1.0, 0.0, 1.0, 0.0])
         self.sim.data.set_mocap_pos("robot0:mocap", gripper_target)
         self.sim.data.set_mocap_quat("robot0:mocap", gripper_rotation)
@@ -794,7 +804,7 @@ class FetchEnv(robot_env.RobotEnv):
             self.sim.step()
 
         # Extract information for sampling goals.
-        self.initial_gripper_xpos = self.sim.data.get_site_xpos("robot0:grip").copy()
+        self.initial_gripper_xpos = self._get_xpos("robot0:grip").copy()
 
         # DIY
         if self.hrl_mode:
@@ -810,12 +820,12 @@ class FetchEnv(robot_env.RobotEnv):
                 if self.object_generator.test_mode:
                     self.object_generator.test_set_goal()
             else:
-                self.height_offset = self.sim.data.get_site_xpos("object0")[2].copy()
+                self.height_offset = self._get_xpos("object0")[2].copy()
 
     # DIY
     def _state_init(self, goal_xpos: np.ndarray = None):
-        grip_xpos = self.sim.data.get_site_xpos("robot0:grip").copy()
-        achieved_xpos = self.sim.data.get_geom_xpos(self.achieved_name).copy()
+        grip_xpos = self._get_xpos("robot0:grip").copy()
+        achieved_xpos = self._get_xpos(name=self.achieved_name).copy()
         self.prev_grip_achi_dist = xpos_distance(grip_xpos, achieved_xpos)
         self.prev_achi_desi_dist = xpos_distance(achieved_xpos, goal_xpos)
 

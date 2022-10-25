@@ -130,7 +130,7 @@ class RobotEnv(gym.GoalEnv):
         removal_done = self.removal_goal is None or self.is_removal_success
         # done for reset sim
         if removal_done:
-            achieved_xpos = self.sim.data.get_geom_xpos(self.achieved_name).copy()
+            achieved_xpos = self._get_xpos(name=self.achieved_name).copy()
             info['is_success'] = self._is_success(achieved_xpos, self.global_goal)
         done = info['is_fail'] or info['is_success']
         # train_* for train a new trial

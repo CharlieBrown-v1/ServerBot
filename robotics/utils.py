@@ -397,7 +397,8 @@ class ObjectGenerator:
         # DIY
         delta_obstacle_qpos_list = self.delta_obstacle_qpos_list[: obstacle_count].copy()
 
-        if not self.random_mode or self.stack_mode or self.collect_mode:
+        # if not self.random_mode or self.stack_mode or self.collect_mode:
+        if not self.random_mode:
             for delta_obstacle_qpos in delta_obstacle_qpos_list:
                 object_qpos_list.append(achieved_qpos.copy() + delta_obstacle_qpos)
                 obstacle_xpos_list.append((achieved_qpos.copy() + delta_obstacle_qpos)[:3])

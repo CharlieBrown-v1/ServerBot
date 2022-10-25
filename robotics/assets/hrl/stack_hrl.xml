@@ -17,7 +17,7 @@
 		<body name="floor1" pos="29 29 29">
 			<site name="removal_target" pos="0 0 0.5" size="0.025 0.025 0.025" rgba="1 0 0 1" type="sphere" />
 		</body>
-	
+
 		<body name="floor2" pos="29 29 30">
 			<site name="target_goal" pos="0 0 0.5" size="0.025 0.025 0.025" rgba="0 1 1 0.32" type="sphere" />
 		</body>
@@ -28,6 +28,10 @@
 
 		<body name="floor4" pos="29 29 32">
 			<site name="obstacle_goal_1" pos="0 0 0.5" size="0.025 0.025 0.025" rgba="1 0 1 0.32" type="sphere" />
+		</body>
+
+		<body name="floor5" pos="29 29 33">
+			<site name="final_goal" pos="0 0 0.5" size="0.025 0.025 0.025" rgba="0 0 0 0.32" type="sphere" />
 		</body>
 
 		<include file="robot.xml" />

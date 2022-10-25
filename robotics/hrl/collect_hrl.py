@@ -97,7 +97,7 @@ class CollectHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         self.achieved_name = copy.deepcopy(new_achieved_name)
         self.obstacle_name_list = new_obstacle_name_list.copy()
-        self.init_obstacle_xpos_list = [self.sim.data.get_geom_xpos(obstacle_name).copy() for obstacle_name
+        self.init_obstacle_xpos_list = [self._get_xpos(obstacle_name).copy() for obstacle_name
                                         in self.obstacle_name_list]
 
         self._state_init(goal.copy())
@@ -110,7 +110,7 @@ class CollectHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         min_dist = np.inf
         name_list = self.object_name_list
         for name in name_list:
-            xpos = self.sim.data.get_geom_xpos(name).copy()
+            xpos = self._get_xpos(name).copy()
             dist = xpos_distance(action_xpos, xpos)
             if dist < min_dist:
                 min_dist = dist
@@ -129,7 +129,7 @@ class CollectHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         tmp_obstacle_name_list = self.object_name_list.copy()
         tmp_obstacle_name_list.remove(self.achieved_name)
         self.obstacle_name_list = tmp_obstacle_name_list.copy()
-        self.init_obstacle_xpos_list = [self.sim.data.get_geom_xpos(name).copy() for name in self.obstacle_name_list]
+        self.init_obstacle_xpos_list = [self._get_xpos(name).copy() for name in self.obstacle_name_list]
 
         return achieved_name, removal_goal, min_dist
 
@@ -159,13 +159,13 @@ class CollectHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
     def judge(self, name_list: list, xpos_list: list, mode: str):
         assert len(name_list) == len(xpos_list)
 
-        achieved_xpos = self.sim.data.get_geom_xpos(self.achieved_name).copy()
+        achieved_xpos = self._get_xpos(name=self.achieved_name).copy()
 
         not_in_desk_count = int(achieved_xpos[2] <= 0.4 - 0.01)
 
         for idx in np.arange(len(name_list)):
             name = name_list[idx]
-            curr_xpos = self.sim.data.get_geom_xpos(name).copy()
+            curr_xpos = self._get_xpos(name).copy()
 
             if curr_xpos[2] <= 0.4 - 0.01:
                 not_in_desk_count += 1
@@ -196,7 +196,7 @@ class CollectHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         tmp_obstacle_name_list = self.object_name_list.copy()
         tmp_obstacle_name_list.remove(self.achieved_name)
         self.obstacle_name_list = tmp_obstacle_name_list.copy()
-        self.init_obstacle_xpos_list = [self.sim.data.get_geom_xpos(name).copy() for name in self.obstacle_name_list]
+        self.init_obstacle_xpos_list = [self._get_xpos(name).copy() for name in self.obstacle_name_list]
 
         self._state_init(new_goal.copy())
         return self._get_obs()
@@ -204,7 +204,7 @@ class CollectHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
     def counting_valid_object(self):
         count = 0
         for name in self.object_name_list:
-            object_xy = self.sim.data.get_geom_xpos(name)[:2].copy()
+            object_xy = self._get_xpos(name)[:2].copy()
             if np.all(object_xy >= self.lower_bound) and np.all(object_xy <= self.upper_bound):
                 count += 1
         return count
@@ -252,10 +252,10 @@ class CollectHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             self.sim.model.site_pos[removal_target_site_id] = np.array([20, 20, 0.5])
 
         if self.achieved_name_indicate is not None:
-            self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(
+            self.sim.model.site_pos[achieved_site_id] = self._get_xpos(
                 self.achieved_name_indicate).copy() - sites_offset[achieved_site_id]
         else:
-            self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(self.achieved_name).copy() - \
+            self.sim.model.site_pos[achieved_site_id] = self._get_xpos(name=self.achieved_name).copy() - \
                                                         sites_offset[achieved_site_id]
 
         self.sim.forward()

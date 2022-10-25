@@ -90,18 +90,18 @@ class StackEnv(gym.Env):
 
         if action is None:  # used by RL + None
             planning_action = np.r_[np.array([0, 0, 0]),
-                                    self.model.sim.data.get_geom_xpos(self.model.object_generator.global_achieved_name)]
+                                    self._get_xpos(name=self.model.object_generator.global_achieved_name).copy()]
         else:
             planning_action = self.action_mapping(action.copy())
 
         if test_mode:
             target_removal_goal = self.model.removal_goal_dict[self.model.finished_count].copy()
             if self.model.finished_count == 0:
-                planning_action = np.r_[target_removal_goal.copy(), self.model.sim.data.get_geom_xpos('obstacle_object_0').copy()]
+                planning_action = np.r_[target_removal_goal.copy(), self.model._get_xpos('obstacle_object_0').copy()]
             elif self.model.finished_count == 1:
-                planning_action = np.r_[target_removal_goal.copy(), self.model.sim.data.get_geom_xpos('obstacle_object_1').copy()]
+                planning_action = np.r_[target_removal_goal.copy(), self.model._get_xpos('obstacle_object_1').copy()]
             else:
-                planning_action = np.r_[target_removal_goal.copy(), self.model.sim.data.get_geom_xpos('target_object').copy()]
+                planning_action = np.r_[target_removal_goal.copy(), self.model._get_xpos('target_object').copy()]
 
         achieved_name, removal_goal, min_dist = self.model.macro_step_setup(planning_action)
         if not self.training_mode:
