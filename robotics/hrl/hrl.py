@@ -60,7 +60,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.table_end_xyz = np.r_[table_end_xy, table_end_z]
         self.upper_action_space = spaces.Box(-1.0, 1.0, shape=(len(action_list),), dtype="float32")
         self.deterministic_probability = 0.16
-        self.deterministic_probability = 1
+        # self.deterministic_probability = 1
         self.deterministic_flag = None
         self.finished_count = None
         self.goal_list = [
@@ -97,7 +97,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             target_in_air_probability=0.5,
             object_stacked_probability=0.5,
             hrl_mode=True,
-            # random_mode=True,
+            random_mode=True,
             stack_mode=True,
         )
         utils.EzPickle.__init__(self, reward_type=reward_type)
