@@ -137,7 +137,7 @@ class PlanningEnv(gym.Env):
         name_list = self.model.env.object_name_list.copy()
         for name in name_list:
             if name != achieved_name:  # obstacle_name of this macro-step
-                xpos = self.model._get_xpos(name).copy()
+                xpos = self.model.env._get_xpos(name).copy()
                 delta_xpos = xpos_distance(removal_goal, xpos)
 
                 if delta_xpos <= 1.5 * self.model.env.distance_threshold:

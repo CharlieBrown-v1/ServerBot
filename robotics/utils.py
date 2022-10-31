@@ -627,12 +627,12 @@ class ObjectGenerator:
         ][self.test_scenario_start_idx: self.test_scenario_end_idx]
         self.test_scenario_goal_list = [
             np.array([1.30, 0.75, 0.540]),
-            np.array([1.30, 0.75, 0.425]),
-
-            np.array([1.30, 0.75, 0.450]),
             np.array([1.30, 0.75, 0.540]),
 
-            np.array([1.30, 0.75, 0.450]),
+            np.array([1.30, 0.75, 0.540]),
+            np.array([1.30, 0.75, 0.540]),
+
+            np.array([1.30, 0.75, 0.5400]),
             np.array([1.30, 0.75, 0.540]),
         ][self.test_scenario_start_idx: self.test_scenario_end_idx]
         self.test_scenario_best_motion_list = [

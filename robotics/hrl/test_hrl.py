@@ -45,7 +45,7 @@ class TestHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             reward_type=reward_type,
             single_count_sup=18,
             hrl_mode=True,
-            random_mode=True,  # True for testing, False for fine-tuning
+            # random_mode=True,  # True for testing, False for fine-tuning
             test_mode=True,
         )
         utils.EzPickle.__init__(self, reward_type=reward_type)
@@ -67,6 +67,13 @@ class TestHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             self.training_mode = mode
         else:
             raise NotImplementedError
+
+    def reset(self):
+        obs = super(TestHrlEnv, self).reset()
+        self.release_flag = False
+        self.count = 0
+
+        return obs
 
     def reset_indicate(self):
         self.achieved_name_indicate = None
@@ -132,13 +139,22 @@ class TestHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         i = 0
         info = {'is_success': False}
         frames = []
+
+        probability = np.random.uniform()
         while i < self.spec.max_episode_steps:
             i += 1
             agent_action = agent.predict(observation=obs, deterministic=True)[0]
+            if probability < 0.5:
+                if xpos_distance(self._get_xpos(self.achieved_name), self._get_xpos('robot0:grip')) < self.distance_threshold:
+                    self.count += 1
+                if self.count > 3:
+                    agent_action[-1] = 1
+                    probability = 1
             next_obs, reward, done, info = self.step(agent_action)
             obs = next_obs
             # frames.append(self.render(mode='rgb_array'))
-            if self.training_mode or self.planning_mode or self.test_mode:
+            # if self.training_mode or self.planning_mode or self.test_mode:
+            if self.training_mode or self.planning_mode:
                 self.sim.forward()
             else:
                 self.render()
