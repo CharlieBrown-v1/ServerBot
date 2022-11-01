@@ -47,7 +47,8 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.init_removal_goal = np.array([1.30, 0.65, 0.425 + 0 * self.step_size])
         self.achieved_name_list = ['obstacle_object_0', 'obstacle_object_1', 'target_object']
 
-        self.prev_achi_remo_dist = None
+        self.prev_achi_remo_dist_dict = dict(zip(self.achieved_name_list,
+                                                 [self.valid_dist_sup] * len(self.achieved_name_list)))
         self.finished_count = None
         self.removal_goal_dict = None
 
@@ -84,9 +85,8 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         obs = super(StackHrlEnv, self).reset()
         self.finished_count = 0
         self.removal_goal_dict = {self.finished_count: self.init_removal_goal.copy()}
-        achieved_xpos = self._get_xpos(name=self.achieved_name_list[self.finished_count]).copy()
-        removal_goal = self.removal_goal_dict[self.finished_count].copy()
-        self.prev_achi_remo_dist = xpos_distance(achieved_xpos, removal_goal)
+        self.prev_achi_remo_dist_dict = dict(zip(self.achieved_name_list,
+                                                 [self.valid_dist_sup] * len(self.achieved_name_list)))
         return obs
 
     def reset_indicate(self):
@@ -107,7 +107,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         self.achieved_name = copy.deepcopy(new_achieved_name)
         self.obstacle_name_list = new_obstacle_name_list.copy()
-        self.init_obstacle_xpos_list = [self._get_xpos(obstacle_name).copy() for obstacle_name
+        self.init_obstacle_xpos_list = [self._get_xpos(name=obstacle_name).copy() for obstacle_name
                                         in self.obstacle_name_list]
 
         self._state_init(goal.copy())
@@ -120,7 +120,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         min_dist = np.inf
         name_list = self.object_name_list
         for name in name_list:
-            xpos = self._get_xpos(name).copy()
+            xpos = self._get_xpos(name=name).copy()
             dist = xpos_distance(action_xpos, xpos)
             if dist < min_dist:
                 min_dist = dist
@@ -136,7 +136,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         tmp_obstacle_name_list = self.object_name_list.copy()
         tmp_obstacle_name_list.remove(self.achieved_name)
         self.obstacle_name_list = tmp_obstacle_name_list.copy()
-        self.init_obstacle_xpos_list = [self._get_xpos(name).copy() for name in self.obstacle_name_list]
+        self.init_obstacle_xpos_list = [self._get_xpos(name=name).copy() for name in self.obstacle_name_list]
 
         return achieved_name, removal_goal, min_dist
 
@@ -158,7 +158,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                 break
         info['frames'] = frames
 
-        achieved_goal = self._get_xpos(name=self.achieved_name_list[self.finished_count]).copy()
+        achieved_goal = self._get_xpos(name=self.achieved_name_indicate).copy()
         removal_goal = self.removal_goal_dict[self.finished_count].copy()
         reward = self.stack_compute_reward(achieved_goal=achieved_goal, goal=removal_goal.copy(), info=info)
         info['lower_reward'] = reward
@@ -176,7 +176,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         for idx in np.arange(len(name_list)):
             name = name_list[idx]
             init_xpos = np.array(xpos_list[idx].copy())
-            curr_xpos = self._get_xpos(name).copy()
+            curr_xpos = self._get_xpos(name=name).copy()
             delta_xpos = xpos_distance(init_xpos, curr_xpos)
 
             if delta_xpos > 0.05:
@@ -211,7 +211,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         tmp_obstacle_name_list = self.object_name_list.copy()
         tmp_obstacle_name_list.remove(self.achieved_name)
         self.obstacle_name_list = tmp_obstacle_name_list.copy()
-        self.init_obstacle_xpos_list = [self._get_xpos(name).copy() for name in self.obstacle_name_list]
+        self.init_obstacle_xpos_list = [self._get_xpos(name=name).copy() for name in self.obstacle_name_list]
 
         self._state_init(new_goal.copy())
         return self._get_obs()
@@ -225,8 +225,9 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         :return reward to upper
         """
         curr_achi_remo_dist = xpos_distance(achieved_goal, goal)
-        achi_remo_reward = min(self.prev_achi_remo_dist - curr_achi_remo_dist, self.valid_dist_sup)
-        self.prev_achi_remo_dist = curr_achi_remo_dist
+        prev_achi_remo_dist = self.prev_achi_remo_dist_dict[self.achieved_name_indicate]
+        achi_remo_reward = min(prev_achi_remo_dist - curr_achi_remo_dist, self.valid_dist_sup)
+        self.prev_achi_remo_dist_dict[self.achieved_name_indicate] = curr_achi_remo_dist
         removal_goal = self.removal_goal_indicate.copy()
         remo_desi_dist = xpos_distance(removal_goal, goal, self.valid_dist_sup)
         if self.reward_type == 'dense':
@@ -239,18 +240,17 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         return min(reward, 2 * self.lower_reward_sup)
 
     def is_stack_success(self):
-        achieved_goal = self._get_xpos(name=self.achieved_name_list[self.finished_count]).copy()
+        achieved_goal = self._get_xpos(name=self.achieved_name_indicate).copy()
         removal_goal = self.removal_goal_dict[self.finished_count].copy()
-        finished_flag = xpos_distance(achieved_goal, removal_goal) < 1.5 * self.distance_threshold
+        finished_flag = xpos_distance(achieved_goal, removal_goal) < self.distance_threshold
         is_success = False
         if finished_flag:
             self.finished_count += 1
             is_success = self.finished_count >= 3
             if not is_success:
-                new_removal_goal = self.init_removal_goal.copy()
-                new_removal_goal[2] += self.step_size * self.finished_count
-                achieved_xpos = self._get_xpos(name=self.achieved_name_list[self.finished_count]).copy()
-                self.prev_achi_remo_dist = xpos_distance(achieved_xpos, new_removal_goal)
+                new_removal_goal = achieved_goal.copy()
+                # new_removal_goal = self.init_removal_goal.copy()
+                new_removal_goal[2] = self.init_removal_goal.copy()[2] + self.step_size * self.finished_count
                 self.removal_goal_dict[self.finished_count] = new_removal_goal.copy()
 
         return is_success
