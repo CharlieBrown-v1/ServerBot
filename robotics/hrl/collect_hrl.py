@@ -1,9 +1,10 @@
 import os
 import copy
 import numpy as np
+import gym.envs.robotics.utils as robot_utils
 
 from gym import utils
-from gym.envs.robotics import fetch_env
+from gym.envs.robotics import fetch_env, rotations
 from stable_baselines3 import HybridPPO
 
 
@@ -54,6 +55,7 @@ class CollectHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         utils.EzPickle.__init__(self, reward_type=reward_type)
 
         self.training_mode = True
+        self.test_mode = False
 
         self.achieved_name_indicate = None
         self.removal_goal_indicate = None
@@ -76,6 +78,8 @@ class CollectHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
     def set_mode(self, name: str, mode: bool):
         if name == 'training':
             self.training_mode = mode
+        elif name == 'test':
+            self.test_mode = mode
         else:
             raise NotImplementedError
 
@@ -119,14 +123,59 @@ class CollectHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         return achieved_name, removal_goal, min_dist
 
+    def get_mini_obs(self):
+        # positions
+        grip_pos = self.sim.data.get_site_xpos("robot0:grip").copy()
+        dt = self.sim.nsubsteps * self.sim.model.opt.timestep
+        grip_velp = self.sim.data.get_site_xvelp("robot0:grip").copy() * dt
+        robot_qpos, robot_qvel = robot_utils.robot_get_obs(self.sim)
+
+        gripper_state = robot_qpos[-2:]
+        gripper_vel = (
+                robot_qvel[-2:] * dt
+        )  # change to a scalar if the gripper is made symmetric
+
+        physical_obs = [grip_pos, gripper_state, grip_velp, gripper_vel]
+
+        for object_name in self.object_name_list:
+            object_pos = self.sim.data.get_site_xpos(object_name).copy()
+            # rotations
+            object_rot = rotations.mat2euler(self.sim.data.get_site_xmat(object_name).copy())
+            # velocities
+            object_velp = self.sim.data.get_site_xvelp(object_name).copy() * dt
+            object_velr = self.sim.data.get_site_xvelr(object_name).copy() * dt
+            # gripper state
+            object_rel_pos = object_pos - grip_pos
+            object_velp -= grip_velp
+
+            physical_obs.append(object_pos.flatten().copy())
+            physical_obs.append(object_rot.flatten().copy())
+            physical_obs.append(object_velp.flatten().copy())
+            physical_obs.append(object_velr.flatten().copy())
+            physical_obs.append(object_rel_pos.flatten().copy())
+
+        if self.removal_goal is None or self.is_removal_success:
+            goal = self.global_goal.copy()
+        else:
+            goal = self.removal_goal.copy()
+
+        physical_obs.append(goal.copy())
+
+        return np.concatenate(physical_obs)
+
     def macro_step(self, agent: HybridPPO, obs: dict):
         i = 0
         info = {'is_success': False}
+        obs_list = []
+        a_list = []
         frames = []
         while i < self.spec.max_episode_steps:
             i += 1
             agent_action = agent.predict(observation=obs, deterministic=True)[0]
             next_obs, reward, done, info = self.step(agent_action)
+            mini_obs = self.get_mini_obs()
+            obs_list.append(mini_obs)
+            a_list.append(agent_action)
             obs = next_obs
             # frames.append(self.render(mode='rgb_array'))
             if self.training_mode:
@@ -135,14 +184,15 @@ class CollectHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                 self.render()
             if info['train_done']:
                 break
+        info['macro_step_obs'] = obs_list
+        info['macro_step_action'] = a_list
         info['frames'] = frames
-        reward = self.collect_compute_reward(achieved_goal=None, goal=None, info=info)
         if info['is_removal_success']:
             self.achieved_name = None
             self.removal_goal = None
-            return obs, reward, False, info
+            return obs, 0, False, info
         else:
-            return obs, reward, True, info
+            return obs, 0, True, info
 
     def judge(self, name_list: list, xpos_list: list, mode: str):
         assert len(name_list) == len(xpos_list)

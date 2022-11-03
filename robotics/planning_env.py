@@ -80,6 +80,7 @@ class PlanningEnv(gym.Env):
                               + (self.table_start_xyz + self.table_end_xyz) / 2
         return planning_action
 
+
     def step(self, action: np.ndarray):
         assert self.agent is not None, "You must load agent before step!"
 
