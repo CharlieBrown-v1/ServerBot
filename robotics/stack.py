@@ -58,7 +58,6 @@ class StackEnv(gym.Env):
         self.table_end_xyz = np.r_[table_end_xy, table_end_z]
 
         self.training_mode = True
-        self.object_name_list = None
 
         self.success_reward = 1
         self.fail_reward = -1
@@ -72,7 +71,6 @@ class StackEnv(gym.Env):
             raise NotImplementedError
 
     def reset(self):
-        self.object_name_list = ['obstacle_object_0', 'obstacle_object_1', 'target_object']
         obs = self.model.reset()
         return obs
 
@@ -92,18 +90,16 @@ class StackEnv(gym.Env):
 
         if action is None:  # used by RL + None
             planning_action = np.r_[np.array([0, 0, 0]),
-                                    self._get_xpos(name=self.model.object_generator.global_achieved_name).copy()]
+                                    self.get_xpos(name=self.model.object_generator.global_achieved_name).copy()]
         else:
             planning_action = self.action_mapping(action.copy())
 
         if test_mode:
-            if len(self.object_name_list) == 0:
-                self.object_name_list = ['obstacle_object_0', 'obstacle_object_1', 'target_object']
-            target_removal_goal = self.model.removal_goal_dict[self.model.finished_count].copy()
-            object_idx = int(np.random.choice(len(self.object_name_list)))
-            object_name = self.object_name_list[object_idx]
-            self.object_name_list.pop(object_idx)
-            planning_action = np.r_[target_removal_goal.copy(), self.model.env._get_xpos(object_name).copy()]
+            achieved_xpos = self.model.env.get_xpos(self.model.object_generator.global_achieved_name).copy()
+            object_idx = min(self.model.finished_count, len(self.model.object_name_list) - 1 - 1)
+            obstacle_name = f'obstacle_object_{object_idx}'
+            target_removal_goal = self.model.target_vector_diff_dict[obstacle_name] + achieved_xpos
+            planning_action = np.r_[target_removal_goal.copy(), self.model.env.get_xpos(obstacle_name).copy()]
 
         achieved_name, removal_goal, min_dist = self.model.macro_step_setup(planning_action)
         if not self.training_mode:
@@ -129,7 +125,7 @@ class StackEnv(gym.Env):
         if isinstance(info, dict):
             if info['is_fail']:
                 reward = self.fail_reward
-            elif info['is_success']:
+            elif info['is_success'] and info['is_removal_success']:
                 reward = self.success_reward
             else:
                 reward = info['lower_reward']
@@ -143,7 +139,7 @@ class StackEnv(gym.Env):
                 reward = 0
                 if info[idx]['is_fail']:
                     reward += self.fail_reward
-                elif info[idx]['is_success']:
+                elif info[idx]['is_success'] and info[idx]['is_removal_success']:
                     reward += self.success_reward
                 elif info[idx]['is_removal_success']:
                     reward += info[idx]['lower_reward'] + self.step_finish_reward

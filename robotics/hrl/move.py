@@ -65,7 +65,7 @@ class MoveEnv(fetch_env.FetchEnv, utils.EzPickle):
 
     def _get_obs(self):
         # positions
-        grip_pos = self._get_xpos("robot0:grip").copy()
+        grip_pos = self.get_xpos("robot0:grip").copy()
         dt = self.sim.nsubsteps * self.sim.model.opt.timestep
         grip_velp = self.sim.data.get_site_xvelp("robot0:grip").copy() * dt
         robot_qpos, robot_qvel = robot_utils.robot_get_obs(self.sim)
@@ -85,19 +85,19 @@ class MoveEnv(fetch_env.FetchEnv, utils.EzPickle):
 
                 starting_point = self.cube_starting_point.copy()
 
-                achieved_goal_pos = self._get_xpos(name=self.achieved_name).copy()
+                achieved_goal_pos = self.get_xpos(name=self.achieved_name).copy()
 
                 cube_achieved_pos = np.squeeze(achieved_goal_pos.copy())
 
                 cube_obs = np.zeros((length_scale, width_scale, height_scale))
 
-                gripper_link_xpos = self._get_xpos('robot0:gripper_link').copy()
+                gripper_link_xpos = self.get_xpos('robot0:gripper_link').copy()
                 gripper_link_tuple = (gripper_link_xpos, gripper_link_xpos - gripper_link_size,
                                       gripper_link_xpos + gripper_link_size)
 
                 gripper_finger_xpos_list = [
-                    self._get_xpos('robot0:l_gripper_finger_link').copy(),
-                    self._get_xpos('robot0:r_gripper_finger_link').copy(),
+                    self.get_xpos('robot0:l_gripper_finger_link').copy(),
+                    self.get_xpos('robot0:r_gripper_finger_link').copy(),
                 ]
                 gripper_finger_tuple_list = [
                     (gripper_finger_xpos, gripper_finger_xpos - gripper_finger_size,
@@ -115,7 +115,7 @@ class MoveEnv(fetch_env.FetchEnv, utils.EzPickle):
                     achieved_goal_xpos, achieved_goal_xpos - achieved_goal_size,
                     achieved_goal_xpos + achieved_goal_size)
 
-                obstacle_xpos_list = [self._get_xpos(obstacle_name).copy() for obstacle_name
+                obstacle_xpos_list = [self.get_xpos(obstacle_name).copy() for obstacle_name
                                       in self.obstacle_name_list]
                 obstacle_xpos_tuple_list = [
                     (obstacle_xpos, obstacle_xpos - obstacle_size, obstacle_xpos + obstacle_size) for obstacle_xpos in
@@ -133,7 +133,7 @@ class MoveEnv(fetch_env.FetchEnv, utils.EzPickle):
 
                 physical_obs = [grip_pos, gripper_state, grip_velp, gripper_vel]
 
-                achieved_goal_pos = self._get_xpos(self.achieved_name).copy()
+                achieved_goal_pos = self.get_xpos(self.achieved_name).copy()
                 # rotations
                 achieved_goal_rot = rotations.mat2euler(self.sim.data.get_site_xmat(self.achieved_name).copy())
                 # velocities
@@ -149,7 +149,7 @@ class MoveEnv(fetch_env.FetchEnv, utils.EzPickle):
                 physical_obs.append(achieved_goal_velr.flatten().copy())
                 physical_obs.append(achieved_goal_rel_pos.flatten().copy())
             else:
-                object_pos = self._get_xpos("object0").copy()
+                object_pos = self.get_xpos("object0").copy()
                 # rotations
                 object_rot = rotations.mat2euler(self.sim.data.get_site_xmat("object0"))
                 # velocities
@@ -221,13 +221,13 @@ class MoveEnv(fetch_env.FetchEnv, utils.EzPickle):
     def judge(self, name_list: list, xpos_list: list, mode: str):
         assert len(name_list) == len(xpos_list)
 
-        achieved_xpos = self._get_xpos(name=self.achieved_name).copy()
+        achieved_xpos = self.get_xpos(name=self.achieved_name).copy()
 
         not_in_desk_count = int(achieved_xpos[2] <= 0.4 - 0.01)
 
         for idx in np.arange(len(name_list)):
             name = name_list[idx]
-            curr_xpos = self._get_xpos(name).copy()
+            curr_xpos = self.get_xpos(name).copy()
 
             if curr_xpos[2] <= 0.4 - 0.01:
                 not_in_desk_count += 1
@@ -238,7 +238,7 @@ class MoveEnv(fetch_env.FetchEnv, utils.EzPickle):
             return not_in_desk_count * self.punish_factor
 
     def _state_init(self, goal_xpos: np.ndarray = None):
-        achieved_xpos = self._get_xpos("robot0:grip").copy()
+        achieved_xpos = self.get_xpos("robot0:grip").copy()
         self.prev_achi_desi_dist = xpos_distance(achieved_xpos, goal_xpos)
 
     def _render_callback(self):

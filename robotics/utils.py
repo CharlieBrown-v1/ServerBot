@@ -444,6 +444,9 @@ class ObjectGenerator:
 
         return dict(zip(object_name_list, object_qpos_list))
 
+    def set_global_achieved_name(self, achieved_name: str):
+        self.global_achieved_name = achieved_name
+
     def test_set_objects(self):
         assert self.test_mode
         scenario_name = self.test_scenario_name_list[self.test_count]

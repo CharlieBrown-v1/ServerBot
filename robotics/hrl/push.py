@@ -52,7 +52,7 @@ class PushEnv(fetch_env.FetchEnv, utils.EzPickle):
         )
         goal += self.target_offset
 
-        achieved_xpos = self._get_xpos(name=self.achieved_name).copy()
+        achieved_xpos = self.get_xpos(name=self.achieved_name).copy()
         goal[2] = achieved_xpos[2]
 
         self.reset_removal(goal=goal.copy(), is_removal=is_removal)
@@ -62,7 +62,7 @@ class PushEnv(fetch_env.FetchEnv, utils.EzPickle):
     def hrl_reward(self, achieved_goal, goal, info):
         assert self.reward_type == 'dense'
 
-        grip_pos = self._get_xpos("robot0:grip").copy()
+        grip_pos = self.get_xpos("robot0:grip").copy()
 
         curr_grip_achi_dist = xpos_distance(np.broadcast_to(grip_pos, achieved_goal.shape), achieved_goal)
         grip_achi_reward = self.prev_grip_achi_dist - curr_grip_achi_dist
@@ -83,13 +83,13 @@ class PushEnv(fetch_env.FetchEnv, utils.EzPickle):
     def judge(self, name_list: list, xpos_list: list, mode: str):
         assert len(name_list) == len(xpos_list)
 
-        achieved_xpos = self._get_xpos(name=self.achieved_name).copy()
+        achieved_xpos = self.get_xpos(name=self.achieved_name).copy()
 
         not_in_desk_count = int(achieved_xpos[2] <= 0.4 - 0.01)
 
         for idx in np.arange(len(name_list)):
             name = name_list[idx]
-            curr_xpos = self._get_xpos(name).copy()
+            curr_xpos = self.get_xpos(name).copy()
 
             if curr_xpos[2] <= 0.4 - 0.01:
                 not_in_desk_count += 1

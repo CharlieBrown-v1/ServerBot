@@ -157,7 +157,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         self.achieved_name = copy.deepcopy(new_achieved_name)
         self.obstacle_name_list = new_obstacle_name_list.copy()
-        self.init_obstacle_xpos_list = [self._get_xpos(obstacle_name).copy() for obstacle_name
+        self.init_obstacle_xpos_list = [self.get_xpos(obstacle_name).copy() for obstacle_name
                                         in self.obstacle_name_list]
 
         self._state_init(goal.copy())
@@ -191,7 +191,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         removal_done = self.removal_goal is None or self.is_removal_success
         # done for reset sim
         if removal_done:
-            achieved_xpos = self._get_xpos(name=self.achieved_name).copy()
+            achieved_xpos = self.get_xpos(name=self.achieved_name).copy()
             info['is_success'] = self._is_success(achieved_xpos, self.global_goal)
         done = info['is_fail'] or info['is_success']
         # train_* for train a new trial
@@ -225,7 +225,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         min_dist = np.inf
         name_list = self.object_name_list
         for name in name_list:
-            xpos = self._get_xpos(name).copy()
+            xpos = self.get_xpos(name).copy()
             dist = xpos_distance(action_xpos, xpos)
             if dist < min_dist:
                 min_dist = dist
@@ -242,7 +242,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         min_dist = np.inf
         name_list = self.object_name_list
         for name in name_list:
-            xpos = self._get_xpos(name).copy()
+            xpos = self.get_xpos(name).copy()
             dist = xpos_distance(action_xpos, xpos)
             if dist < min_dist:
                 min_dist = dist
@@ -258,7 +258,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         tmp_obstacle_name_list = self.object_name_list.copy()
         tmp_obstacle_name_list.remove(self.achieved_name)
         self.obstacle_name_list = tmp_obstacle_name_list.copy()
-        self.init_obstacle_xpos_list = [self._get_xpos(name).copy() for name in self.obstacle_name_list]
+        self.init_obstacle_xpos_list = [self.get_xpos(name).copy() for name in self.obstacle_name_list]
 
         return achieved_name, removal_goal, min_dist
 
@@ -290,7 +290,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
     def judge(self, name_list: list, xpos_list: list, mode: str):
         assert len(name_list) == len(xpos_list)
 
-        achieved_xpos = self._get_xpos(name=self.achieved_name).copy()
+        achieved_xpos = self.get_xpos(name=self.achieved_name).copy()
 
         move_count = 0
         not_in_desk_count = int(achieved_xpos[2] <= 0.4 - 0.01)
@@ -298,7 +298,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         for idx in np.arange(len(name_list)):
             name = name_list[idx]
             init_xpos = np.array(xpos_list[idx].copy())
-            curr_xpos = self._get_xpos(name).copy()
+            curr_xpos = self.get_xpos(name).copy()
             delta_xpos = xpos_distance(init_xpos, curr_xpos)
 
             if delta_xpos > self.distance_threshold:
@@ -333,15 +333,15 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         tmp_obstacle_name_list = self.object_name_list.copy()
         tmp_obstacle_name_list.remove(self.achieved_name)
         self.obstacle_name_list = tmp_obstacle_name_list.copy()
-        self.init_obstacle_xpos_list = [self._get_xpos(name).copy() for name in self.obstacle_name_list]
+        self.init_obstacle_xpos_list = [self.get_xpos(name).copy() for name in self.obstacle_name_list]
 
         self._state_init(new_goal.copy())
         return self._get_obs()
 
     def stack_compute_reward(self, achieved_goal, goal, info):
-        target_xpos = self._get_xpos('target_object').copy()
-        obstacle_xpos_0 = self._get_xpos('obstacle_object_0').copy()
-        obstacle_xpos_1 = self._get_xpos('obstacle_object_1').copy()
+        target_xpos = self.get_xpos('target_object').copy()
+        obstacle_xpos_0 = self.get_xpos('obstacle_object_0').copy()
+        obstacle_xpos_1 = self.get_xpos('obstacle_object_1').copy()
 
         target_dist = xpos_distance(target_xpos, self.target_goal, self.valid_dist_sup)
         obstacle_dist_0 = xpos_distance(obstacle_xpos_0, self.obstacle_goal_0, self.valid_dist_sup)
@@ -364,7 +364,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         flag = True
         for idx in range(len(self.goal_list)):
             name = self.name_list[idx]
-            xpos = self._get_xpos(name).copy()
+            xpos = self.get_xpos(name).copy()
             goal = self.goal_list[idx]
             flag = flag and xpos_distance(xpos, goal) < self.distance_threshold
 
@@ -381,7 +381,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             self.deterministic_flag = True
             goal = self.goal_list[-1].copy()
             removal_goal = self.goal_list[0].copy()
-            achieved_xpos = self._get_xpos('obstacle_object_0').copy()
+            achieved_xpos = self.get_xpos('obstacle_object_0').copy()
         else:
             self.deterministic_flag = False
             global_action = self.upper_action_space.sample()
@@ -393,7 +393,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             new_achieved_name, removal_goal, min_dist = self.action2feature(macro_action=macro_action)
             removal_goal[2] = 0.425  # o.t. Release = Fail!!!
 
-            achieved_xpos = self._get_xpos(new_achieved_name).copy()
+            achieved_xpos = self.get_xpos(new_achieved_name).copy()
 
         self.finished_count = 0
         self.reset_removal(goal=goal.copy(), removal_goal=removal_goal.copy())

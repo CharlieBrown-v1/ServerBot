@@ -80,7 +80,7 @@ class CollectEnv(gym.Env):
 
         if action is None:  # used by RL + None
             planning_action = np.r_[np.array([0, 0]),
-                                    self._get_xpos(name=self.model.object_generator.global_achieved_name).copy()]
+                                    self.get_xpos(name=self.model.object_generator.global_achieved_name).copy()]
         else:
             planning_action = self.action_mapping(action.copy())
 

@@ -112,7 +112,7 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         self.achieved_name = copy.deepcopy(new_achieved_name)
         self.obstacle_name_list = new_obstacle_name_list.copy()
-        self.init_obstacle_xpos_list = [self._get_xpos(obstacle_name).copy() for obstacle_name
+        self.init_obstacle_xpos_list = [self.get_xpos(obstacle_name).copy() for obstacle_name
                                         in self.obstacle_name_list]
 
         self._state_init(goal.copy())
@@ -120,13 +120,13 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
     def judge(self, name_list: list, xpos_list: list, mode: str):
         assert len(name_list) == len(xpos_list)
 
-        achieved_xpos = self._get_xpos(name=self.achieved_name).copy()
+        achieved_xpos = self.get_xpos(name=self.achieved_name).copy()
 
         not_in_desk_count = int(achieved_xpos[2] <= 0.4 - 0.01)
 
         for idx in np.arange(len(name_list)):
             name = name_list[idx]
-            curr_xpos = self._get_xpos(name).copy()
+            curr_xpos = self.get_xpos(name).copy()
 
             if curr_xpos[2] <= 0.4 - 0.01:
                 not_in_desk_count += 1
@@ -146,7 +146,7 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         min_dist = np.inf
         name_list = self.object_name_list
         for name in name_list:
-            xpos = self._get_xpos(name).copy()
+            xpos = self.get_xpos(name).copy()
             dist = xpos_distance(chosen_xpos, xpos)
             if dist < min_dist:
                 min_dist = dist
@@ -170,7 +170,7 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             self.push_mode = True
             self.block_gripper = True
             self.achieved_name = achieved_name
-            achieved_xpos = self._get_xpos(name=achieved_name).copy()
+            achieved_xpos = self.get_xpos(name=achieved_name).copy()
             rotation_mat = rotate_mat(chosen_angle)
             # negative offset for being consistent with VPG-push
             pre_push_step = -np.matmul(rotation_mat, self.pre_push_step)
@@ -192,7 +192,7 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         tmp_obstacle_name_list = self.object_name_list.copy()
         tmp_obstacle_name_list.remove(self.achieved_name)
         self.obstacle_name_list = tmp_obstacle_name_list.copy()
-        self.init_obstacle_xpos_list = [self._get_xpos(name).copy() for name in self.obstacle_name_list]
+        self.init_obstacle_xpos_list = [self.get_xpos(name).copy() for name in self.obstacle_name_list]
 
         return achieved_name, removal_goal, min_dist
 
@@ -300,22 +300,22 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         tmp_obstacle_name_list = self.object_name_list.copy()
         tmp_obstacle_name_list.remove(self.achieved_name)
         self.obstacle_name_list = tmp_obstacle_name_list.copy()
-        self.init_obstacle_xpos_list = [self._get_xpos(name).copy() for name in self.obstacle_name_list]
+        self.init_obstacle_xpos_list = [self.get_xpos(name).copy() for name in self.obstacle_name_list]
 
         self._state_init(new_goal.copy())
         return self._get_obs()
 
     def _state_init(self, goal_xpos: np.ndarray = None):
-        grip_xpos = self._get_xpos("robot0:grip").copy()
-        achieved_xpos = self._get_xpos(name=self.achieved_name).copy()
+        grip_xpos = self.get_xpos("robot0:grip").copy()
+        achieved_xpos = self.get_xpos(name=self.achieved_name).copy()
         self.prev_grip_achi_dist = xpos_distance(grip_xpos, achieved_xpos)
         self.prev_achi_desi_dist = xpos_distance(achieved_xpos, goal_xpos)
-        self.prev_blocked_count = np.sum([xpos_distance(achieved_xpos, self._get_xpos(name))
+        self.prev_blocked_count = np.sum([xpos_distance(achieved_xpos, self.get_xpos(name))
                                           <= 1.5 * self.distance_threshold for name in self.object_name_list])
 
     def _is_good_push(self):
-        achieved_xpos = self._get_xpos('target_object').copy()
-        curr_blocked_count = np.sum([xpos_distance(achieved_xpos, self._get_xpos(name))
+        achieved_xpos = self.get_xpos('target_object').copy()
+        curr_blocked_count = np.sum([xpos_distance(achieved_xpos, self.get_xpos(name))
                                      <= 2 * self.distance_threshold for name in self.object_name_list])
         flag = self.push_mode and self.prev_blocked_count > curr_blocked_count
         self.prev_blocked_count = curr_blocked_count
@@ -358,8 +358,8 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             self.sim.model.site_pos[removal_indicate_site_id] = np.array([20, 20, 0.5])
 
         if self.achieved_name_indicate is not None:
-            self.sim.model.site_pos[achieved_site_id] = self._get_xpos(name=self.achieved_name_indicate).copy() - sites_offset[achieved_site_id]
+            self.sim.model.site_pos[achieved_site_id] = self.get_xpos(name=self.achieved_name_indicate).copy() - sites_offset[achieved_site_id]
         else:
-            self.sim.model.site_pos[achieved_site_id] = self._get_xpos(name=self.achieved_name).copy() - sites_offset[achieved_site_id]
+            self.sim.model.site_pos[achieved_site_id] = self.get_xpos(name=self.achieved_name).copy() - sites_offset[achieved_site_id]
         self.sim.model.site_pos[cube_site_id] = np.array([50, 60, 0])
         self.sim.forward()
