@@ -8,7 +8,7 @@ from stable_baselines3 import HybridPPO
 
 epsilon = 1e-3
 
-test_mode = False
+test_mode = True
 desk_x = 0
 desk_y = 1
 desk_z = 2
@@ -41,21 +41,8 @@ class StackEnv(gym.Env):
         else:
             raise NotImplementedError
 
-        obs = self.reset()
-        self.observation_space = spaces.Dict(
-            dict(
-                desired_goal=spaces.Box(
-                    -np.inf, np.inf, shape=obs["desired_goal"].shape, dtype="float32"
-                ),
-                achieved_goal=spaces.Box(
-                    -np.inf, np.inf, shape=obs["achieved_goal"].shape, dtype="float32"
-                ),
-                observation=spaces.Box(
-                    -np.inf, np.inf, shape=obs["observation"].shape, dtype="float32"
-                ),
-            )
-        )
         self.action_space = spaces.Box(-1.0, 1.0, shape=(len(action_list),), dtype="float32")
+        self.observation_space = copy.deepcopy(self.model.observation_space)
 
         size_inf = 0.05
 
@@ -85,7 +72,6 @@ class StackEnv(gym.Env):
 
     def reset(self):
         obs = self.model.reset()
-
         return obs
 
     def action_mapping(self, action: np.ndarray):
@@ -109,19 +95,21 @@ class StackEnv(gym.Env):
             planning_action = self.action_mapping(action.copy())
 
         if test_mode:
-            achieved_xpos = self.model.env.get_xpos(self.model.object_generator.global_achieved_name).copy()
-            object_idx = min(self.model.finished_count, len(self.model.object_name_list) - 1 - 1)
-            obstacle_name = f'obstacle_object_{1 - object_idx}'
-            target_removal_height = self.model.env.removal_goal_height[self.model.env.finished_count]
-            target_removal_xpos = self.model.env.get_xpos(self.model.object_generator.global_achieved_name).copy()
-            target_removal_xpos[2] = target_removal_height
-            planning_action = np.r_[target_removal_xpos.copy(), self.model.env.get_xpos(obstacle_name).copy()]
+            target_removal_goal = self.model.removal_goal_dict[self.model.finished_count].copy()
+            if self.model.finished_count == 0:
+                planning_action = np.r_[target_removal_goal.copy(), self.model.get_xpos('obstacle_object_0').copy()]
+            elif self.model.finished_count == 1:
+                planning_action = np.r_[target_removal_goal.copy(), self.model.get_xpos('obstacle_object_1').copy()]
+            else:
+                planning_action = np.r_[target_removal_goal.copy(), self.model.get_xpos('target_object').copy()]
 
         achieved_name, removal_goal, min_dist = self.model.macro_step_setup(planning_action)
         if not self.training_mode:
             self.render()  # show which point and object agent has just selected
         else:
             self.model.sim.forward()
+
+        from PIL import Image
 
         obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal)
         obs, reward, done, info = self.model.macro_step(agent=self.agent, obs=obs)
@@ -139,7 +127,7 @@ class StackEnv(gym.Env):
         if isinstance(info, dict):
             if info['is_fail']:
                 reward = self.fail_reward
-            elif info['is_success'] and info['is_removal_success']:
+            elif info['is_success']:
                 reward = self.success_reward
             else:
                 reward = info['lower_reward']
@@ -153,7 +141,7 @@ class StackEnv(gym.Env):
                 reward = 0
                 if info[idx]['is_fail']:
                     reward += self.fail_reward
-                elif info[idx]['is_success'] and info[idx]['is_removal_success']:
+                elif info[idx]['is_success']:
                     reward += self.success_reward
                 elif info[idx]['is_removal_success']:
                     reward += info[idx]['lower_reward'] + self.step_finish_reward

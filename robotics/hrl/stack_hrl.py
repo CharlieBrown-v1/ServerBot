@@ -1,7 +1,5 @@
 import os
 import copy
-import time
-
 import numpy as np
 
 from gym import utils
@@ -15,9 +13,6 @@ desk_z = 2
 pos_x = 3
 pos_y = 4
 pos_z = 5
-cube_shape = [25, 35, 17]
-physical_obs_start_idx = 10
-physical_obs_end_idx = 16
 
 MODEL_XML_PATH = os.path.join("hrl", "stack_hrl.xml")
 
@@ -42,22 +37,19 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.removal_goal_indicate = None
         self.removal_xpos_indicate = None
 
-        self.object_size = 0.05
-        self.obstacle_goal_0 = np.array([1.30, 0.65, 0.425 + 0 * self.object_size])
-        self.obstacle_goal_1 = np.array([1.30, 0.65, 0.425 + 1 * self.object_size])
-        self.target_goal = np.array([1.30, 0.65, 0.425 + 2 * self.object_size])
-        self.init_removal_height = 0.425 + 1 * self.object_size
-        self.removal_goal_height = None
+        self.lower_reward_sup = 0.3
+        self.valid_dist_sup = 0.24
+
+        self.step_size = 0.05
+        self.obstacle_goal_0 = np.array([1.30, 0.65, 0.425 + 0 * self.step_size])
+        self.obstacle_goal_1 = np.array([1.30, 0.65, 0.425 + 1 * self.step_size])
+        self.target_goal = np.array([1.30, 0.65, 0.425 + 2 * self.step_size])
+        self.init_removal_goal = np.array([1.30, 0.65, 0.425 + 0 * self.step_size])
         self.achieved_name_list = ['obstacle_object_0', 'obstacle_object_1', 'target_object']
 
-        self.stack_success_reward = 1
-        self.valid_dist_sup = 0.24
-        self.lower_reward_sup = 0.3
-        self.height_reward = self.lower_reward_sup / 2
-
-        self.prev_vector_simil = None
-        self.target_vector_simil_dict = None
+        self.prev_achi_remo_dist = None
         self.finished_count = None
+        self.removal_goal_dict = None
 
         fetch_env.FetchEnv.__init__(
             self,
@@ -88,64 +80,14 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         else:
             raise NotImplementedError
 
-    def compute_height_flag(self) -> bool:
-        simil_flag = self.compute_vector_simil() > 1 - self.object_size
-        prev_achieved_xpos = self.get_xpos(self.achieved_name_indicate).copy()
-        removal_height = self.removal_goal_height[self.finished_count]
-        height_flag = False
-        if simil_flag:
-            height_flag = abs(removal_height - prev_achieved_xpos[2]) <= self.distance_threshold
-
-        return height_flag
-
-    def compute_vector_simil(self) -> float:
-        vector_simil = 0.0
-        achieved_xpos = self.get_xpos(self.object_generator.global_achieved_name).copy()
-        sorted_object_name_list = list(sorted(self.object_name_list))
-        for idx in range(len(sorted_object_name_list)):
-            object_name = sorted_object_name_list[idx]
-            if object_name != self.object_generator.global_achieved_name:
-                object_xpos = self.get_xpos(object_name).copy()
-                target_vector = self.target_vector_simil_dict[object_name].copy()
-                curr_vector = object_xpos - achieved_xpos
-                vector_simil += abs(np.inner(target_vector, curr_vector)) / (
-                            np.linalg.norm(target_vector) * np.linalg.norm(curr_vector))
-
-        return vector_simil
-
-    def obs_lower2upper(self, lower_obs: dict):
-        upper_obs = lower_obs.copy()
-
-        # select cube only
-        cube_len = np.prod(cube_shape)
-        cube_obs = lower_obs['observation'][:cube_len].copy()
-        physical_obs = lower_obs['observation'][
-                       cube_len + physical_obs_start_idx: cube_len + physical_obs_end_idx].copy()
-        upper_obs['observation'] = np.r_[cube_obs, physical_obs]
-
-        return upper_obs
-
     def reset(self):
-        lower_obs = super(StackHrlEnv, self).reset()
-        upper_obs = self.obs_lower2upper(lower_obs=lower_obs.copy())
+        obs = super(StackHrlEnv, self).reset()
         self.finished_count = 0
-        self.removal_goal_height = {self.finished_count: self.init_removal_height}
-
-        self.prev_vector_simil = 0
-        self.target_vector_simil_dict = {}
-        achieved_xpos = self.get_xpos(self.object_generator.global_achieved_name).copy()
-        sorted_object_name_list = list(sorted(self.object_name_list))
-        for idx in range(len(sorted_object_name_list)):
-            object_name = sorted_object_name_list[idx]
-            if object_name != self.object_generator.global_achieved_name:
-                object_xpos = self.get_xpos(object_name).copy()
-                target_vector = np.array([0, 0, self.object_size * (idx + 1)])
-                curr_vector = object_xpos - achieved_xpos
-                self.target_vector_simil_dict[object_name] = target_vector.copy()
-                self.prev_vector_simil += abs(np.inner(target_vector, curr_vector)) \
-                                          / (np.linalg.norm(target_vector) * np.linalg.norm(curr_vector))
-
-        return upper_obs
+        self.removal_goal_dict = {self.finished_count: self.init_removal_goal.copy()}
+        achieved_xpos = self.get_xpos(name=self.achieved_name_list[self.finished_count]).copy()
+        removal_goal = self.removal_goal_dict[self.finished_count].copy()
+        self.prev_achi_remo_dist = xpos_distance(achieved_xpos, removal_goal)
+        return obs
 
     def reset_indicate(self):
         self.achieved_name_indicate = None
@@ -159,13 +101,13 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         if goal is None:
             goal = self.global_goal.copy()
 
-        new_achieved_name = self.object_generator.global_achieved_name
+        new_achieved_name = 'target_object'
         new_obstacle_name_list = self.object_name_list.copy()
         new_obstacle_name_list.remove(new_achieved_name)
 
         self.achieved_name = copy.deepcopy(new_achieved_name)
         self.obstacle_name_list = new_obstacle_name_list.copy()
-        self.init_obstacle_xpos_list = [self.get_xpos(name=obstacle_name).copy() for obstacle_name
+        self.init_obstacle_xpos_list = [self.get_xpos(obstacle_name).copy() for obstacle_name
                                         in self.obstacle_name_list]
 
         self._state_init(goal.copy())
@@ -178,7 +120,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         min_dist = np.inf
         name_list = self.object_name_list
         for name in name_list:
-            xpos = self.get_xpos(name=name).copy()
+            xpos = self.get_xpos(name).copy()
             dist = xpos_distance(action_xpos, xpos)
             if dist < min_dist:
                 min_dist = dist
@@ -194,20 +136,15 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         tmp_obstacle_name_list = self.object_name_list.copy()
         tmp_obstacle_name_list.remove(self.achieved_name)
         self.obstacle_name_list = tmp_obstacle_name_list.copy()
-        self.init_obstacle_xpos_list = [self.get_xpos(name=name).copy() for name in self.obstacle_name_list]
+        self.init_obstacle_xpos_list = [self.get_xpos(name).copy() for name in self.obstacle_name_list]
 
         return achieved_name, removal_goal, min_dist
 
     def macro_step(self, agent: HybridPPO, obs: dict):
         i = 0
-        info = {
-            'is_success': False,
-            'is_removal_success': False,
-        }
+        info = {'is_success': False}
         frames = []
-
-        """
-                while i < self.spec.max_episode_steps:
+        while i < self.spec.max_episode_steps:
             i += 1
             agent_action = agent.predict(observation=obs, deterministic=True)[0]
             next_obs, reward, done, info = self.step(agent_action)
@@ -219,33 +156,14 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                 self.render()
             if info['train_done']:
                 break
-
-        """
         info['frames'] = frames
 
-        self.sim.data.set_joint_qpos(f"{self.achieved_name}:joint",
-                                     np.r_[self.removal_goal, self.object_generator.qpos_postfix])
-        self.sim.forward()
-        for _ in range(10):
-            self.sim.step()
-            is_fail = self._is_fail()
-            info['is_fail'] = is_fail
-            if is_fail:
-                break
-        if self.training_mode:
-            self.sim.forward()
-        else:
-            self.render()
-            time.sleep(1)
-        info['is_removal_success'] = True
-
-        obs = self.get_obs(achieved_name=None, goal=None)
-        achieved_goal = self.get_xpos(name=self.achieved_name_indicate).copy()
-        reward = self.stack_compute_reward(achieved_goal=achieved_goal, goal=None, info=info)
-        done = False
+        achieved_goal = self.get_xpos(name=self.achieved_name_list[self.finished_count]).copy()
+        removal_goal = self.removal_goal_dict[self.finished_count].copy()
+        reward = self.stack_compute_reward(achieved_goal=achieved_goal, goal=removal_goal.copy(), info=info)
         info['lower_reward'] = reward
 
-        return obs, reward, done, info
+        return obs, reward, False, info
 
     def judge(self, name_list: list, xpos_list: list, mode: str):
         assert len(name_list) == len(xpos_list)
@@ -258,10 +176,10 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         for idx in np.arange(len(name_list)):
             name = name_list[idx]
             init_xpos = np.array(xpos_list[idx].copy())
-            curr_xpos = self.get_xpos(name=name).copy()
+            curr_xpos = self.get_xpos(name).copy()
             delta_xpos = xpos_distance(init_xpos, curr_xpos)
 
-            if delta_xpos > self.object_size:
+            if delta_xpos > 0.05:
                 move_count += 1
 
             if curr_xpos[2] <= 0.4 - 0.01:
@@ -282,7 +200,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         if achieved_name is not None:
             self.achieved_name = copy.deepcopy(achieved_name)
         else:
-            self.achieved_name = self.object_generator.global_achieved_name
+            self.achieved_name = 'target_object'
 
         if new_goal is not None and np.any(new_goal != self.global_goal):
             self.removal_goal = new_goal.copy()
@@ -293,14 +211,10 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         tmp_obstacle_name_list = self.object_name_list.copy()
         tmp_obstacle_name_list.remove(self.achieved_name)
         self.obstacle_name_list = tmp_obstacle_name_list.copy()
-        self.init_obstacle_xpos_list = [self.get_xpos(name=name).copy() for name in self.obstacle_name_list]
+        self.init_obstacle_xpos_list = [self.get_xpos(name).copy() for name in self.obstacle_name_list]
 
         self._state_init(new_goal.copy())
-
-        lower_obs = self._get_obs()
-        upper_obs = self.obs_lower2upper(lower_obs=lower_obs.copy())
-
-        return upper_obs
+        return self._get_obs()
 
     def stack_compute_reward(self, achieved_goal: np.ndarray, goal: np.ndarray, info: dict) -> float:
         """
@@ -310,31 +224,34 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         info: info
         :return reward to upper
         """
-        curr_vector_simil = self.compute_vector_simil()
-        prev_vector_simil = self.prev_vector_simil
-        diff_reward = 0.5 * self.lower_reward_sup * (curr_vector_simil - prev_vector_simil) / (
-                    len(self.object_name_list) - 1)
-        self.prev_vector_simil = curr_vector_simil
-
-        height_reward = self.compute_height_flag() * self.height_reward
-
+        curr_achi_remo_dist = xpos_distance(achieved_goal, goal)
+        achi_remo_reward = min(self.prev_achi_remo_dist - curr_achi_remo_dist, self.valid_dist_sup)
+        self.prev_achi_remo_dist = curr_achi_remo_dist
+        removal_goal = self.removal_goal_indicate.copy()
+        remo_desi_dist = xpos_distance(removal_goal, goal, self.valid_dist_sup)
         if self.reward_type == 'dense':
-            reward = diff_reward + height_reward
+            reward = self.lower_reward_sup * (achi_remo_reward / self.valid_dist_sup)
+        elif self.reward_type == 'sparse':
+            reward = self.lower_reward_sup * (int(curr_achi_remo_dist < self.distance_threshold)
+                                              + int(remo_desi_dist < self.distance_threshold))
         else:
             raise NotImplementedError
-
-        return min(reward, self.lower_reward_sup)
+        return min(reward, 2 * self.lower_reward_sup)
 
     def is_stack_success(self):
-        simil_flag = self.compute_vector_simil() > 1 - self.object_size
-        height_flag = self.compute_height_flag()
-        finished_flag = simil_flag and height_flag
-        self.finished_count += finished_flag
+        achieved_goal = self.get_xpos(name=self.achieved_name_list[self.finished_count]).copy()
+        removal_goal = self.removal_goal_dict[self.finished_count].copy()
+        finished_flag = xpos_distance(achieved_goal, removal_goal) < 1.5 * self.distance_threshold
+        is_success = False
         if finished_flag:
-            new_removal_height = self.init_removal_height + self.finished_count * self.object_size
-            self.removal_goal_height[self.finished_count] = new_removal_height
-
-        is_success = self.finished_count >= len(self.object_name_list) - 1
+            self.finished_count += 1
+            is_success = self.finished_count >= 3
+            if not is_success:
+                new_removal_goal = self.init_removal_goal.copy()
+                new_removal_goal[2] += self.step_size * self.finished_count
+                achieved_xpos = self.get_xpos(name=self.achieved_name_list[self.finished_count]).copy()
+                self.prev_achi_remo_dist = xpos_distance(achieved_xpos, new_removal_goal)
+                self.removal_goal_dict[self.finished_count] = new_removal_goal.copy()
 
         return is_success
 
