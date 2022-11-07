@@ -325,6 +325,7 @@ class FetchEnv(robot_env.RobotEnv):
             _verify_cube(cube_obs, starting_point, starting_point_idx, 'table',
                          table_xpos_start, table_xpos_end)
 
+        """
         gripper_link_xpos_start = gripper_link_xpos_tuple[1]
         gripper_link_xpos_end = gripper_link_xpos_tuple[2]
         _map_once(cube_obs, compute_starting_point, starting_point_idx,
@@ -341,6 +342,8 @@ class FetchEnv(robot_env.RobotEnv):
             if self.debug_mode:
                 _verify_cube(cube_obs, starting_point, starting_point_idx, 'gripper_finger',
                              gripper_finger_xpos_start, gripper_finger_xpos_end)
+
+        """
 
         goal_xpos_start = goal_xpos_tuple[1]
         goal_xpos_end = goal_xpos_tuple[2]
@@ -457,11 +460,17 @@ class FetchEnv(robot_env.RobotEnv):
                 achieved_goal_rel_pos = achieved_goal_pos - grip_pos
                 achieved_goal_velp -= grip_velp
 
+                # print('=' * 50 + f' start_idx: {np.concatenate(physical_obs).shape[0]} ' + '=' * 50)
+
                 physical_obs.append(achieved_goal_pos.flatten().copy())
                 physical_obs.append(achieved_goal_rot.flatten().copy())
+
+                # print('=' * 50 + f' end_idx: {np.concatenate(physical_obs).shape[0]} ' + '=' * 50)
+
                 physical_obs.append(achieved_goal_velp.flatten().copy())
                 physical_obs.append(achieved_goal_velr.flatten().copy())
                 physical_obs.append(achieved_goal_rel_pos.flatten().copy())
+
             else:
                 object_pos = self.get_xpos("object0").copy()
                 # rotations
@@ -730,7 +739,8 @@ class FetchEnv(robot_env.RobotEnv):
         object_xpos_list = [self.get_xpos(object_name).copy() for object_name in self.object_name_list]
         new_achieved_name, new_obstacle_name_list = sample_after_removal(object_name_list=self.object_name_list.copy(),
                                                                          object_xpos_list=object_xpos_list.copy(),
-                                                                         achieved_name=copy.deepcopy(self.achieved_name))
+                                                                         achieved_name=copy.deepcopy(
+                                                                             self.achieved_name))
 
         self.achieved_name = copy.deepcopy(new_achieved_name)
         self.obstacle_name_list = new_obstacle_name_list.copy()
