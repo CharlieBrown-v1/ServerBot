@@ -421,10 +421,13 @@ class FetchEnv(robot_env.RobotEnv):
                      gripper_finger_xpos + gripper_finger_size) for gripper_finger_xpos in gripper_finger_xpos_list
                 ]
 
-                if self.removal_goal is None or self.is_removal_success:
-                    goal_xpos = self.global_goal.copy()
-                else:
-                    goal_xpos = self.removal_goal.copy()
+                try:
+                    if self.removal_goal is None or self.is_removal_success:
+                        goal_xpos = self.global_goal.copy()
+                    else:
+                        goal_xpos = self.removal_goal.copy()
+                except AttributeError:
+                    goal_xpos = np.array([0, 0, 0])
                 goal_xpos_tuple = (goal_xpos, goal_xpos - goal_size, goal_xpos + goal_size)
 
                 achieved_goal_xpos = cube_achieved_pos.copy()
@@ -519,10 +522,13 @@ class FetchEnv(robot_env.RobotEnv):
             )
 
         if self.hrl_mode:
-            if self.removal_goal is None or self.is_removal_success:
-                goal = self.global_goal.copy()
-            else:
-                goal = self.removal_goal.copy()
+            try:
+                if self.removal_goal is None or self.is_removal_success:
+                    goal = self.global_goal.copy()
+                else:
+                    goal = self.removal_goal.copy()
+            except AttributeError:
+                goal = np.array([0, 0, 0])
         else:
             goal = self.goal
 

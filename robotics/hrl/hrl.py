@@ -1,10 +1,8 @@
 import os
 import copy
-from typing_extensions import NotRequired
 import numpy as np
 
-from gym import utils
-from gym import spaces
+from gym import utils, spaces
 from typing import Tuple
 from gym.envs.robotics import fetch_env
 from stable_baselines3 import HybridPPO
@@ -29,18 +27,26 @@ def xpos_distance(goal_a, goal_b, dist_sup=None):
 
 
 class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
-    def __init__(self, reward_type="dense"):
+    def __init__(self, agent_path=None, device=None, reward_type='dense'):
         initial_qpos = {
             "robot0:slide0": 0.405,
             "robot0:slide1": 0.48,
             "robot0:slide2": 0.0,
         }
+
+        if agent_path is None:
+            self.agent = None
+        else:
+            self.agent = HybridPPO.load(agent_path, device=device)
+
         self.training_mode = True
 
         self.achieved_name_indicate = None
         self.removal_goal_indicate = None
         self.removal_xpos_indicate = None
 
+        self.finished_count = None
+        self.finished_count_sup = 4
         self.lower_reward_sup = 0.12
         self.valid_dist_sup = 0.3
 
@@ -58,11 +64,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         table_end_z = 0.425 + 0.3
         self.table_start_xyz = np.r_[table_start_xy, table_start_z]
         self.table_end_xyz = np.r_[table_end_xy, table_end_z]
-        self.upper_action_space = spaces.Box(-1.0, 1.0, shape=(len(action_list),), dtype="float32")
-        self.deterministic_probability = 0.16
-        # self.deterministic_probability = 1
-        self.deterministic_flag = None
-        self.finished_count = None
+        self.upper_action_space = spaces.Box(-1, 1, shape=(2 * self.table_start_xyz.shape[0],))
         self.goal_list = [
             self.obstacle_goal_0.copy(),
             self.obstacle_goal_1.copy(),
@@ -126,26 +128,12 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
     def reset_after_removal(self, goal=None):
         assert self.hrl_mode
-        assert self.finished_count is not None
-        assert self.deterministic_flag is not None
 
-        self.finished_count += 1
-        if self.deterministic_flag:
-            goal = self.count2goal[self.finished_count].copy()
-            new_achieved_name = self.count2name[self.finished_count]
-            if self.finished_count < len(self.goal_list) - 1:
-                self.removal_goal = goal.copy()
-        else:
-            if self.finished_count < len(self.goal_list) - 1:
-                upper_action = self.upper_action_space.sample()
-                macro_action = self.action_mapping(action=upper_action)
-                new_achieved_name, goal, min_dist = self.action2feature(macro_action=macro_action)
-                goal[2] = 0.425  # o.t. Release = Fail!
-                self.removal_goal = goal.copy()
-            else:
-                goal = self.count2goal[self.finished_count].copy()
-                new_achieved_name = self.count2name[self.finished_count]
-                assert new_achieved_name == 'robot0:grip'
+        obs = self._get_obs()
+        upper_action = self.obs2goal(obs=obs)
+        macro_action = self.action_mapping(action=upper_action)
+        new_achieved_name, goal, min_dist = self.action2feature(macro_action=macro_action)
+        self.removal_goal = goal.copy()
 
         new_obstacle_name_list = self.object_name_list.copy()
 
@@ -182,17 +170,15 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             is_removal_success = self._is_success(obs["achieved_goal"], self.removal_goal)
 
             if is_removal_success:
-                info['is_removal_success'] = True
                 self.removal_goal = None
-                if self.finished_count == len(self.goal_list) - 1:
-                    self.is_removal_success = True
+                self.finished_count += 1
+                info['is_removal_success'] = True
 
         # DIY
         removal_done = self.removal_goal is None or self.is_removal_success
         # done for reset sim
-        if removal_done:
-            achieved_xpos = self.get_xpos(name=self.achieved_name).copy()
-            info['is_success'] = self._is_success(achieved_xpos, self.global_goal)
+        info['is_success'] = self.finished_count >= self.finished_count_sup
+
         done = info['is_fail'] or info['is_success']
         # train_* for train a new trial
         info['train_done'] = info['is_fail'] or info['is_success'] or info['is_removal_success']
@@ -262,31 +248,6 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         return achieved_name, removal_goal, min_dist
 
-    def macro_step(self, agent: HybridPPO, obs: dict, count: int):
-        i = 0
-        info = {'is_success': False}
-        frames = []
-        assert self.removal_goal is not None
-        removal_goal = self.removal_goal_indicate.copy()
-        while i < self.spec.max_episode_steps:
-            i += 1
-            agent_action = agent.predict(observation=obs, deterministic=True)[0]
-            next_obs, reward, done, info = self.step(agent_action)
-            obs = next_obs
-            # frames.append(self.render(mode='rgb_array'))
-            if self.training_mode:
-                self.sim.forward()
-            else:
-                self.render()
-            if info['train_done']:
-                break
-        info['frames'] = frames
-
-        reward = self.stack_compute_reward(achieved_goal=None, goal=removal_goal, info=info)
-        info['lower_reward'] = reward
-
-        return obs, reward, False, info
-
     def judge(self, name_list: list, xpos_list: list, mode: str):
         assert len(name_list) == len(xpos_list)
 
@@ -312,90 +273,33 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         elif mode == 'punish':
             return (move_count + not_in_desk_count) * self.punish_factor
 
-    def get_obs(self, achieved_name=None, goal=None):
-        assert self.hrl_mode
-
-        new_goal = goal.copy() if goal is not None else None
-        self.is_grasp = False
-        self.is_removal_success = False
-
-        if achieved_name is not None:
-            self.achieved_name = copy.deepcopy(achieved_name)
-        else:
-            self.achieved_name = 'target_object'
-
-        if new_goal is not None and np.any(new_goal != self.global_goal):
-            self.removal_goal = new_goal.copy()
-        else:
-            self.removal_goal = None
-            new_goal = self.global_goal.copy()
-
-        tmp_obstacle_name_list = self.object_name_list.copy()
-        tmp_obstacle_name_list.remove(self.achieved_name)
-        self.obstacle_name_list = tmp_obstacle_name_list.copy()
-        self.init_obstacle_xpos_list = [self.get_xpos(name).copy() for name in self.obstacle_name_list]
-
-        self._state_init(new_goal.copy())
-        return self._get_obs()
-
-    def stack_compute_reward(self, achieved_goal, goal, info):
-        target_xpos = self.get_xpos('target_object').copy()
-        obstacle_xpos_0 = self.get_xpos('obstacle_object_0').copy()
-        obstacle_xpos_1 = self.get_xpos('obstacle_object_1').copy()
-
-        target_dist = xpos_distance(target_xpos, self.target_goal, self.valid_dist_sup)
-        obstacle_dist_0 = xpos_distance(obstacle_xpos_0, self.obstacle_goal_0, self.valid_dist_sup)
-        obstacle_dist_1 = xpos_distance(obstacle_xpos_1, self.obstacle_goal_1, self.valid_dist_sup)
-
-        reward = 0.0
-        if self.reward_type == 'dense':
-            reward += self.lower_reward_sup * ((self.valid_dist_sup - target_dist) / self.valid_dist_sup) / 3
-            reward += self.lower_reward_sup * ((self.valid_dist_sup - obstacle_dist_0) / self.valid_dist_sup) / 3
-            reward += self.lower_reward_sup * ((self.valid_dist_sup - obstacle_dist_1) / self.valid_dist_sup) / 3
-        elif self.reward_type == 'sparse':
-            reward += self.lower_reward_sup * int(target_dist < self.distance_threshold) / 3
-            reward += self.lower_reward_sup * int(obstacle_dist_0 < self.distance_threshold) / 3
-            reward += self.lower_reward_sup * int(obstacle_dist_1 < self.distance_threshold) / 3
-        else:
-            raise NotImplementedError
-        return min(reward, self.lower_reward_sup)
-
-    def is_stack_success(self):
-        flag = True
-        for idx in range(len(self.goal_list)):
-            name = self.name_list[idx]
-            xpos = self.get_xpos(name).copy()
-            goal = self.goal_list[idx]
-            flag = flag and xpos_distance(xpos, goal) < self.distance_threshold
-
-        return flag
-
     def reset_removal(self, goal: np.ndarray, removal_goal=None, is_removal=True):
+        # use finished_count to guide reset of sim
+        self.finished_count = 0
+
         self.is_grasp = False
         self.is_removal_success = False
         self.removal_goal = removal_goal.copy()
         self._state_init(self.removal_goal.copy())
 
-    def _sample_goal(self):
-        if np.random.uniform() < self.deterministic_probability:
-            self.deterministic_flag = True
-            goal = self.goal_list[-1].copy()
-            removal_goal = self.goal_list[0].copy()
-            achieved_xpos = self.get_xpos('obstacle_object_0').copy()
+    def obs2goal(self, obs) -> np.ndarray:
+        if self.agent is None:
+            goal = self.upper_action_space.sample()
         else:
-            self.deterministic_flag = False
-            global_action = self.upper_action_space.sample()
-            macro_action = self.action_mapping(action=global_action)
-            new_achieved_name, goal, min_dist = self.action2feature(macro_action=macro_action)
+            goal = self.agent.predict(obs, deterministic=True)[0]
 
-            removal_action = self.upper_action_space.sample()
-            macro_action = self.action_mapping(action=removal_action)
-            new_achieved_name, removal_goal, min_dist = self.action2feature(macro_action=macro_action)
-            removal_goal[2] = 0.425  # o.t. Release = Fail!!!
+        return goal
 
-            achieved_xpos = self.get_xpos(new_achieved_name).copy()
+    def _sample_goal(self):
+        # global_goal is useless
+        macro_action = np.zeros(len(action_list))  # ignore global goal in reset scene
+        new_achieved_name, goal, min_dist = self.action2feature(macro_action=macro_action)
+        obs = self._get_obs()
+        removal_action = self.obs2goal(obs=obs)
+        macro_action = self.action_mapping(action=removal_action)
+        new_achieved_name, removal_goal, min_dist = self.action2feature(macro_action=macro_action)
+        achieved_xpos = self.get_xpos(new_achieved_name).copy()
 
-        self.finished_count = 0
         self.reset_removal(goal=goal.copy(), removal_goal=removal_goal.copy())
         self.macro_step_setup(macro_action=np.r_[
             removal_goal.copy(),

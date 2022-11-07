@@ -46,17 +46,16 @@ class RobotEnv(gym.GoalEnv):
         self.seed()
         self._env_setup(initial_qpos=initial_qpos)
         self.initial_state = copy.deepcopy(self.sim.get_state())
-        self.goal = self._sample_goal()
 
         # DIY
         self.super_hrl_mode = super_hrl_mode
-
         if self.super_hrl_mode:
             self.is_grasp = False
             self.is_removal_success = False
             self.removal_goal = None
             self.global_goal = self._sample_goal()
 
+        self.goal = self._sample_goal()
         obs = self._get_obs()
         self.action_space = spaces.Box(-1.0, 1.0, shape=(n_actions,), dtype="float32")
 
