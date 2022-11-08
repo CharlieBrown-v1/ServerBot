@@ -87,7 +87,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             raise NotImplementedError
 
     def compute_height_flag(self) -> bool:
-        simil_flag = self.compute_vector_simil() > self.finished_count - self.object_size
+        simil_flag = self.compute_vector_simil() > self.finished_count + 1 - self.object_size
         prev_achieved_xpos = self.get_xpos(self.achieved_name_indicate).copy()
         removal_height = self.removal_goal_height[self.finished_count]
         height_flag = False
@@ -299,7 +299,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         return min(reward, self.lower_reward_sup)
 
     def is_stack_success(self):
-        simil_flag = self.compute_vector_simil() > self.finished_count - self.object_size
+        simil_flag = self.compute_vector_simil() > self.finished_count + 1 - self.object_size
         height_flag = self.compute_height_flag()
         finished_flag = simil_flag and height_flag
         self.finished_count += finished_flag
