@@ -27,17 +27,12 @@ def xpos_distance(goal_a, goal_b, dist_sup=None):
 
 
 class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
-    def __init__(self, agent_path=None, device=None, reward_type='dense'):
+    def __init__(self, reward_type='dense'):
         initial_qpos = {
             "robot0:slide0": 0.405,
             "robot0:slide1": 0.48,
             "robot0:slide2": 0.0,
         }
-
-        if agent_path is None:
-            self.agent = None
-        else:
-            self.agent = HybridPPO.load(agent_path, device=device)
 
         self.training_mode = True
 
@@ -46,11 +41,11 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.removal_xpos_indicate = None
 
         self.finished_count = None
-        self.finished_count_sup = 4
         self.lower_reward_sup = 0.12
         self.valid_dist_sup = 0.3
 
         step_size = 0.05
+        self.object_size = 0.05
         self.obstacle_goal_0 = np.array([1.30, 0.65, 0.425 + 0 * step_size])
         self.obstacle_goal_1 = np.array([1.30, 0.65, 0.425 + 1 * step_size])
         self.target_goal = np.array([1.30, 0.65, 0.425 + 2 * step_size])
@@ -81,6 +76,10 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.count2goal = dict(zip(range(len(self.goal_list)), self.goal_list))
         self.count2name = dict(zip(range(len(self.name_list)), self.name_list))
 
+        self.stacked_init_xpos = None
+        self.free_object_name_list = None
+        self.stacked_object_name_list = None
+
         fetch_env.FetchEnv.__init__(
             self,
             MODEL_XML_PATH,
@@ -92,7 +91,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             target_offset=0.0,
             obj_range=0.15,
             target_range=0.15,
-            distance_threshold=0.02,
+            distance_threshold=0.01,
             initial_qpos=initial_qpos,
             reward_type=reward_type,
             single_count_sup=7,
@@ -110,12 +109,20 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         else:
             raise NotImplementedError
 
+    def reset(self):
+        self.stacked_init_xpos = self.get_xpos(self.object_generator.global_achieved_name)
+        self.free_object_name_list = []
+        self.stacked_object_name_list = []
+        obs = super(HrlEnv, self).reset()
+
+        return obs
+
     def reset_indicate(self):
         self.achieved_name_indicate = None
         self.removal_goal_indicate = None
         self.removal_xpos_indicate = None
 
-    def action_mapping(self, action: np.ndarray):
+    def action_mapping(self, action: np.ndarray) -> np.ndarray:
         planning_action = action.copy()
 
         # action for choosing desk's position
@@ -126,21 +133,23 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                               + (self.table_start_xyz + self.table_end_xyz) / 2
         return planning_action
 
-    def reset_after_removal(self, goal=None):
+    def reset_after_removal(self, goal=None, info=None):
         assert self.hrl_mode
 
-        obs = self._get_obs()
-        upper_action = self.obs2goal(obs=obs)
-        macro_action = self.action_mapping(action=upper_action)
-        new_achieved_name, goal, min_dist = self.action2feature(macro_action=macro_action)
-        self.removal_goal = goal.copy()
+        if info['is_removal_success']:
+            self.free_object_name_list.remove(self.achieved_name)
+            new_achieved_name = np.random.choice(self.free_object_name_list)
+        else:
+            new_achieved_name = self.achieved_name
+        new_removal_goal = self.stacked_init_xpos + np.array([0, 0, self.finished_count * self.object_size])
+        self.removal_goal = new_removal_goal.copy()
 
         new_obstacle_name_list = self.object_name_list.copy()
 
         try:
             new_obstacle_name_list.remove(new_achieved_name)
         except ValueError:
-            print()
+            print(f'Bullfuck!')
             pass
 
         self.achieved_name = copy.deepcopy(new_achieved_name)
@@ -148,7 +157,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.init_obstacle_xpos_list = [self.get_xpos(obstacle_name).copy() for obstacle_name
                                         in self.obstacle_name_list]
 
-        self._state_init(goal.copy())
+        self._state_init(new_removal_goal.copy())
 
     def hrl_step(self, obs, action):
         info = {
@@ -177,7 +186,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         # DIY
         removal_done = self.removal_goal is None or self.is_removal_success
         # done for reset sim
-        info['is_success'] = self.finished_count >= self.finished_count_sup
+        info['is_success'] = self.finished_count >= len(self.object_name_list)
 
         done = info['is_fail'] or info['is_success']
         # train_* for train a new trial
@@ -198,8 +207,8 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         reward = self.compute_reward(obs["achieved_goal"], goal, info)
 
-        if info['is_removal_success']:
-            self.reset_after_removal()
+        if info['is_removal_success'] and not info['is_success']:
+            self.reset_after_removal(info=info.copy())
 
         return obs, reward, done, info
 
@@ -274,32 +283,46 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             return (move_count + not_in_desk_count) * self.punish_factor
 
     def reset_removal(self, goal: np.ndarray, removal_goal=None, is_removal=True):
-        # use finished_count to guide reset of sim
-        self.finished_count = 0
-
         self.is_grasp = False
         self.is_removal_success = False
         self.removal_goal = removal_goal.copy()
         self._state_init(self.removal_goal.copy())
 
     def obs2goal(self, obs) -> np.ndarray:
-        if self.agent is None:
-            goal = self.upper_action_space.sample()
-        else:
-            goal = self.agent.predict(obs, deterministic=True)[0]
+        goal = self.upper_action_space.sample()
 
         return goal
 
     def _sample_goal(self):
-        # global_goal is useless
+        # global goal is useless
+        obs = self._get_obs()
+        global_action = self.obs2goal(obs=obs)
+        macro_action = self.action_mapping(action=global_action)
+        init_xpos = macro_action[:3]
+        init_xpos[2] = self.table_start_xyz[2]  # set the first object above desk exactly
+        self.stacked_init_xpos = init_xpos.copy()
+        stacked_count = np.random.randint(len(self.object_name_list))
+        self.stacked_object_name_list = list(np.random.choice(self.object_name_list, stacked_count, replace=False))
+        self.free_object_name_list = [object_name for object_name in self.object_name_list
+                                      if object_name not in self.stacked_object_name_list]
+        for idx in range(stacked_count):
+            stacked_name = self.stacked_object_name_list[idx]
+            stacked_xpos = self.stacked_init_xpos + np.array([0, 0, idx * self.object_size])
+            self.sim.data.set_joint_qpos(f'{stacked_name}:joint', np.r_[stacked_xpos, self.object_generator.qpos_postfix])
+        self.sim.forward()
+        for _ in range(10):
+            self.sim.step()
         macro_action = np.zeros(len(action_list))  # ignore global goal in reset scene
         new_achieved_name, goal, min_dist = self.action2feature(macro_action=macro_action)
-        obs = self._get_obs()
-        removal_action = self.obs2goal(obs=obs)
-        macro_action = self.action_mapping(action=removal_action)
-        new_achieved_name, removal_goal, min_dist = self.action2feature(macro_action=macro_action)
+        # removal_action = self.obs2goal(obs=obs)
+        # macro_action = self.action_mapping(action=removal_action)
+        # new_achieved_name, removal_goal, min_dist = self.action2feature(macro_action=macro_action)
+        removal_goal = self.stacked_init_xpos + np.array([0, 0, stacked_count * self.object_size])
+        new_achieved_name = np.random.choice(self.free_object_name_list)
         achieved_xpos = self.get_xpos(new_achieved_name).copy()
 
+        # use finished_count to guide reset of sim
+        self.finished_count = stacked_count
         self.reset_removal(goal=goal.copy(), removal_goal=removal_goal.copy())
         self.macro_step_setup(macro_action=np.r_[
             removal_goal.copy(),
@@ -319,15 +342,15 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         obstacle_goal_0_id = self.sim.model.site_name2id("obstacle_goal_0")
         obstacle_goal_1_id = self.sim.model.site_name2id("obstacle_goal_1")
 
-        self.sim.model.site_pos[global_target_site_id] = self.global_goal - sites_offset[global_target_site_id]
+        # self.sim.model.site_pos[global_target_site_id] = self.global_goal - sites_offset[global_target_site_id]
         if self.removal_goal is not None:
             self.sim.model.site_pos[removal_target_site_id] = self.removal_goal - sites_offset[removal_target_site_id]
         else:
             self.sim.model.site_pos[removal_target_site_id] = np.array([20, 20, 0.5])
 
-        self.sim.model.site_pos[final_goal_id] = self.final_goal - sites_offset[final_goal_id]
-        self.sim.model.site_pos[target_goal_id] = self.target_goal - sites_offset[target_goal_id]
-        self.sim.model.site_pos[obstacle_goal_0_id] = self.obstacle_goal_0 - sites_offset[obstacle_goal_0_id]
-        self.sim.model.site_pos[obstacle_goal_1_id] = self.obstacle_goal_1 - sites_offset[obstacle_goal_1_id]
+        # self.sim.model.site_pos[final_goal_id] = self.final_goal - sites_offset[final_goal_id]
+        # self.sim.model.site_pos[target_goal_id] = self.target_goal - sites_offset[target_goal_id]
+        # self.sim.model.site_pos[obstacle_goal_0_id] = self.obstacle_goal_0 - sites_offset[obstacle_goal_0_id]
+        # self.sim.model.site_pos[obstacle_goal_1_id] = self.obstacle_goal_1 - sites_offset[obstacle_goal_1_id]
 
         self.sim.forward()
