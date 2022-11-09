@@ -5,7 +5,6 @@ import numpy as np
 from gym import utils, spaces
 from typing import Tuple
 from gym.envs.robotics import fetch_env
-from stable_baselines3 import HybridPPO
 
 MODEL_XML_PATH = os.path.join("hrl", "stack_hrl.xml")
 
@@ -27,7 +26,7 @@ def xpos_distance(goal_a, goal_b, dist_sup=None):
 
 
 class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
-    def __init__(self, reward_type='dense'):
+    def __init__(self, distance_threshold=0.01, reward_type='dense'):
         initial_qpos = {
             "robot0:slide0": 0.405,
             "robot0:slide1": 0.48,
@@ -76,9 +75,16 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.count2goal = dict(zip(range(len(self.goal_list)), self.goal_list))
         self.count2name = dict(zip(range(len(self.name_list)), self.name_list))
 
-        self.stacked_init_xpos = None
+        self.task_list = [
+            'stack',
+            'dismantle',
+            'random',
+        ]
+
+        self.task = None  # indicate current task
+        self.init_xpos = None  # used by task != random
         self.free_object_name_list = None
-        self.stacked_object_name_list = None
+        self.fixed_object_name_list = None
 
         fetch_env.FetchEnv.__init__(
             self,
@@ -91,7 +97,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             target_offset=0.0,
             obj_range=0.15,
             target_range=0.15,
-            distance_threshold=0.01,
+            distance_threshold=distance_threshold,
             initial_qpos=initial_qpos,
             reward_type=reward_type,
             single_count_sup=7,
@@ -110,9 +116,13 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             raise NotImplementedError
 
     def reset(self):
-        self.stacked_init_xpos = self.get_xpos(self.object_generator.global_achieved_name)
+        self.task = np.random.choice(self.task_list)
+        if self.task == 'random':
+            self.init_xpos = None
+        else:
+            self.init_xpos = self.get_xpos(self.object_generator.global_achieved_name)
         self.free_object_name_list = []
-        self.stacked_object_name_list = []
+        self.fixed_object_name_list = []
         obs = super(HrlEnv, self).reset()
 
         return obs
@@ -314,9 +324,6 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             self.sim.step()
         macro_action = np.zeros(len(action_list))  # ignore global goal in reset scene
         new_achieved_name, goal, min_dist = self.action2feature(macro_action=macro_action)
-        # removal_action = self.obs2goal(obs=obs)
-        # macro_action = self.action_mapping(action=removal_action)
-        # new_achieved_name, removal_goal, min_dist = self.action2feature(macro_action=macro_action)
         removal_goal = self.stacked_init_xpos + np.array([0, 0, stacked_count * self.object_size])
         new_achieved_name = np.random.choice(self.free_object_name_list)
         achieved_xpos = self.get_xpos(new_achieved_name).copy()
