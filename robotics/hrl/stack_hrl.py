@@ -234,7 +234,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             curr_xpos = self.get_xpos(name=name).copy()
             delta_xpos = xpos_distance(init_xpos, curr_xpos)
 
-            if delta_xpos > self.object_size:
+            if delta_xpos > 0.05:
                 move_count += 1
 
             if curr_xpos[2] <= 0.4 - 0.01:

@@ -296,10 +296,10 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         for idx in np.arange(len(name_list)):
             name = name_list[idx]
             init_xpos = np.array(xpos_list[idx].copy())
-            curr_xpos = self.get_xpos(name).copy()
+            curr_xpos = self.get_xpos(name=name).copy()
             delta_xpos = xpos_distance(init_xpos, curr_xpos)
 
-            if delta_xpos > self.distance_threshold:
+            if delta_xpos > 0.05:
                 move_count += 1
 
             if curr_xpos[2] <= 0.4 - 0.01:
@@ -350,7 +350,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                                           if object_name not in self.fixed_object_name_list]
             deterministic_name_list = self.fixed_object_name_list.copy()
         elif self.task == 'dismantle':
-            deterministic_count += 1 # [0, n-1] -> [1, n]
+            deterministic_count += 1  # [0, n-1] -> [1, n]
             free_count = deterministic_count
             fixed_count = len(self.object_name_list) - free_count
             self.free_object_name_list = list(np.random.choice(self.object_name_list, free_count, replace=False))
