@@ -9,7 +9,7 @@ from gym.envs.robotics import utils as robot_utils
 MODEL_XML_PATH = os.path.join("hrl", "hrl.xml")
 
 
-def xpos_distance(goal_a: np.ndarray, goal_b: np.ndarray):
+def vector_distance(goal_a: np.ndarray, goal_b: np.ndarray):
     assert goal_a.shape == goal_b.shape
     return np.linalg.norm(goal_a - goal_b, axis=-1)
 
@@ -64,11 +64,11 @@ class PushEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         grip_pos = self.get_xpos("robot0:grip").copy()
 
-        curr_grip_achi_dist = xpos_distance(np.broadcast_to(grip_pos, achieved_goal.shape), achieved_goal)
+        curr_grip_achi_dist = vector_distance(np.broadcast_to(grip_pos, achieved_goal.shape), achieved_goal)
         grip_achi_reward = self.prev_grip_achi_dist - curr_grip_achi_dist
         self.prev_grip_achi_dist = curr_grip_achi_dist
 
-        curr_achi_desi_dist = xpos_distance(achieved_goal, goal)
+        curr_achi_desi_dist = vector_distance(achieved_goal, goal)
         achi_desi_reward = self.prev_achi_desi_dist - curr_achi_desi_dist
         self.prev_achi_desi_dist = curr_achi_desi_dist
 

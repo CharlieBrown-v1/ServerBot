@@ -18,7 +18,7 @@ height_scale = 17
 MODEL_XML_PATH = os.path.join("hrl", "hrl.xml")
 
 
-def xpos_distance(goal_a: np.ndarray, goal_b: np.ndarray):
+def vector_distance(goal_a: np.ndarray, goal_b: np.ndarray):
     assert goal_a.shape == goal_b.shape
     return np.linalg.norm(goal_a - goal_b, axis=-1)
 
@@ -206,7 +206,7 @@ class MoveEnv(fetch_env.FetchEnv, utils.EzPickle):
     def hrl_reward(self, achieved_goal, goal, info):
         assert self.reward_type == 'dense'
 
-        curr_achi_desi_dist = xpos_distance(achieved_goal, goal)
+        curr_achi_desi_dist = vector_distance(achieved_goal, goal)
         achi_desi_reward = self.prev_achi_desi_dist - curr_achi_desi_dist
         self.prev_achi_desi_dist = curr_achi_desi_dist
 
@@ -239,7 +239,7 @@ class MoveEnv(fetch_env.FetchEnv, utils.EzPickle):
 
     def _state_init(self, goal_xpos: np.ndarray = None):
         achieved_xpos = self.get_xpos("robot0:grip").copy()
-        self.prev_achi_desi_dist = xpos_distance(achieved_xpos, goal_xpos)
+        self.prev_achi_desi_dist = vector_distance(achieved_xpos, goal_xpos)
 
     def _render_callback(self):
         # Visualize target.

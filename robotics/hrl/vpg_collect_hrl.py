@@ -15,7 +15,7 @@ angle = -1
 MODEL_XML_PATH = os.path.join("hrl", "collect_hrl.xml")
 
 
-def xpos_distance(goal_a, goal_b):
+def vector_distance(goal_a, goal_b):
     assert goal_a.shape == goal_b.shape
     return np.linalg.norm(goal_a - goal_b, axis=-1)
 
@@ -122,7 +122,7 @@ class VPGCollectHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         name_list = self.object_name_list
         for name in name_list:
             xpos = self.get_xpos(name).copy()
-            dist = xpos_distance(chosen_xpos, xpos)
+            dist = vector_distance(chosen_xpos, xpos)
             if dist < min_dist:
                 min_dist = dist
                 achieved_name = name

@@ -17,7 +17,7 @@ action_list = [desk_x, desk_y, pos_x, pos_y, pos_z]
 MODEL_XML_PATH = os.path.join("hrl", "render_hrl.xml")
 
 
-def xpos_distance(goal_a, goal_b):
+def vector_distance(goal_a, goal_b):
     assert goal_a.shape == goal_b.shape
     return np.linalg.norm(goal_a - goal_b, axis=-1)
 
@@ -107,7 +107,7 @@ class TestHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         name_list = self.object_name_list
         for name in name_list:
             xpos = self.get_xpos(name).copy()
-            dist = xpos_distance(action_xpos, xpos)
+            dist = vector_distance(action_xpos, xpos)
             if dist < min_dist:
                 min_dist = dist
                 achieved_name = name
@@ -145,7 +145,7 @@ class TestHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             i += 1
             agent_action = agent.predict(observation=obs, deterministic=True)[0]
             if probability < 0.5:
-                if xpos_distance(self.get_xpos(self.achieved_name), self.get_xpos('robot0:grip')) < self.distance_threshold:
+                if vector_distance(self.get_xpos(self.achieved_name), self.get_xpos('robot0:grip')) < self.distance_threshold:
                     self.count += 1
                 if self.count > 3:
                     agent_action[-1] = 1

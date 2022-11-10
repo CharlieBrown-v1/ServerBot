@@ -18,7 +18,7 @@ pos_z = 5
 action_list = [desk_x, desk_y, desk_z, pos_x, pos_y, pos_z]
 
 
-def xpos_distance(goal_a, goal_b, dist_sup=None):
+def vector_distance(goal_a, goal_b, dist_sup=None):
     assert goal_a.shape == goal_b.shape
     if dist_sup is None:
         dist_sup = np.inf
@@ -249,7 +249,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         name_list = self.object_name_list
         for name in name_list:
             xpos = self.get_xpos(name).copy()
-            dist = xpos_distance(action_xpos, xpos)
+            dist = vector_distance(action_xpos, xpos)
             if dist < min_dist:
                 min_dist = dist
                 achieved_name = name
@@ -266,7 +266,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         name_list = self.object_name_list
         for name in name_list:
             xpos = self.get_xpos(name).copy()
-            dist = xpos_distance(action_xpos, xpos)
+            dist = vector_distance(action_xpos, xpos)
             if dist < min_dist:
                 min_dist = dist
                 achieved_name = name
@@ -297,7 +297,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             name = name_list[idx]
             init_xpos = np.array(xpos_list[idx].copy())
             curr_xpos = self.get_xpos(name=name).copy()
-            delta_xpos = xpos_distance(init_xpos, curr_xpos)
+            delta_xpos = vector_distance(init_xpos, curr_xpos)
 
             if delta_xpos > 0.05:
                 move_count += 1

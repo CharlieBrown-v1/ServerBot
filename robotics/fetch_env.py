@@ -36,7 +36,7 @@ pos_z = 4
 action_list = [desk_x, desk_y, pos_x, pos_y, pos_z]
 
 
-def xpos_distance(goal_a: np.ndarray, goal_b: np.ndarray):
+def vector_distance(goal_a: np.ndarray, goal_b: np.ndarray):
     assert goal_a.shape == goal_b.shape
     return np.linalg.norm(goal_a - goal_b, axis=-1)
 
@@ -215,7 +215,7 @@ class FetchEnv(robot_env.RobotEnv):
             name = name_list[idx]
             init_xpos = xpos_list[idx].copy()
             curr_xpos = self.get_xpos(name).copy()
-            delta_xpos = xpos_distance(init_xpos, curr_xpos)
+            delta_xpos = vector_distance(init_xpos, curr_xpos)
 
             if delta_xpos > 2 * self.distance_threshold:
                 move_count += 1
@@ -232,7 +232,7 @@ class FetchEnv(robot_env.RobotEnv):
     def _judge_is_grasp(self, achieved_goal: np.array, action: np.array):
         grip_site_xpos = self.get_xpos("robot0:grip").copy()
         grip_ctrl = action[-1]
-        flag = (grip_ctrl < epsilon) and (xpos_distance(achieved_goal, grip_site_xpos) < self.distance_threshold)
+        flag = (grip_ctrl < epsilon) and (vector_distance(achieved_goal, grip_site_xpos) < self.distance_threshold)
         return flag
 
     # DIY
@@ -241,11 +241,11 @@ class FetchEnv(robot_env.RobotEnv):
 
         grip_pos = self.get_xpos("robot0:grip").copy()
 
-        curr_grip_achi_dist = xpos_distance(np.broadcast_to(grip_pos, achieved_goal.shape), achieved_goal)
+        curr_grip_achi_dist = vector_distance(np.broadcast_to(grip_pos, achieved_goal.shape), achieved_goal)
         grip_achi_reward = self.prev_grip_achi_dist - curr_grip_achi_dist
         self.prev_grip_achi_dist = curr_grip_achi_dist
 
-        curr_achi_desi_dist = xpos_distance(achieved_goal, goal)
+        curr_achi_desi_dist = vector_distance(achieved_goal, goal)
         achi_desi_reward = self.prev_achi_desi_dist - curr_achi_desi_dist
         self.prev_achi_desi_dist = curr_achi_desi_dist
 
@@ -267,7 +267,7 @@ class FetchEnv(robot_env.RobotEnv):
         if self.hrl_mode and self.reward_type == 'dense':
             return self.hrl_reward(achieved_goal, goal, info)
         else:
-            d = xpos_distance(achieved_goal, goal)
+            d = vector_distance(achieved_goal, goal)
             if self.reward_type == "sparse":
                 return -(d > self.distance_threshold).astype(np.float32)
             else:
@@ -556,7 +556,7 @@ class FetchEnv(robot_env.RobotEnv):
         min_dist = np.inf
         for name in self.obstacle_name_list:
             xpos = self.get_xpos(name).copy()
-            dist = xpos_distance(action_xpos, xpos)
+            dist = vector_distance(action_xpos, xpos)
             if dist < min_dist:
                 min_dist = dist
                 achieved_name = name
@@ -794,7 +794,7 @@ class FetchEnv(robot_env.RobotEnv):
         return goal.copy()
 
     def _is_success(self, achieved_goal, desired_goal):
-        d = xpos_distance(achieved_goal, desired_goal)
+        d = vector_distance(achieved_goal, desired_goal)
         is_success = bool(d < self.distance_threshold)
 
         return is_success
@@ -842,8 +842,8 @@ class FetchEnv(robot_env.RobotEnv):
     def _state_init(self, goal_xpos: np.ndarray = None):
         grip_xpos = self.get_xpos("robot0:grip").copy()
         achieved_xpos = self.get_xpos(name=self.achieved_name).copy()
-        self.prev_grip_achi_dist = xpos_distance(grip_xpos, achieved_xpos)
-        self.prev_achi_desi_dist = xpos_distance(achieved_xpos, goal_xpos)
+        self.prev_grip_achi_dist = vector_distance(grip_xpos, achieved_xpos)
+        self.prev_achi_desi_dist = vector_distance(achieved_xpos, goal_xpos)
 
     def render(self, mode="human", width=500, height=500):
         return super(FetchEnv, self).render(mode, width, height)

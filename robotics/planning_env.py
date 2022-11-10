@@ -17,7 +17,7 @@ pos_z = 5
 action_list = [desk_x, desk_y, pos_x, pos_y, pos_z]
 
 
-def xpos_distance(goal_a: np.ndarray, goal_b: np.ndarray):
+def vector_distance(goal_a: np.ndarray, goal_b: np.ndarray):
     assert goal_a.shape == goal_b.shape
     return np.linalg.norm(goal_a - goal_b, axis=-1)
 
@@ -138,7 +138,7 @@ class PlanningEnv(gym.Env):
         for name in name_list:
             if name != achieved_name:  # obstacle_name of this macro-step
                 xpos = self.model.env.get_xpos(name).copy()
-                delta_xpos = xpos_distance(removal_goal, xpos)
+                delta_xpos = vector_distance(removal_goal, xpos)
 
                 if delta_xpos <= 1.5 * self.model.env.distance_threshold:
                     return False

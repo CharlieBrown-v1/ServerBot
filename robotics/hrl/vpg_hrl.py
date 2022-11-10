@@ -16,7 +16,7 @@ angle = -1
 MODEL_XML_PATH = os.path.join("hrl", "vpg_hrl.xml")
 
 
-def xpos_distance(goal_a, goal_b):
+def vector_distance(goal_a, goal_b):
     assert goal_a.shape == goal_b.shape
     return np.linalg.norm(goal_a - goal_b, axis=-1)
 
@@ -147,7 +147,7 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         name_list = self.object_name_list
         for name in name_list:
             xpos = self.get_xpos(name).copy()
-            dist = xpos_distance(chosen_xpos, xpos)
+            dist = vector_distance(chosen_xpos, xpos)
             if dist < min_dist:
                 min_dist = dist
                 achieved_name = name
@@ -308,14 +308,14 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
     def _state_init(self, goal_xpos: np.ndarray = None):
         grip_xpos = self.get_xpos("robot0:grip").copy()
         achieved_xpos = self.get_xpos(name=self.achieved_name).copy()
-        self.prev_grip_achi_dist = xpos_distance(grip_xpos, achieved_xpos)
-        self.prev_achi_desi_dist = xpos_distance(achieved_xpos, goal_xpos)
-        self.prev_blocked_count = np.sum([xpos_distance(achieved_xpos, self.get_xpos(name))
+        self.prev_grip_achi_dist = vector_distance(grip_xpos, achieved_xpos)
+        self.prev_achi_desi_dist = vector_distance(achieved_xpos, goal_xpos)
+        self.prev_blocked_count = np.sum([vector_distance(achieved_xpos, self.get_xpos(name))
                                           <= 1.5 * self.distance_threshold for name in self.object_name_list])
 
     def _is_good_push(self):
         achieved_xpos = self.get_xpos('target_object').copy()
-        curr_blocked_count = np.sum([xpos_distance(achieved_xpos, self.get_xpos(name))
+        curr_blocked_count = np.sum([vector_distance(achieved_xpos, self.get_xpos(name))
                                      <= 2 * self.distance_threshold for name in self.object_name_list])
         flag = self.push_mode and self.prev_blocked_count > curr_blocked_count
         self.prev_blocked_count = curr_blocked_count
@@ -323,9 +323,9 @@ class VPGHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
     def _is_success(self, achieved_goal, desired_goal):
         if self.grasp_mode:
-            d = xpos_distance(achieved_goal[:2], desired_goal[:2]) / 1.5
+            d = vector_distance(achieved_goal[:2], desired_goal[:2]) / 1.5
         else:
-            d = xpos_distance(achieved_goal, desired_goal)
+            d = vector_distance(achieved_goal, desired_goal)
         return d < self.distance_threshold
 
     def _get_obs(self):

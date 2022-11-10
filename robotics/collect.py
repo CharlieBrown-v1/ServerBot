@@ -17,7 +17,7 @@ pos_z = 5
 action_list = [desk_x, desk_y, pos_x, pos_y, pos_z]
 
 
-def xpos_distance(goal_a: np.ndarray, goal_b: np.ndarray):
+def vector_distance(goal_a: np.ndarray, goal_b: np.ndarray):
     assert goal_a.shape == goal_b.shape
     return np.linalg.norm(goal_a - goal_b, axis=-1)
 

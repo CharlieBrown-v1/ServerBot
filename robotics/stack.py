@@ -15,10 +15,11 @@ pos_x = 3
 pos_y = 4
 pos_z = 5
 
-action_list = [desk_x, desk_y, desk_z, pos_x, pos_y, pos_z]
+full_action_list = [desk_x, desk_y, desk_z, pos_x, pos_y, pos_z]
+action_list = [desk_x, desk_y, desk_z, pos_x, pos_y]
 
 
-def xpos_distance(goal_a: np.ndarray, goal_b: np.ndarray):
+def vector_distance(goal_a: np.ndarray, goal_b: np.ndarray):
     assert goal_a.shape == goal_b.shape
     return np.linalg.norm(goal_a - goal_b, axis=-1)
 
@@ -87,14 +88,25 @@ class StackEnv(gym.Env):
 
         return obs
 
-    def action_mapping(self, action: np.ndarray):
-        planning_action = action.copy()
+    def action_mapping_z(self, action_xy: np.ndarray) -> float:
+        same_xy_count = 0
+        for name in self.model.object_name_list:
+            xy = self.model.get_xpos(name=name).copy()[:2]
+            same_xy_count += vector_distance(action_xy, xy) < self.model.distance_threshold
+        table_height = self.table_start_xyz[2]
 
-        # action for choosing desk's position
-        planning_action[:3] = (self.table_end_xyz[:3] - self.table_start_xyz[:3]) * planning_action[:3] / 2 \
-                              + (self.table_start_xyz[:3] + self.table_end_xyz[:3]) / 2
+        return table_height + same_xy_count * self.model.object_size
+
+    def action_mapping(self, action: np.ndarray):
+        planning_action = np.zeros(len(full_action_list))
+
+        # action for choosing location's x y
+        planning_action[:2] = (self.table_end_xyz[:2] - self.table_start_xyz[:2]) * action[:2] / 2 \
+                              + (self.table_start_xyz[:2] + self.table_end_xyz[:2]) / 2
+        # action for choosing location's z
+        planning_action[2] = self.action_mapping_z(action_xy=planning_action[:2].copy())
         # action for choosing obstacle's position
-        planning_action[3:] = (self.table_end_xyz - self.table_start_xyz) * planning_action[3:] / 2 \
+        planning_action[3:] = (self.table_end_xyz - self.table_start_xyz) * action[2:] / 2 \
                               + (self.table_start_xyz + self.table_end_xyz) / 2
         return planning_action
 
@@ -103,7 +115,7 @@ class StackEnv(gym.Env):
 
         if action is None:  # used by RL + None
             planning_action = np.r_[np.array([0, 0, 0]),
-                                    self.get_xpos(name=self.model.object_generator.global_achieved_name).copy()]
+                                    self.model.get_xpos(name=self.model.object_generator.global_achieved_name).copy()]
         else:
             planning_action = self.action_mapping(action.copy())
 

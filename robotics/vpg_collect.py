@@ -24,7 +24,7 @@ action_list = [macro_action, xpos, rotation]
 action_shape_list = [2, np.prod(scaled_cube_shape), 16]
 
 
-def xpos_distance(goal_a: np.ndarray, goal_b: np.ndarray):
+def vector_distance(goal_a: np.ndarray, goal_b: np.ndarray):
     assert goal_a.shape == goal_b.shape
     return np.linalg.norm(goal_a - goal_b, axis=-1)
 
