@@ -26,7 +26,7 @@ def xpos_distance(goal_a, goal_b, dist_sup=None):
 
 
 class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
-    def __init__(self, distance_threshold=0.01, reward_type='dense'):
+    def __init__(self, distance_threshold=0.02, reward_type='dense'):
         initial_qpos = {
             "robot0:slide0": 0.405,
             "robot0:slide1": 0.48,
@@ -48,7 +48,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.obstacle_goal_0 = np.array([1.30, 0.65, 0.425 + 0 * step_size])
         self.obstacle_goal_1 = np.array([1.30, 0.65, 0.425 + 1 * step_size])
         self.target_goal = np.array([1.30, 0.65, 0.425 + 2 * step_size])
-        self.final_goal  = np.array([1.30, 0.75, 0.425 + 4 * step_size])
+        self.final_goal = np.array([1.30, 0.75, 0.425 + 4 * step_size])
 
         table_xy = np.array([1.3, 0.75])
         table_size = np.array([0.25, 0.35])
@@ -81,7 +81,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             'random',
         ]
 
-        self.task = None  # indicate current task
+        self.task = 'random'  # indicate current task
         self.init_xpos = None  # used by task != random
         self.free_object_name_list = None
         self.fixed_object_name_list = None
@@ -102,7 +102,6 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             reward_type=reward_type,
             single_count_sup=7,
             target_in_air_probability=0.5,
-            object_stacked_probability=0.5,
             hrl_mode=True,
             random_mode=True,
             stack_mode=True,
@@ -117,10 +116,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
     def reset(self):
         self.task = np.random.choice(self.task_list)
-        if self.task == 'random':
-            self.init_xpos = None
-        else:
-            self.init_xpos = self.get_xpos(self.object_generator.global_achieved_name)
+        self.task = 'random'
         self.free_object_name_list = []
         self.fixed_object_name_list = []
         obs = super(HrlEnv, self).reset()
@@ -146,14 +142,36 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
     def reset_after_removal(self, goal=None, info=None):
         assert self.hrl_mode
 
-        if info['is_removal_success']:
-            self.free_object_name_list.remove(self.achieved_name)
+        assert info['is_removal_success']
+        self.free_object_name_list.remove(self.achieved_name)
+        if self.task == 'stack':
+            new_achieved_name = np.random.choice(self.free_object_name_list)
+        elif self.task == 'dismantle':
+            new_achieved_name = self.get_dismantle_achieved_name(self.free_object_name_list)
+        elif self.task == 'random':
             new_achieved_name = np.random.choice(self.free_object_name_list)
         else:
-            new_achieved_name = self.achieved_name
-        new_removal_goal = self.stacked_init_xpos + np.array([0, 0, self.finished_count * self.object_size])
-        self.removal_goal = new_removal_goal.copy()
+            raise NotImplementedError
 
+        obs = self._get_obs()
+        if self.task == 'stack':
+            new_removal_goal = self.init_xpos + np.array([0, 0, self.finished_count * self.object_size])
+        elif self.task == 'dismantle':
+            new_removal_action = self.obs2goal(obs=obs)
+            macro_action = self.action_mapping(action=new_removal_action)
+            new_removal_goal = macro_action[:3]
+            new_removal_goal[2] = self.table_start_xyz[2]
+        elif self.task == 'random':
+            new_removal_action = self.obs2goal(obs=obs)
+            macro_action = self.action_mapping(action=new_removal_action)
+            new_removal_goal = macro_action[:3]
+            new_removal_goal[2] = self.table_start_xyz[2]
+            if self.finished_count == len(self.object_name_list) - 1:
+                new_removal_goal[2] = np.random.uniform(self.table_start_xyz[2], self.table_end_xyz[2])
+        else:
+            raise NotImplementedError
+
+        self.removal_goal = new_removal_goal.copy()
         new_obstacle_name_list = self.object_name_list.copy()
 
         try:
@@ -303,6 +321,18 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         return goal
 
+    def get_dismantle_achieved_name(self, name_list: list) -> str:
+        achieved_name = None
+        highest_height = -np.inf
+        for name in name_list:
+            xpos = self.get_xpos(name).copy()
+            if xpos[2] > highest_height:
+                achieved_name = name
+                highest_height = xpos[2]
+        assert achieved_name is not None
+
+        return achieved_name
+
     def _sample_goal(self):
         # global goal is useless
         obs = self._get_obs()
@@ -310,26 +340,70 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         macro_action = self.action_mapping(action=global_action)
         init_xpos = macro_action[:3]
         init_xpos[2] = self.table_start_xyz[2]  # set the first object above desk exactly
-        self.stacked_init_xpos = init_xpos.copy()
-        stacked_count = np.random.randint(len(self.object_name_list))
-        self.stacked_object_name_list = list(np.random.choice(self.object_name_list, stacked_count, replace=False))
-        self.free_object_name_list = [object_name for object_name in self.object_name_list
-                                      if object_name not in self.stacked_object_name_list]
-        for idx in range(stacked_count):
-            stacked_name = self.stacked_object_name_list[idx]
-            stacked_xpos = self.stacked_init_xpos + np.array([0, 0, idx * self.object_size])
-            self.sim.data.set_joint_qpos(f'{stacked_name}:joint', np.r_[stacked_xpos, self.object_generator.qpos_postfix])
+        self.init_xpos = init_xpos.copy()
+        deterministic_count = np.random.randint(len(self.object_name_list))
+        if self.task == 'stack':
+            fixed_count = deterministic_count
+            free_count = len(self.object_name_list) - fixed_count
+            self.fixed_object_name_list = list(np.random.choice(self.object_name_list, fixed_count, replace=False))
+            self.free_object_name_list = [object_name for object_name in self.object_name_list
+                                          if object_name not in self.fixed_object_name_list]
+            deterministic_name_list = self.fixed_object_name_list.copy()
+        elif self.task == 'dismantle':
+            deterministic_count += 1 # [0, n-1] -> [1, n]
+            free_count = deterministic_count
+            fixed_count = len(self.object_name_list) - free_count
+            self.free_object_name_list = list(np.random.choice(self.object_name_list, free_count, replace=False))
+            self.fixed_object_name_list = [object_name for object_name in self.object_name_list
+                                          if object_name not in self.free_object_name_list]
+            deterministic_name_list = self.free_object_name_list.copy()
+        elif self.task == 'random':
+            deterministic_count = 0
+            fixed_count = deterministic_count
+            free_count = len(self.object_name_list) - fixed_count
+            self.fixed_object_name_list = []
+            self.free_object_name_list = self.object_name_list.copy()
+            deterministic_name_list = self.fixed_object_name_list.copy()
+        else:
+            raise NotImplementedError
+        assert fixed_count + free_count == len(self.object_name_list)
+
+        # print(f'count: {deterministic_count}')
+        # print(f'list: {deterministic_name_list}')
+        # print(f'task: {self.task}')
+        for idx in range(deterministic_count):
+            deterministic_name = deterministic_name_list[idx]
+            deterministic_xpos = self.init_xpos + np.array([0, 0, idx * self.object_size])
+            self.sim.data.set_joint_qpos(f'{deterministic_name}:joint', np.r_[deterministic_xpos, self.object_generator.qpos_postfix])
         self.sim.forward()
         for _ in range(10):
             self.sim.step()
         macro_action = np.zeros(len(action_list))  # ignore global goal in reset scene
         new_achieved_name, goal, min_dist = self.action2feature(macro_action=macro_action)
-        removal_goal = self.stacked_init_xpos + np.array([0, 0, stacked_count * self.object_size])
-        new_achieved_name = np.random.choice(self.free_object_name_list)
-        achieved_xpos = self.get_xpos(new_achieved_name).copy()
+
+        if self.task == 'stack':
+            removal_goal = self.init_xpos + np.array([0, 0, fixed_count * self.object_size])
+            new_achieved_name = np.random.choice(self.free_object_name_list)
+            achieved_xpos = self.get_xpos(new_achieved_name).copy()
+        elif self.task == 'dismantle':
+            removal_action = self.obs2goal(obs=obs)
+            macro_action = self.action_mapping(action=removal_action)
+            removal_goal = macro_action[:3]
+            removal_goal[2] = self.table_start_xyz[2]
+            new_achieved_name = self.get_dismantle_achieved_name(self.free_object_name_list)
+            achieved_xpos = self.get_xpos(new_achieved_name).copy()
+        elif self.task == 'random':
+            removal_action = self.obs2goal(obs=obs)
+            macro_action = self.action_mapping(action=removal_action)
+            removal_goal = macro_action[:3]
+            removal_goal[2] = self.table_start_xyz[2]
+            new_achieved_name = np.random.choice(self.free_object_name_list)
+            achieved_xpos = self.get_xpos(new_achieved_name).copy()
+        else:
+            raise NotImplementedError
 
         # use finished_count to guide reset of sim
-        self.finished_count = stacked_count
+        self.finished_count = fixed_count
         self.reset_removal(goal=goal.copy(), removal_goal=removal_goal.copy())
         self.macro_step_setup(macro_action=np.r_[
             removal_goal.copy(),
