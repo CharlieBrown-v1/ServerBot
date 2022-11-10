@@ -336,7 +336,7 @@ class ObjectGenerator:
             if self.random_mode:
                 achieved_qpos = np.r_[np.random.uniform(self.desktop_lower_boundary, self.desktop_upper_boundary), self.qpos_postfix]
             else:
-                achieved_qpos = np.r_[np.array([1.34, 0.88, 0.425]), self.qpos_postfix]
+                achieved_qpos = np.r_[np.array([1.3, 0.75, 0.425]), self.qpos_postfix]
         elif self.random_mode:
             if np.random.uniform() < self.object_stacked_probability:
                 achieved_qpos = np.r_[

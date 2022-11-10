@@ -73,7 +73,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             target_in_air_probability=0.5,
             object_stacked_probability=0.5,
             hrl_mode=True,
-            # random_mode=True,
+            random_mode=True,
             stack_mode=True,
         )
         utils.EzPickle.__init__(self, reward_type=reward_type)
@@ -86,13 +86,22 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         else:
             raise NotImplementedError
 
+    def compute_valid_height(self) -> float:
+        simil_flag = self.compute_vector_simil() > self.finished_count + 1 - self.object_size
+        assert simil_flag
+        valid_height = -np.inf
+        for name in self.object_name_list:
+            object_height = self.get_xpos(name).copy()[2]
+            valid_height = max(valid_height, object_height)
+        return valid_height
+
     def compute_height_flag(self) -> bool:
         simil_flag = self.compute_vector_simil() > self.finished_count + 1 - self.object_size
-        prev_achieved_xpos = self.get_xpos(self.achieved_name_indicate).copy()
         removal_height = self.removal_goal_height[self.finished_count]
         height_flag = False
         if simil_flag:
-            height_flag = abs(removal_height - prev_achieved_xpos[2]) <= self.distance_threshold
+            valid_height = self.compute_valid_height()
+            height_flag = abs(valid_height - removal_height) <= self.distance_threshold
 
         return height_flag
 
