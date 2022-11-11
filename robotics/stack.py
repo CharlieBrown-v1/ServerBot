@@ -7,7 +7,6 @@ from stable_baselines3 import HybridPPO
 
 epsilon = 1e-3
 
-test_mode = False
 desk_x = 0
 desk_y = 1
 desk_z = 2
@@ -71,6 +70,7 @@ class StackEnv(gym.Env):
         self.table_end_xyz = np.r_[table_end_xy, table_end_z]
 
         self.training_mode = True
+        self.demo_mode = False
 
         self.success_reward = 1
         self.fail_reward = -1
@@ -80,6 +80,8 @@ class StackEnv(gym.Env):
     def set_mode(self, name: str, mode: bool):
         if name == 'training':
             self.training_mode = mode
+        elif name == 'demo':
+            self.demo_mode = mode
         else:
             raise NotImplementedError
 
@@ -108,7 +110,7 @@ class StackEnv(gym.Env):
         else:
             planning_action = self.action_mapping(action.copy())
 
-        if test_mode:
+        if self.demo_mode:
             achieved_xpos = self.model.env.get_xpos(self.model.object_generator.global_achieved_name).copy()
             object_idx = min(self.model.finished_count, len(self.model.object_name_list) - 1 - 1)
             obstacle_name = f'obstacle_object_{1 - object_idx}'
