@@ -15,8 +15,7 @@ pos_x = 3
 pos_y = 4
 pos_z = 5
 
-full_action_list = [desk_x, desk_y, desk_z, pos_x, pos_y, pos_z]
-action_list = [desk_x, desk_y, desk_z, pos_x, pos_y]
+action_list = [desk_x, desk_y, desk_z, pos_x, pos_y, pos_z]
 
 
 def vector_distance(goal_a: np.ndarray, goal_b: np.ndarray):
@@ -62,11 +61,12 @@ class StackEnv(gym.Env):
         table_xy = np.array([1.3, 0.75])
         table_size = np.array([0.25, 0.35])
 
-        table_start_xy = table_xy - table_size + size_inf
-        table_end_xy = table_xy + table_size - size_inf
+        table_start_xy = table_xy - table_size - size_inf / 2
+        table_end_xy = table_xy + table_size + size_inf / 2
         table_start_z = self.model.height_offset
-        table_end_z = self.model.height_offset + 0.3
+        table_end_z = self.model.height_offset + 0.15
 
+        self.table_center_xpos = np.r_[table_xy, table_start_z]
         self.table_start_xyz = np.r_[table_start_xy, table_start_z]
         self.table_end_xyz = np.r_[table_end_xy, table_end_z]
 
@@ -88,25 +88,14 @@ class StackEnv(gym.Env):
 
         return obs
 
-    def action_mapping_z(self, action_xy: np.ndarray) -> float:
-        same_xy_count = 0
-        for name in self.model.object_name_list:
-            xy = self.model.get_xpos(name=name).copy()[:2]
-            same_xy_count += vector_distance(action_xy, xy) < self.model.distance_threshold
-        table_height = self.table_start_xyz[2]
-
-        return table_height + same_xy_count * self.model.object_size
-
     def action_mapping(self, action: np.ndarray):
-        planning_action = np.zeros(len(full_action_list))
+        planning_action = np.zeros(len(action_list))
 
         # action for choosing location's x y
-        planning_action[:2] = (self.table_end_xyz[:2] - self.table_start_xyz[:2]) * action[:2] / 2 \
-                              + (self.table_start_xyz[:2] + self.table_end_xyz[:2]) / 2
-        # action for choosing location's z
-        planning_action[2] = self.action_mapping_z(action_xy=planning_action[:2].copy())
+        planning_action[:3] = (self.table_end_xyz - self.table_start_xyz) * action[:3] / 2 \
+                              + (self.table_start_xyz + self.table_end_xyz) / 2
         # action for choosing obstacle's position
-        planning_action[3:] = (self.table_end_xyz - self.table_start_xyz) * action[2:] / 2 \
+        planning_action[3:] = (self.table_end_xyz - self.table_start_xyz) * action[3:] / 2 \
                               + (self.table_start_xyz + self.table_end_xyz) / 2
         return planning_action
 
