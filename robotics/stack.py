@@ -90,7 +90,7 @@ class StackEnv(gym.Env):
 
         return obs
 
-    def action_mapping(self, action: np.ndarray):
+    def action2xpos(self, action: np.ndarray):
         planning_action = np.zeros(len(action_list))
 
         # action for choosing location's x y
@@ -101,6 +101,18 @@ class StackEnv(gym.Env):
                               + (self.table_start_xyz + self.table_end_xyz) / 2
         return planning_action
 
+    def xpos2action(self, xpos: np.ndarray):
+        action = np.zeros(len(action_list))
+
+        # xpos for choosing location's x y
+        action[:3] = (2 * xpos[:3] - (self.table_start_xyz + self.table_end_xyz))\
+                     / (self.table_end_xyz - self.table_start_xyz)
+        # xpos for choosing obstacle's position
+        action[3:] = (2 * xpos[3:] - (self.table_start_xyz + self.table_end_xyz)) \
+                     / (self.table_end_xyz - self.table_start_xyz)
+
+        return action
+
     def step(self, action: np.ndarray):
         assert self.agent is not None, "You must load agent before step!"
 
@@ -108,8 +120,9 @@ class StackEnv(gym.Env):
             planning_action = np.r_[np.array([0, 0, 0]),
                                     self.model.get_xpos(name=self.model.object_generator.global_achieved_name).copy()]
         else:
-            planning_action = self.action_mapping(action.copy())
+            planning_action = self.action2xpos(action.copy())
 
+        info = {}
         if self.demo_mode:
             achieved_xpos = self.model.env.get_xpos(self.model.object_generator.global_achieved_name).copy()
             object_idx = min(self.model.finished_count, len(self.model.object_name_list) - 1 - 1)
@@ -118,6 +131,8 @@ class StackEnv(gym.Env):
             target_removal_xpos = self.model.env.get_xpos(self.model.object_generator.global_achieved_name).copy()
             target_removal_xpos[2] = target_removal_height
             planning_action = np.r_[target_removal_xpos.copy(), self.model.env.get_xpos(obstacle_name).copy()]
+            action = self.xpos2action(planning_action.copy())
+            info['demo_act'] = action
 
         achieved_name, removal_goal, min_dist = self.model.macro_step_setup(planning_action)
         if not self.training_mode:
@@ -126,7 +141,8 @@ class StackEnv(gym.Env):
             self.model.sim.forward()
 
         obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal)
-        obs, reward, done, info = self.model.macro_step(agent=self.agent, obs=obs)
+        obs, reward, done, lower_info = self.model.macro_step(agent=self.agent, obs=obs)
+        info.update(lower_info)
 
         obs = self.model.get_obs(achieved_name=None, goal=None)
 

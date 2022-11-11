@@ -64,7 +64,7 @@ class CollectEnv(gym.Env):
         obs = self.model.reset()
         return obs
 
-    def action_mapping(self, action: np.ndarray):
+    def action2xpos(self, action: np.ndarray):
         planning_action = action.copy()
 
         # action for choosing desk's position
@@ -82,7 +82,7 @@ class CollectEnv(gym.Env):
             planning_action = np.r_[np.array([0, 0]),
                                     self.get_xpos(name=self.model.object_generator.global_achieved_name).copy()]
         else:
-            planning_action = self.action_mapping(action.copy())
+            planning_action = self.action2xpos(action.copy())
 
         achieved_name, removal_goal, min_dist = self.model.macro_step_setup(planning_action)
         if not self.training_mode:

@@ -128,7 +128,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.removal_goal_indicate = None
         self.removal_xpos_indicate = None
 
-    def action_mapping(self, action: np.ndarray) -> np.ndarray:
+    def action2xpos(self, action: np.ndarray) -> np.ndarray:
         planning_action = action.copy()
 
         # action for choosing desk's position
@@ -158,12 +158,12 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             new_removal_goal = self.init_xpos + np.array([0, 0, self.finished_count * self.object_size])
         elif self.task == 'dismantle':
             new_removal_action = self.obs2goal(obs=obs)
-            macro_action = self.action_mapping(action=new_removal_action)
+            macro_action = self.action2xpos(action=new_removal_action)
             new_removal_goal = macro_action[:3]
             new_removal_goal[2] = self.table_start_xyz[2]
         elif self.task == 'random':
             new_removal_action = self.obs2goal(obs=obs)
-            macro_action = self.action_mapping(action=new_removal_action)
+            macro_action = self.action2xpos(action=new_removal_action)
             new_removal_goal = macro_action[:3]
             new_removal_goal[2] = self.table_start_xyz[2]
             if self.finished_count == len(self.object_name_list) - 1:
@@ -337,7 +337,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         # global goal is useless
         obs = self._get_obs()
         global_action = self.obs2goal(obs=obs)
-        macro_action = self.action_mapping(action=global_action)
+        macro_action = self.action2xpos(action=global_action)
         init_xpos = macro_action[:3]
         init_xpos[2] = self.table_start_xyz[2]  # set the first object above desk exactly
         self.init_xpos = init_xpos.copy()
@@ -387,14 +387,14 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             achieved_xpos = self.get_xpos(new_achieved_name).copy()
         elif self.task == 'dismantle':
             removal_action = self.obs2goal(obs=obs)
-            macro_action = self.action_mapping(action=removal_action)
+            macro_action = self.action2xpos(action=removal_action)
             removal_goal = macro_action[:3]
             removal_goal[2] = self.table_start_xyz[2]
             new_achieved_name = self.get_dismantle_achieved_name(self.free_object_name_list)
             achieved_xpos = self.get_xpos(new_achieved_name).copy()
         elif self.task == 'random':
             removal_action = self.obs2goal(obs=obs)
-            macro_action = self.action_mapping(action=removal_action)
+            macro_action = self.action2xpos(action=removal_action)
             removal_goal = macro_action[:3]
             removal_goal[2] = self.table_start_xyz[2]
             new_achieved_name = np.random.choice(self.free_object_name_list)

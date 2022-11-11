@@ -78,7 +78,7 @@ class VPGEnv(gym.Env):
         obs = self.model.reset()
         return obs
 
-    def action_mapping(self, action):
+    def action2xpos(self, action):
         tmp_action = action
 
         action_mode = tmp_action // np.prod(action_shape_list[1:])
@@ -115,7 +115,7 @@ class VPGEnv(gym.Env):
     def step(self, action):
         assert self.agent is not None and self.push is not None, "You must load agent before step!"
 
-        planning_action = self.action_mapping(action)
+        planning_action = self.action2xpos(action)
 
         if planning_action[macro_action] == grasp:
             agent = self.agent
