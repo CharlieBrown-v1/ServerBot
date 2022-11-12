@@ -4,7 +4,6 @@ import numpy as np
 from gym import spaces
 from stable_baselines3 import HybridPPO
 
-
 epsilon = 1e-3
 
 desk_x = 0
@@ -40,19 +39,7 @@ class StackEnv(gym.Env):
             raise NotImplementedError
 
         obs = self.reset()
-        self.observation_space = spaces.Dict(
-            dict(
-                desired_goal=spaces.Box(
-                    -np.inf, np.inf, shape=obs["desired_goal"].shape, dtype="float32"
-                ),
-                achieved_goal=spaces.Box(
-                    -np.inf, np.inf, shape=obs["achieved_goal"].shape, dtype="float32"
-                ),
-                observation=spaces.Box(
-                    -np.inf, np.inf, shape=obs["observation"].shape, dtype="float32"
-                ),
-            )
-        )
+        self.observation_space = spaces.Box(-np.inf, np.inf, shape=obs.shape, dtype="float32")
         self.action_space = spaces.Box(-1.0, 1.0, shape=(len(action_list),), dtype="float32")
 
         size_inf = 0.05
@@ -85,10 +72,18 @@ class StackEnv(gym.Env):
         else:
             raise NotImplementedError
 
-    def reset(self):
-        obs = self.model.reset()
+    def obs_lower2upper(self, lower_obs: dict) -> np.ndarray:
+        # sorted ensure order: achieved_goal -> desired_goal -> observation
+        upper_obs_list = [sub_obs for key, sub_obs in sorted(lower_obs.items())]
+        upper_obs = np.concatenate(upper_obs_list)
 
-        return obs
+        return upper_obs
+
+    def reset(self) -> np.ndarray:
+        lower_obs = self.model.reset()
+        upper_obs = self.obs_lower2upper(lower_obs)
+
+        return upper_obs
 
     def action2xpos(self, action: np.ndarray):
         planning_action = np.zeros(len(action_list))
@@ -105,7 +100,7 @@ class StackEnv(gym.Env):
         action = np.zeros(len(action_list))
 
         # xpos for choosing location's x y
-        action[:3] = (2 * xpos[:3] - (self.table_start_xyz + self.table_end_xyz))\
+        action[:3] = (2 * xpos[:3] - (self.table_start_xyz + self.table_end_xyz)) \
                      / (self.table_end_xyz - self.table_start_xyz)
         # xpos for choosing obstacle's position
         action[3:] = (2 * xpos[3:] - (self.table_start_xyz + self.table_end_xyz)) \
@@ -140,14 +135,14 @@ class StackEnv(gym.Env):
         else:
             self.model.sim.forward()
 
-        obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal)
-        obs, reward, done, lower_info = self.model.macro_step(agent=self.agent, obs=obs)
+        lower_obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal)
+        lower_obs, reward, done, lower_info = self.model.macro_step(agent=self.agent, obs=lower_obs)
         info.update(lower_info)
 
-        obs = self.model.get_obs(achieved_name=None, goal=None)
-
+        lower_obs = self.model.get_obs(achieved_name=None, goal=None)
         info['is_success'] = self.model.is_stack_success()
 
+        obs = self.obs_lower2upper(lower_obs)
         reward = self.compute_reward(achieved_goal=None, desired_goal=None, info=info)
         done = info['is_fail'] or info['is_success']
 
