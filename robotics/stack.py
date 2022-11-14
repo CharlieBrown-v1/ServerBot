@@ -152,7 +152,7 @@ class StackEnv(gym.Env):
         if isinstance(info, dict):
             if info['is_fail']:
                 reward = self.fail_reward
-            elif info['is_success'] and info['is_removal_success']:
+            elif info['is_success']:
                 reward = self.success_reward
             else:
                 reward = info['lower_reward']
