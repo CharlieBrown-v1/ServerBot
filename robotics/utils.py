@@ -329,14 +329,18 @@ class ObjectGenerator:
         obstacle_xpos_list = []
 
         if self.stack_mode or self.collect_mode:
-            if self.collect_mode and self.random_mode:
-                obstacle_count = np.random.randint(1, 4 + 1)
-            else:
-                obstacle_count = self.obstacle_count
             if self.random_mode:
-                achieved_qpos = np.r_[np.random.uniform(self.desktop_lower_boundary, self.desktop_upper_boundary), self.qpos_postfix]
+                achieved_qpos = np.r_[np.random.uniform(self.desktop_lower_boundary, self.desktop_upper_boundary),
+                                      self.qpos_postfix]
+                if self.collect_mode:
+                    obstacle_count = np.random.randint(1, 4 + 1)
+                elif self.stack_mode:
+                    obstacle_count = np.random.randint(1, 2 + 1)
+                else:
+                    raise NotImplementedError
             else:
                 achieved_qpos = np.r_[np.array([1.3, 0.75, 0.425]), self.qpos_postfix]
+                obstacle_count = self.obstacle_count
         elif self.random_mode:
             if np.random.uniform() < self.object_stacked_probability:
                 achieved_qpos = np.r_[
@@ -397,7 +401,6 @@ class ObjectGenerator:
         # DIY
         delta_obstacle_qpos_list = self.delta_obstacle_qpos_list[: obstacle_count].copy()
 
-        # if not self.random_mode or self.stack_mode or self.collect_mode:
         if not self.random_mode:
             for delta_obstacle_qpos in delta_obstacle_qpos_list:
                 object_qpos_list.append(achieved_qpos.copy() + delta_obstacle_qpos)
