@@ -64,6 +64,12 @@
 			<site name="obstacle_object_1" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
 		</body>
 
+		<body name="obstacle_object_2" pos="20.0 21.0 0.05">
+			<joint name="obstacle_object_2:joint" type="free" damping="0.01" />
+			<geom size="0.025 0.025 0.025" type="box" condim="3" name="obstacle_object_2" margin="0.001" material="block_mat" mass="2" rgba="1 0.4 0.4 1"/>
+			<site name="obstacle_object_2" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere" />
+		</body>
+
 		</worldbody>
 
 	<actuator>

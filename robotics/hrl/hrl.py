@@ -116,7 +116,6 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
     def reset(self):
         self.task = np.random.choice(self.task_list)
-        self.task = 'random'
         self.free_object_name_list = []
         self.fixed_object_name_list = []
         obs = super(HrlEnv, self).reset()
