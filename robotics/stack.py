@@ -5,6 +5,7 @@ from gym import spaces
 from stable_baselines3 import HybridPPO
 
 epsilon = 1e-3
+cube_shape = [25, 35, 17]
 
 desk_x = 0
 desk_y = 1
@@ -74,8 +75,20 @@ class StackEnv(gym.Env):
 
     def obs_lower2upper(self, lower_obs: dict) -> np.ndarray:
         # sorted ensure order: achieved_goal -> desired_goal -> observation
-        upper_obs_list = [sub_obs for key, sub_obs in sorted(lower_obs.items())]
-        upper_obs = np.concatenate(upper_obs_list)
+        # upper_obs_list = [sub_obs for key, sub_obs in sorted(lower_obs.items())]
+        # upper_obs = np.concatenate(upper_obs_list)
+
+        air_value = self.model.item_dict['air']
+        goal_value = self.model.item_dict['goal']
+        object_value = self.model.item_dict['achieved_goal']
+        obstacle_value = self.model.item_dict['obstacle']
+        cube_obs = lower_obs['observation'][:np.prod(cube_shape)]
+        # remove goal info
+        cube_obs = np.where(cube_obs != goal_value, cube_obs, air_value)
+        # set object info = 1
+        cube_obs = np.where(cube_obs != object_value, cube_obs, obstacle_value)
+
+        upper_obs = cube_obs
 
         return upper_obs
 

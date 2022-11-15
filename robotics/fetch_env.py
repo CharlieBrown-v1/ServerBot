@@ -5,11 +5,6 @@ from gym.envs.robotics import rotations, robot_env, utils
 from gym.envs.robotics.utils import sample_after_removal
 
 epsilon = 1e-3
-
-# Used by cube space
-item_name = ['air', 'table', 'gripper_link', 'gripper_finger',
-             'goal', 'achieved_goal', 'obstacle']
-item_dict = dict(zip(item_name, np.linspace(0, 1, len(item_name))))
 table_xpos = np.array([1.3, 0.75, 0.2])
 table_size = np.array([0.25, 0.35, 0.2])
 gripper_finger_size = np.array([0.0135, 0.0070, 0.0385])
@@ -71,34 +66,6 @@ def _map_once(cube_obs: np.ndarray,
         = item_key
 
 
-def _verify_cube(cube_obs: np.ndarray,
-                 starting_point: np.ndarray,
-                 starting_point_idx: np.ndarray,
-                 verify_name: str,
-                 verify_xpos_start: np.ndarray,
-                 verify_xpos_end: np.ndarray,
-                 ):
-    starting_point_start = starting_point - (d / 2)
-    starting_point_end = starting_point + (d / 2)
-    x, y, z = np.where(cube_obs == item_dict[verify_name])
-    if x.size == 0 or y.size == 0 or z.size == 0:
-        return
-    x_starting_idx = starting_point_idx[0]
-    y_starting_idx = starting_point_idx[1]
-    z_starting_idx = starting_point_idx[2]
-    x_start, x_end = x.min() - x_starting_idx, x.max() - x_starting_idx
-    y_start, y_end = y.min() - y_starting_idx, y.max() - y_starting_idx
-    z_start, z_end = z.min() - z_starting_idx, z.max() - z_starting_idx
-    start_idx = np.array([x_start, y_start, z_start])
-    end_idx = np.array([x_end, y_end, z_end])
-    cube_xpos_start = starting_point_start + d * np.array([x_start, y_start, z_start])
-    cube_xpos_end = starting_point_end + d * np.array([x_end, y_end, z_end])
-    flag_0 = np.logical_or(cube_xpos_start <= verify_xpos_start, start_idx == 0 - starting_point_idx)
-    flag_1 = np.logical_or(cube_xpos_end >= verify_xpos_end, end_idx ==
-                           np.array([length_scale, width_scale, height_scale]) - 1 - starting_point_idx)
-    assert flag_0.all() and flag_1.all()
-
-
 class FetchEnv(robot_env.RobotEnv):
     """Superclass for all Fetch environments."""
 
@@ -148,6 +115,10 @@ class FetchEnv(robot_env.RobotEnv):
             initial_qpos (dict): a dictionary of joint names and values that define the initial configuration
             reward_type ('sparse' or 'dense'): the reward type, i.e. sparse or dense
         """
+        # Used by cube space
+        self.item_name = ['air', 'table', 'gripper_link', 'gripper_finger',
+                          'goal', 'achieved_goal', 'obstacle']
+        self.item_dict = dict(zip(self.item_name, np.linspace(0, 1, len(self.item_name))))
         self.gripper_extra_height = gripper_extra_height
         self.block_gripper = block_gripper
         self.has_object = has_object
@@ -306,6 +277,34 @@ class FetchEnv(robot_env.RobotEnv):
         utils.ctrl_set_action(self.sim, action)
         utils.mocap_set_action(self.sim, action)
 
+    def _verify_cube(self,
+                     cube_obs: np.ndarray,
+                     starting_point: np.ndarray,
+                     starting_point_idx: np.ndarray,
+                     verify_name: str,
+                     verify_xpos_start: np.ndarray,
+                     verify_xpos_end: np.ndarray,
+                     ):
+        starting_point_start = starting_point - (d / 2)
+        starting_point_end = starting_point + (d / 2)
+        x, y, z = np.where(cube_obs == self.item_dict[verify_name])
+        if x.size == 0 or y.size == 0 or z.size == 0:
+            return
+        x_starting_idx = starting_point_idx[0]
+        y_starting_idx = starting_point_idx[1]
+        z_starting_idx = starting_point_idx[2]
+        x_start, x_end = x.min() - x_starting_idx, x.max() - x_starting_idx
+        y_start, y_end = y.min() - y_starting_idx, y.max() - y_starting_idx
+        z_start, z_end = z.min() - z_starting_idx, z.max() - z_starting_idx
+        start_idx = np.array([x_start, y_start, z_start])
+        end_idx = np.array([x_end, y_end, z_end])
+        cube_xpos_start = starting_point_start + d * np.array([x_start, y_start, z_start])
+        cube_xpos_end = starting_point_end + d * np.array([x_end, y_end, z_end])
+        flag_0 = np.logical_or(cube_xpos_start <= verify_xpos_start, start_idx == 0 - starting_point_idx)
+        flag_1 = np.logical_or(cube_xpos_end >= verify_xpos_end, end_idx ==
+                               np.array([length_scale, width_scale, height_scale]) - 1 - starting_point_idx)
+        assert flag_0.all() and flag_1.all()
+
     def _map_object2cube(self, cube_obs: np.ndarray, starting_point: np.ndarray,
                          gripper_link_xpos_tuple: tuple,
                          gripper_finger_tuple_list: list,
@@ -320,27 +319,27 @@ class FetchEnv(robot_env.RobotEnv):
         compute_starting_point = starting_point - (d / 2)
 
         _map_once(cube_obs, compute_starting_point, starting_point_idx,
-                  table_xpos_start, table_xpos_end, item_dict['table'])
+                  table_xpos_start, table_xpos_end, self.item_dict['table'])
         if self.debug_mode:
-            _verify_cube(cube_obs, starting_point, starting_point_idx, 'table',
+            self._verify_cube(cube_obs, starting_point, starting_point_idx, 'table',
                          table_xpos_start, table_xpos_end)
 
         """
         gripper_link_xpos_start = gripper_link_xpos_tuple[1]
         gripper_link_xpos_end = gripper_link_xpos_tuple[2]
         _map_once(cube_obs, compute_starting_point, starting_point_idx,
-                  gripper_link_xpos_start, gripper_link_xpos_end, item_dict['gripper_link'])
+                  gripper_link_xpos_start, gripper_link_xpos_end, self.item_dict['gripper_link'])
         if self.debug_mode:
-            _verify_cube(cube_obs, starting_point, starting_point_idx, 'gripper_link',
+            self._verify_cube(cube_obs, starting_point, starting_point_idx, 'gripper_link',
                          gripper_link_xpos_start, gripper_link_xpos_end)
 
         for gripper_finger_xpos_tuple in gripper_finger_tuple_list:
             gripper_finger_xpos_start = gripper_finger_xpos_tuple[1]
             gripper_finger_xpos_end = gripper_finger_xpos_tuple[2]
             _map_once(cube_obs, compute_starting_point, starting_point_idx,
-                      gripper_finger_xpos_start, gripper_finger_xpos_end, item_dict['gripper_finger'])
+                      gripper_finger_xpos_start, gripper_finger_xpos_end, self.item_dict['gripper_finger'])
             if self.debug_mode:
-                _verify_cube(cube_obs, starting_point, starting_point_idx, 'gripper_finger',
+                self._verify_cube(cube_obs, starting_point, starting_point_idx, 'gripper_finger',
                              gripper_finger_xpos_start, gripper_finger_xpos_end)
 
         """
@@ -348,26 +347,26 @@ class FetchEnv(robot_env.RobotEnv):
         goal_xpos_start = goal_xpos_tuple[1]
         goal_xpos_end = goal_xpos_tuple[2]
         _map_once(cube_obs, compute_starting_point, starting_point_idx,
-                  goal_xpos_start, goal_xpos_end, item_dict['goal'])
+                  goal_xpos_start, goal_xpos_end, self.item_dict['goal'])
         if self.debug_mode:
-            _verify_cube(cube_obs, starting_point, starting_point_idx, 'goal', goal_xpos_start, goal_xpos_end)
+            self._verify_cube(cube_obs, starting_point, starting_point_idx, 'goal', goal_xpos_start, goal_xpos_end)
 
         # TODO Consider rotation angle
         goal_xpos = goal_xpos_tuple[0]
         goal_xpos_start = goal_xpos_tuple[1]
         goal_xpos_end = goal_xpos_tuple[2]
         _map_once(cube_obs, compute_starting_point, starting_point_idx,
-                  goal_xpos_start, goal_xpos_end, item_dict['goal'])
+                  goal_xpos_start, goal_xpos_end, self.item_dict['goal'])
         if self.debug_mode:
-            _verify_cube(cube_obs, starting_point, starting_point_idx, 'goal', goal_xpos_start, goal_xpos_end)
+            self._verify_cube(cube_obs, starting_point, starting_point_idx, 'goal', goal_xpos_start, goal_xpos_end)
 
         achieved_goal_xpos = achieved_goal_xpos_tuple[0]
         achieved_goal_xpos_start = achieved_goal_xpos_tuple[1]
         achieved_goal_xpos_end = achieved_goal_xpos_tuple[2]
         _map_once(cube_obs, compute_starting_point, starting_point_idx,
-                  achieved_goal_xpos_start, achieved_goal_xpos_end, item_dict['achieved_goal'])
+                  achieved_goal_xpos_start, achieved_goal_xpos_end, self.item_dict['achieved_goal'])
         if self.debug_mode:
-            _verify_cube(cube_obs, starting_point, starting_point_idx, 'achieved_goal', achieved_goal_xpos_start,
+            self._verify_cube(cube_obs, starting_point, starting_point_idx, 'achieved_goal', achieved_goal_xpos_start,
                          achieved_goal_xpos_end)
 
         for obstacle_xpos_tuple in obstacle_xpos_tuple_list:
@@ -375,9 +374,9 @@ class FetchEnv(robot_env.RobotEnv):
             obstacle_xpos_start = obstacle_xpos_tuple[1]
             obstacle_xpos_end = obstacle_xpos_tuple[2]
             _map_once(cube_obs, compute_starting_point, starting_point_idx,
-                      obstacle_xpos_start, obstacle_xpos_end, item_dict['obstacle'])
+                      obstacle_xpos_start, obstacle_xpos_end, self.item_dict['obstacle'])
             if self.debug_mode:
-                _verify_cube(cube_obs, starting_point, starting_point_idx, 'obstacle', obstacle_xpos_start,
+                self._verify_cube(cube_obs, starting_point, starting_point_idx, 'obstacle', obstacle_xpos_start,
                              obstacle_xpos_end)
 
     def _get_obs(self):
