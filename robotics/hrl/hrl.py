@@ -155,12 +155,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         obs = self._get_obs()
         if self.task == 'stack':
             new_removal_goal = self.init_xpos + np.array([0, 0, self.finished_count * self.object_size])
-        elif self.task == 'dismantle':
-            new_removal_action = self.obs2goal(obs=obs)
-            macro_action = self.action2xpos(action=new_removal_action)
-            new_removal_goal = macro_action[:3]
-            new_removal_goal[2] = self.table_start_xyz[2]
-        elif self.task == 'random':
+        elif self.task in ['dismantle', 'random']:
             new_removal_action = self.obs2goal(obs=obs)
             macro_action = self.action2xpos(action=new_removal_action)
             new_removal_goal = macro_action[:3]
