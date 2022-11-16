@@ -111,7 +111,9 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         return closest_height
 
-    def compute_highest_height(self) -> float:
+    def compute_highest_height(
+            self,
+    ) -> float:
         highest_name = self.find_highest_object(self.object_name_list.copy())
         highest_height = self.get_xpos(name=highest_name).copy()[2]
 
@@ -132,7 +134,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         height_flag = False
         if simil_flag:
             valid_height = self.compute_highest_height()
-            height_flag = abs(valid_height - removal_height) <= self.distance_threshold
+            height_flag = valid_height >= removal_height and (valid_height - removal_height) < self.distance_threshold
 
         return height_flag
 
@@ -159,6 +161,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
     def reset(self):
         lower_obs = super(StackHrlEnv, self).reset()
         upper_obs = self.obs_lower2upper(lower_obs=lower_obs.copy())
+        self.reset_indicate()
         self.finished_count = 0
         self.removal_goal_height = {self.finished_count: self.init_removal_height}
         self.target_removal_height = 0.425 + self.object_size * (len(self.object_name_list) - 1)
@@ -355,7 +358,8 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         is_success = self.finished_count >= len(self.object_name_list) - 1
 
         highest_height = self.compute_highest_height()
-        is_success = abs(highest_height - self.target_removal_height) < self.distance_threshold
+        is_success = highest_height >= self.target_removal_height\
+                     and highest_height - self.target_removal_height < self.distance_threshold
 
         return is_success
 

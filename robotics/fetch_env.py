@@ -690,7 +690,6 @@ class FetchEnv(robot_env.RobotEnv):
                 done = False
                 while not done:
                     self.sim.step()
-
                     curr_object_xpos_list = [self.get_xpos(object_name).copy() for object_name in
                                              self.object_name_list]
                     done = np.linalg.norm(

@@ -76,10 +76,6 @@ class StackEnv(gym.Env):
             raise NotImplementedError
 
     def obs_lower2upper(self, lower_obs: dict) -> np.ndarray:
-        # sorted ensure order: achieved_goal -> desired_goal -> observation
-        # upper_obs_list = [sub_obs for key, sub_obs in sorted(lower_obs.items())]
-        # upper_obs = np.concatenate(upper_obs_list)
-
         air_value = self.model.item_dict['air']
         goal_value = self.model.item_dict['goal']
         object_value = self.model.item_dict['achieved_goal']
@@ -90,7 +86,12 @@ class StackEnv(gym.Env):
         # set object info = 1
         cube_obs = np.where(cube_obs != object_value, cube_obs, obstacle_value)
 
-        upper_obs = cube_obs
+        lower_obs['observation'][:np.prod(cube_shape)] = cube_obs
+        del lower_obs['desired_goal']  # meaningless in stack task
+        # sorted ensure order: achieved_goal -> observation
+        sub_obs_list = [sub_obs for key, sub_obs in sorted(lower_obs.items())]
+
+        upper_obs = np.concatenate(sub_obs_list)
 
         return upper_obs
 
@@ -153,11 +154,14 @@ class StackEnv(gym.Env):
             self.model.sim.forward()
 
         lower_obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal)
+
         lower_obs, reward, done, lower_info = self.model.macro_step(agent=self.agent, obs=lower_obs)
         info.update(lower_info)
+        is_fail = info['is_fail']
+        is_success = self.model.is_stack_success()
+        info['is_success'] = not is_fail and is_success
 
         lower_obs = self.model.get_obs(achieved_name=None, goal=None)
-        info['is_success'] = self.model.is_stack_success()
 
         obs = self.obs_lower2upper(lower_obs)
         reward = self.compute_reward(achieved_goal=None, desired_goal=None, info=info)
