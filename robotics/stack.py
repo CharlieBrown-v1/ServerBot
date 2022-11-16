@@ -57,13 +57,15 @@ class StackEnv(gym.Env):
         self.table_start_xyz = np.r_[table_start_xy, table_start_z]
         self.table_end_xyz = np.r_[table_end_xy, table_end_z]
 
-        self.training_mode = True
-        self.demo_mode = False
-
         self.success_reward = 1
         self.fail_reward = -1
         self.step_finish_reward = 0.05
         self.time_reward = -0.1
+
+        self.training_mode = True
+        self.demo_mode = False
+
+        self.demo_obstacle_list = None
 
     def set_mode(self, name: str, mode: bool):
         if name == 'training':
@@ -95,6 +97,9 @@ class StackEnv(gym.Env):
     def reset(self) -> np.ndarray:
         lower_obs = self.model.reset()
         upper_obs = self.obs_lower2upper(lower_obs)
+
+        self.demo_obstacle_list = self.model.object_name_list.copy()
+        self.demo_obstacle_list.remove(self.model.object_generator.global_achieved_name)
 
         return upper_obs
 
@@ -132,9 +137,8 @@ class StackEnv(gym.Env):
 
         info = {}
         if self.demo_mode:
-            achieved_xpos = self.model.env.get_xpos(self.model.object_generator.global_achieved_name).copy()
-            object_idx = min(self.model.finished_count, len(self.model.object_name_list) - 1 - 1)
-            obstacle_name = f'obstacle_object_{1 - object_idx}'
+            assert self.model.finished_count < len(self.demo_obstacle_list)
+            obstacle_name = self.demo_obstacle_list[self.model.finished_count]
             target_removal_height = self.model.env.removal_goal_height[self.model.env.finished_count]
             target_removal_xpos = self.model.env.get_xpos(self.model.object_generator.global_achieved_name).copy()
             target_removal_xpos[2] = target_removal_height

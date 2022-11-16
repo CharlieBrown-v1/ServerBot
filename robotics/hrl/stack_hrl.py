@@ -78,6 +78,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             hrl_mode=True,
             random_mode=True,
             stack_mode=True,
+            train_upper_mode=True,
         )
         utils.EzPickle.__init__(self, reward_type=reward_type)
 

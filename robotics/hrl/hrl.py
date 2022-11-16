@@ -6,7 +6,7 @@ from gym import utils, spaces
 from typing import Tuple
 from gym.envs.robotics import fetch_env
 
-MODEL_XML_PATH = os.path.join("hrl", "stack_hrl.xml")
+MODEL_XML_PATH = os.path.join("hrl", "hrl.xml")
 
 epsilon = 1e-3
 desk_x = 0
@@ -79,7 +79,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             'stack',
             'dismantle',
             'random',
-        ]
+        ][:1]
 
         self.task = 'random'  # indicate current task
         self.init_xpos = None  # used by task != random
