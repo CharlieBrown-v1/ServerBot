@@ -333,7 +333,11 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         """
         hint_xpos = self.compute_goal_select_hint().copy()
         hint_diff = vector_distance(hint_xpos, goal)
-        hint_reward = 2 * self.object_size - hint_diff
+        # penalty low removal_goal
+        if goal[2] < hint_xpos[2]:
+            hint_reward = -self.hint_reward_sup
+        else:
+            hint_reward = 2 * self.object_size - hint_diff
         hint_reward = np.clip(hint_reward, -self.hint_reward_sup, self.hint_reward_sup)
 
         prev_highest_height = self.prev_highest_height
