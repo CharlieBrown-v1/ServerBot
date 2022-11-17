@@ -52,7 +52,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.stack_success_reward = 1
         self.valid_dist_sup = 0.24
         self.lower_reward_sup = 0.3
-        self.height_reward = self.lower_reward_sup / 2
+        self.hint_reward_sup = 0.1
 
         self.prev_vector_simil = None
         self.target_vector_simil_dict = None
@@ -128,6 +128,15 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                 highest_height = new_highest_height
         return highest_height
 
+    def compute_goal_select_hint(self) -> np.ndarray:
+        obstacle_name_list = self.object_name_list.copy()
+        obstacle_name_list.remove(self.achieved_name_indicate)
+        highest_obstacle = self.find_highest_object(obstacle_name_list)
+        highest_xpos = self.get_xpos(highest_obstacle).copy()
+        highest_xpos[2] += self.object_size  # this is the inf of good height, o.t. collision
+        
+        return highest_xpos.copy()
+
     def compute_height_flag(self) -> bool:
         simil_flag = self.compute_vector_simil() > self.finished_count + 1 - self.object_size
         removal_height = self.removal_goal_height[self.finished_count]
@@ -153,14 +162,8 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         return vector_simil
 
-    def obs_lower2upper(self, lower_obs: dict):
-        upper_obs = lower_obs.copy()
-
-        return upper_obs
-
     def reset(self):
         lower_obs = super(StackHrlEnv, self).reset()
-        upper_obs = self.obs_lower2upper(lower_obs=lower_obs.copy())
         self.reset_indicate()
         self.finished_count = 0
         self.removal_goal_height = {self.finished_count: self.init_removal_height}
@@ -181,7 +184,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                 self.prev_vector_simil += abs(np.inner(target_vector, curr_vector)) \
                                           / (np.linalg.norm(target_vector) * np.linalg.norm(curr_vector))
 
-        return upper_obs
+        return lower_obs
 
     def reset_indicate(self):
         self.achieved_name_indicate = None
@@ -259,7 +262,8 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         obs = self.get_obs(achieved_name=None, goal=None)
         achieved_goal = self.get_xpos(name=self.achieved_name_indicate).copy()
-        reward = self.stack_compute_reward(achieved_goal=achieved_goal, goal=None, info=info)
+        removal_goal = self.removal_goal_indicate.copy()
+        reward = self.stack_compute_reward(achieved_goal=achieved_goal, goal=removal_goal, info=info)
         done = False
         info['lower_reward'] = reward
 
@@ -316,9 +320,8 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self._state_init(new_goal.copy())
 
         lower_obs = self._get_obs()
-        upper_obs = self.obs_lower2upper(lower_obs=lower_obs.copy())
 
-        return upper_obs
+        return lower_obs
 
     def stack_compute_reward(self, achieved_goal: np.ndarray, goal: np.ndarray, info: dict) -> float:
         """
@@ -328,11 +331,10 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         info: info
         :return reward to upper
         """
-        curr_vector_simil = self.compute_vector_simil()
-        prev_vector_simil = self.prev_vector_simil
-        diff_reward = 0.5 * self.lower_reward_sup * (curr_vector_simil - prev_vector_simil) / (
-                    len(self.object_name_list) - 1)
-        self.prev_vector_simil = curr_vector_simil
+        hint_xpos = self.compute_goal_select_hint().copy()
+        hint_diff = vector_distance(hint_xpos, goal)
+        hint_reward = 2 * self.object_size - hint_diff
+        hint_reward = np.clip(hint_reward, -self.hint_reward_sup, self.hint_reward_sup)
 
         prev_highest_height = self.prev_highest_height
         curr_highest_height = self.compute_highest_height()
@@ -341,7 +343,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.prev_highest_height = curr_highest_height
 
         if self.reward_type == 'dense':
-            reward = height_reward
+            reward = height_reward + hint_reward
         else:
             raise NotImplementedError
 

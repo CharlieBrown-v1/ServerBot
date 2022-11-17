@@ -79,7 +79,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             'stack',
             'dismantle',
             'random',
-        ][:1]
+        ]
 
         self.task = 'random'  # indicate current task
         self.init_xpos = None  # used by task != random
