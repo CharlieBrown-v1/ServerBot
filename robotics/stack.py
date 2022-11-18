@@ -148,10 +148,10 @@ class StackEnv(gym.Env):
             info['demo_act'] = action
 
         achieved_name, removal_goal, min_dist = self.model.macro_step_setup(planning_action)
-        if not self.training_mode:
-            self.render()  # show which point and object agent has just selected
-        else:
-            self.model.sim.forward()
+        # if not self.training_mode:
+        #     self.render()  # show which point and object agent has just selected
+        # else:
+        #     self.model.sim.forward()
 
         lower_obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal)
 
