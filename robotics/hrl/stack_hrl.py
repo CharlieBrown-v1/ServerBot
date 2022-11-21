@@ -1,6 +1,5 @@
 import os
 import copy
-import time
 
 import numpy as np
 
@@ -54,7 +53,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.stack_success_reward = 1
         self.valid_dist_sup = 0.24
         self.lower_reward_sup = 0.3
-        self.hint_reward_sup = 1 / 16  # 16: max_episode_steps of upper
+        self.hint_reward_sup = 0.1
 
         self.prev_vector_simil = None
         self.target_vector_simil_dict = None
@@ -248,10 +247,10 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             if info['train_done']:
                 break
 
-        # if self.training_mode:
-        #     self.sim.forward()
-        # else:
-        #     self.render()
+        if self.training_mode:
+            self.sim.forward()
+        else:
+            self.render()
 
         obs = self.get_obs(achieved_name=None, goal=None)
         achieved_goal = self.get_xpos(name=self.achieved_name_indicate).copy()
