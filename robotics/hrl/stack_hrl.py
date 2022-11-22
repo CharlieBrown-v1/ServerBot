@@ -51,7 +51,6 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         self.xy_diff_threshold = 0.04
         self.stack_success_reward = 1
-        self.valid_dist_sup = 0.24
         self.lower_reward_sup = 0.3
         self.hint_reward_sup = 0.1
         self.object_count_sup = 3
