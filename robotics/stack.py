@@ -59,8 +59,8 @@ class StackEnv(gym.Env):
 
         self.success_reward = 1
         self.fail_reward = -1
-        self.step_finish_reward = 0.05
-        self.time_reward = -0.06
+        self.step_finish_reward = 0.075
+        self.time_reward = -0.05
 
         self.training_mode = True
         self.demo_mode = False
