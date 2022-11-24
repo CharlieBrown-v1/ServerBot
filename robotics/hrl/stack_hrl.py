@@ -50,8 +50,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.prev_highest_height = None
 
         self.xy_diff_threshold = 0.04
-        self.stack_success_reward = 1
-        self.valid_dist_sup = 0.24
+        self.deterministic_prob = 0.25
         self.lower_reward_sup = 0.3
         self.hint_reward_sup = 0.1
 
@@ -83,6 +82,9 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         )
         utils.EzPickle.__init__(self, reward_type=reward_type)
 
+        object_count_mean = (1 + self.object_generator.object_count_sup - 1) / 2
+        self.height_reward_scale = self.lower_reward_sup / (object_count_mean * self.object_size)
+
     def set_mode(self, name: str, mode: bool):
         if name == 'training':
             self.training_mode = mode
@@ -97,6 +99,17 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         for name in object_name_list:
             object_height = self.get_xpos(name).copy()[2]
             if object_height > highest_height:
+                highest_height = object_height
+                highest_name = name
+        assert highest_name is not None
+        return highest_name
+
+    def find_lowest_object(self, object_name_list: list):
+        highest_height = np.inf
+        highest_name = None
+        for name in object_name_list:
+            object_height = self.get_xpos(name).copy()[2]
+            if object_height < highest_height:
                 highest_height = object_height
                 highest_name = name
         assert highest_name is not None
@@ -156,6 +169,26 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
     def reset(self):
         lower_obs = super(StackHrlEnv, self).reset()
+
+        deterministic_count = 0
+        prob = np.random.uniform()
+        if prob < self.deterministic_prob \
+                and len(self.object_name_list) == self.object_generator.object_count_sup:
+            base_object_name = self.find_lowest_object(self.object_name_list)
+            base_xpos = self.get_xpos(base_object_name)
+            left_name_list = self.object_name_list.copy()
+            left_name_list.remove(base_object_name)
+            deterministic_name = np.random.choice(left_name_list)
+            deterministic_xpos = base_xpos.copy()
+            deterministic_xpos[2] += self.object_size
+            self.sim.data.set_joint_qpos(f'{deterministic_name}:joint',
+                                         np.r_[deterministic_xpos, self.object_generator.qpos_postfix])
+            deterministic_count += 1
+        self.sim.forward()
+        for _ in range(10):
+            self.sim.step()
+
+        self.finished_count = deterministic_count
         self.reset_indicate()
         self.finished_count = 0
         self.removal_goal_height = {self.finished_count: self.init_removal_height}
@@ -334,8 +367,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         prev_highest_height = self.prev_highest_height
         curr_highest_height = self.compute_highest_height()
-        reward_scale = self.lower_reward_sup / ((len(self.object_name_list) - 1) * self.object_size)
-        height_reward = reward_scale * (curr_highest_height - prev_highest_height)
+        height_reward = self.height_reward_scale * (curr_highest_height - prev_highest_height)
         self.prev_highest_height = curr_highest_height
 
         if self.reward_type == 'dense':

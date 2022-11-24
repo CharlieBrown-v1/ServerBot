@@ -205,6 +205,7 @@ class ObjectGenerator:
 
         self.object_name_list = []
         self.obstacle_name_list = []
+        self.object_count_sup = None
         self.init_total_obstacle(xml_path=xml_path)
         if not self.test_mode:
             object_remove_name_list = []
@@ -276,6 +277,7 @@ class ObjectGenerator:
         self.reset_scenario_list(self.test_scenario_start_idx, self.test_scenario_end_idx)
 
     def init_total_obstacle(self, xml_path='hrl/hrl.xml'):
+        self.object_count_sup = 0
         fullpath = get_full_path(xml_path)
         tree = ET.parse(fullpath)
         worldbody = tree.find('./worldbody')
@@ -285,6 +287,7 @@ class ObjectGenerator:
             if body_name.find('object') != -1:
                 object_name = body_name
                 self.object_name_list.append(object_name)
+                self.object_count_sup += 1
             if body_name.find('obstacle') != -1:
                 obstacle_name = body_name
                 self.obstacle_name_list.append(obstacle_name)
