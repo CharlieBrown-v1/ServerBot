@@ -49,6 +49,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.target_removal_height = None
         self.prev_highest_height = None
 
+        self.xy_diff_threshold = 0.04
         self.stack_success_reward = 1
         self.valid_dist_sup = 0.24
         self.lower_reward_sup = 0.3
@@ -106,7 +107,8 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         for object_name in self.object_name_list:
             if object_name != self.achieved_name_indicate:
                 object_xpos = self.get_xpos(name=object_name).copy()
-                if vector_distance(object_xpos[:2], target_xpos[:2]) < self.distance_threshold:
+                xy_diff = vector_distance(object_xpos[:2], target_xpos[:2])
+                if xy_diff < self.xy_diff_threshold:
                     closest_height = max(closest_height, object_xpos[2])
 
         return closest_height
@@ -136,16 +138,6 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         highest_xpos[2] += self.object_size  # this is the inf of good height, o.t. collision
         
         return highest_xpos.copy()
-
-    def compute_height_flag(self) -> bool:
-        simil_flag = self.compute_vector_simil() > self.finished_count + 1 - self.object_size
-        removal_height = self.removal_goal_height[self.finished_count]
-        height_flag = False
-        if simil_flag:
-            valid_height = self.compute_highest_height()
-            height_flag = valid_height >= removal_height and (valid_height - removal_height) < self.distance_threshold
-
-        return height_flag
 
     def compute_vector_simil(self) -> float:
         vector_simil = 0.0
@@ -283,7 +275,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             curr_xpos = self.get_xpos(name=name).copy()
             delta_xpos = vector_distance(init_xpos, curr_xpos)
 
-            if delta_xpos > 0.05:
+            if delta_xpos > self.object_size:
                 move_count += 1
 
             if curr_xpos[2] <= 0.4 - 0.01:
@@ -355,7 +347,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
     def is_stack_success(self):
         simil_flag = self.compute_vector_simil() > self.finished_count + 1 - self.object_size
-        height_flag = self.compute_height_flag()
+        height_flag = self.compute_highest_height() - self.prev_highest_height >= self.object_size - epsilon
         finished_flag = simil_flag and height_flag
         self.finished_count += finished_flag
         if finished_flag:
@@ -390,10 +382,11 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         removal_target_site_id = self.sim.model.site_name2id("removal_target")
 
         if self.removal_goal_indicate is not None:
-            self.sim.model.site_pos[removal_target_site_id] = self.removal_goal_indicate - sites_offset[
-                removal_target_site_id]
+            self.sim.model.site_pos[removal_target_site_id]\
+                = self.removal_goal_indicate - sites_offset[removal_target_site_id]
         elif self.removal_goal is not None:
-            self.sim.model.site_pos[removal_target_site_id] = self.removal_goal - sites_offset[removal_target_site_id]
+            self.sim.model.site_pos[removal_target_site_id]\
+                = self.removal_goal - sites_offset[removal_target_site_id]
         else:
             self.sim.model.site_pos[removal_target_site_id] = np.array([20, 20, 0.5])
 
