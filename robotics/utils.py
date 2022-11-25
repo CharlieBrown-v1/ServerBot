@@ -339,6 +339,7 @@ class ObjectGenerator:
                     obstacle_count = np.random.randint(1, 4 + 1)
                 elif self.stack_mode:
                     obstacle_count = np.random.randint(1, 2 + int(not self.train_upper_mode) + 1)
+                    # obstacle_count = 2
                 else:
                     raise NotImplementedError
             else:

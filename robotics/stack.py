@@ -67,6 +67,7 @@ class StackEnv(gym.Env):
         self.demo_mode = False
 
         self.demo_obstacle_list = None
+        self.demo_count = None
 
     def set_mode(self, name: str, mode: bool):
         if name == 'training':
@@ -100,8 +101,9 @@ class StackEnv(gym.Env):
         lower_obs = self.model.reset()
         upper_obs = self.obs_lower2upper(lower_obs)
 
-        self.demo_obstacle_list = self.model.object_name_list.copy()
-        self.demo_obstacle_list.remove(self.model.object_generator.global_achieved_name)
+        self.demo_obstacle_list = list(set(self.model.object_name_list) - set(self.model.deterministic_list))
+        assert len(self.demo_obstacle_list) > 0
+        self.demo_count = 0
 
         return upper_obs
 
@@ -139,14 +141,15 @@ class StackEnv(gym.Env):
 
         info = {}
         if self.demo_mode:
-            assert self.model.finished_count < len(self.demo_obstacle_list)
-            obstacle_name = self.demo_obstacle_list[self.model.finished_count]
-            target_removal_height = self.model.env.removal_goal_height[self.model.env.finished_count]
-            target_removal_xpos = self.model.env.get_xpos(self.model.object_generator.global_achieved_name).copy()
+            obstacle_name = self.demo_obstacle_list[self.demo_count % len(self.demo_obstacle_list)]
+            target_removal_height = self.model.compute_highest_height() + self.model.object_size
+            target_removal_name = np.random.choice(self.model.deterministic_list)
+            target_removal_xpos = self.model.get_xpos(target_removal_name).copy()
             target_removal_xpos[2] = target_removal_height
             planning_action = np.r_[target_removal_xpos.copy(), self.model.env.get_xpos(obstacle_name).copy()]
             action = self.xpos2action(planning_action.copy())
             info['demo_act'] = action
+            self.demo_count = (self.demo_count + 1) % len(self.demo_obstacle_list)
 
         achieved_name, removal_goal, min_dist = self.model.macro_step_setup(planning_action)
         if not self.training_mode:

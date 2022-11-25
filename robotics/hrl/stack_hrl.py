@@ -49,14 +49,13 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.target_removal_height = None
         self.prev_highest_height = None
 
+        self.stack_theta = 0.03
         self.xy_diff_threshold = 0.04
         self.deterministic_prob = 0.25
         self.lower_reward_sup = 0.3
         self.hint_reward_sup = 0.1
 
-        self.prev_vector_simil = None
-        self.target_vector_simil_dict = None
-        self.finished_count = None
+        self.deterministic_list = None
 
         fetch_env.FetchEnv.__init__(
             self,
@@ -69,7 +68,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             target_offset=0.0,
             obj_range=0.15,
             target_range=0.15,
-            distance_threshold=0.02,
+            distance_threshold=0.015,
             initial_qpos=initial_qpos,
             reward_type=reward_type,
             single_count_sup=7,
@@ -98,7 +97,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         highest_name = None
         for name in object_name_list:
             object_height = self.get_xpos(name).copy()[2]
-            if object_height > highest_height:
+            if object_height > highest_height + epsilon:
                 highest_height = object_height
                 highest_name = name
         assert highest_name is not None
@@ -135,7 +134,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         if highest_name == self.achieved_name_indicate:
             target_xpos = self.get_xpos(highest_name).copy()
             closest_height = self.compute_closest_height(target_xpos)
-            if abs(highest_height - closest_height) >= self.object_size + self.distance_threshold:
+            if abs(highest_height - closest_height) >= self.object_size + self.stack_theta:
                 obstacle_name_list = self.object_name_list.copy()
                 obstacle_name_list.remove(self.achieved_name_indicate)
                 new_highest_name = self.find_highest_object(obstacle_name_list)
@@ -152,29 +151,14 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         
         return highest_xpos.copy()
 
-    def compute_vector_simil(self) -> float:
-        vector_simil = 0.0
-        achieved_xpos = self.get_xpos(self.object_generator.global_achieved_name).copy()
-        sorted_object_name_list = list(sorted(self.object_name_list))
-        for idx in range(len(sorted_object_name_list)):
-            object_name = sorted_object_name_list[idx]
-            if object_name != self.object_generator.global_achieved_name:
-                object_xpos = self.get_xpos(object_name).copy()
-                target_vector = self.target_vector_simil_dict[object_name].copy()
-                curr_vector = object_xpos - achieved_xpos
-                vector_simil += abs(np.inner(target_vector, curr_vector)) / (
-                            np.linalg.norm(target_vector) * np.linalg.norm(curr_vector))
-
-        return vector_simil
-
     def reset(self):
         lower_obs = super(StackHrlEnv, self).reset()
 
-        deterministic_count = 0
         prob = np.random.uniform()
+        base_object_name = self.find_lowest_object(self.object_name_list)
+        self.deterministic_list = [base_object_name]
         if prob < self.deterministic_prob \
                 and len(self.object_name_list) == self.object_generator.object_count_sup:
-            base_object_name = self.find_lowest_object(self.object_name_list)
             base_xpos = self.get_xpos(base_object_name)
             left_name_list = self.object_name_list.copy()
             left_name_list.remove(base_object_name)
@@ -183,30 +167,14 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             deterministic_xpos[2] += self.object_size
             self.sim.data.set_joint_qpos(f'{deterministic_name}:joint',
                                          np.r_[deterministic_xpos, self.object_generator.qpos_postfix])
-            deterministic_count += 1
+            self.deterministic_list.append(deterministic_name)
         self.sim.forward()
         for _ in range(10):
             self.sim.step()
 
-        self.finished_count = deterministic_count
         self.reset_indicate()
-        self.removal_goal_height = {self.finished_count: self.init_removal_height}
         self.target_removal_height = 0.425 + self.object_size * (len(self.object_name_list) - 1)
         self.prev_highest_height = self.compute_highest_height()
-
-        self.prev_vector_simil = 0
-        self.target_vector_simil_dict = {}
-        achieved_xpos = self.get_xpos(self.object_generator.global_achieved_name).copy()
-        sorted_object_name_list = list(sorted(self.object_name_list))
-        for idx in range(len(sorted_object_name_list)):
-            object_name = sorted_object_name_list[idx]
-            if object_name != self.object_generator.global_achieved_name:
-                object_xpos = self.get_xpos(object_name).copy()
-                target_vector = np.array([0, 0, self.object_size * (idx + 1)])
-                curr_vector = object_xpos - achieved_xpos
-                self.target_vector_simil_dict[object_name] = target_vector.copy()
-                self.prev_vector_simil += abs(np.inner(target_vector, curr_vector)) \
-                                          / (np.linalg.norm(target_vector) * np.linalg.norm(curr_vector))
 
         return lower_obs
 
@@ -357,11 +325,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         """
         hint_xpos = self.compute_goal_select_hint().copy()
         hint_diff = vector_distance(hint_xpos, goal)
-        # penalty low removal_goal
-        if goal[2] < hint_xpos[2]:
-            hint_reward = -self.hint_reward_sup
-        else:
-            hint_reward = 2 * self.object_size - hint_diff
+        hint_reward = self.hint_reward_sup - hint_diff
         hint_reward = np.clip(hint_reward, -self.hint_reward_sup, self.hint_reward_sup)
 
         prev_highest_height = self.prev_highest_height
@@ -377,17 +341,12 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         return min(reward, self.lower_reward_sup)
 
     def is_stack_success(self):
-        simil_flag = self.compute_vector_simil() > self.finished_count + 1 - self.object_size
-        height_flag = self.compute_highest_height() - self.prev_highest_height >= self.object_size - epsilon
-        finished_flag = simil_flag and height_flag
-        self.finished_count += finished_flag
-        if finished_flag:
-            new_removal_height = self.init_removal_height + self.finished_count * self.object_size
-            self.removal_goal_height[self.finished_count] = new_removal_height
-        is_success = self.finished_count >= len(self.object_name_list) - 1
-
         highest_height = self.compute_highest_height()
-        is_success = abs(highest_height - self.target_removal_height) < self.distance_threshold
+        lower_flag = self.target_removal_height - highest_height < self.distance_threshold
+        higher_flag = highest_height >= self.target_removal_height
+        is_success = lower_flag or higher_flag
+
+        print(f'highest_h: {highest_height}')
 
         return is_success
 
