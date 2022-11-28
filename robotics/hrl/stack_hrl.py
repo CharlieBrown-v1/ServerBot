@@ -48,12 +48,13 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         self.target_removal_height = None
         self.prev_highest_height = None
+        self.hint_xpos = None
+        self.clutter_list = None
 
         self.stack_theta = 0.03
         self.xy_diff_threshold = 0.04
         self.deterministic_prob = 0.25
         self.lower_reward_sup = 0.3
-        self.hint_reward_sup = 0.1
 
         self.deterministic_list = None
 
@@ -89,6 +90,8 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             self.training_mode = mode
         elif name == 'test':
             self.test_mode = mode
+        elif name == 'debug':
+            self.debug_mode = mode
         else:
             raise NotImplementedError
 
@@ -148,8 +151,36 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         highest_obstacle = self.find_highest_object(obstacle_name_list)
         highest_xpos = self.get_xpos(highest_obstacle).copy()
         highest_xpos[2] += self.object_size  # this is the inf of good height, o.t. collision
-        
+
+        self.hint_xpos = highest_xpos.copy()
+
         return highest_xpos.copy()
+
+    def find_stack_clutter_given_base(self, base_name: str) -> list:
+        stack_clutter = [base_name]
+        base_xpos = self.get_xpos(base_name).copy()
+        # TODO: what if 物品个数发生改变？
+        other_object_name_list = self.object_name_list.copy()
+        other_object_name_list.remove(base_name)
+        for object_name in other_object_name_list:
+            object_xpos = self.get_xpos(object_name).copy()
+            xy_flag = vector_distance(base_xpos[:2], object_xpos[:2]) < self.xy_diff_threshold
+            # 只考虑以base为底的堆叠场景
+            z_flag = object_xpos[2] - base_xpos[2] < self.object_size + self.distance_threshold
+            if xy_flag and z_flag:
+                stack_clutter.append(object_name)
+        return stack_clutter
+
+    def find_stack_clutter(self) -> list:
+        stack_base_dict = {}
+        for base_name in self.object_name_list:
+            stack_clutter = self.find_stack_clutter_given_base(base_name)
+            assert len(stack_clutter) in range(1, len(self.object_name_list) + 1)
+            stack_base_dict[base_name] = stack_clutter.copy()
+
+        sorted_stack_clutter_list = list(sorted(stack_base_dict.values(), key=lambda x: len(x), reverse=True))
+        self.clutter_list = sorted_stack_clutter_list[0].copy()
+        return sorted_stack_clutter_list[0]
 
     def reset(self):
         lower_obs = super(StackHrlEnv, self).reset()
@@ -323,18 +354,13 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         info: info
         :return reward to upper
         """
-        hint_xpos = self.compute_goal_select_hint().copy()
-        hint_diff = vector_distance(hint_xpos, goal)
-        hint_reward = self.hint_reward_sup - hint_diff
-        hint_reward = np.clip(hint_reward, -self.hint_reward_sup, self.hint_reward_sup)
-
         prev_highest_height = self.prev_highest_height
         curr_highest_height = self.compute_highest_height()
         height_reward = self.height_reward_scale * (curr_highest_height - prev_highest_height)
         self.prev_highest_height = curr_highest_height
 
         if self.reward_type == 'dense':
-            reward = height_reward + hint_reward
+            reward = height_reward
         else:
             raise NotImplementedError
 
@@ -346,7 +372,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         higher_flag = highest_height >= self.target_removal_height
         is_success = lower_flag or higher_flag
 
-        print(f'highest_h: {highest_height}')
+        # print(f'highest_h: {highest_height}')
 
         return is_success
 
@@ -368,6 +394,11 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         # Visualize target.
         sites_offset = (self.sim.data.site_xpos - self.sim.model.site_pos).copy()
         removal_target_site_id = self.sim.model.site_name2id("removal_target")
+        
+        # helping debugging
+        hint_site_id = self.sim.model.site_name2id("hint")
+        clutter_site_id = self.sim.model.site_name2id("clutter")
+        height_site_id = self.sim.model.site_name2id("height")
 
         if self.removal_goal_indicate is not None:
             self.sim.model.site_pos[removal_target_site_id]\
@@ -377,5 +408,22 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                 = self.removal_goal - sites_offset[removal_target_site_id]
         else:
             self.sim.model.site_pos[removal_target_site_id] = np.array([20, 20, 0.5])
+
+        if self.debug_mode:
+            if self.hint_xpos is not None:
+                self.sim.model.site_pos[hint_site_id] = self.hint_xpos - sites_offset[hint_site_id]
+            else:
+                self.sim.model.site_pos[hint_site_id] = np.array([32, 32, 0])
+            if self.clutter_list is not None and len(self.clutter_list) > 1:
+                clutter_xpos_list = [self.get_xpos(name) for name in self.clutter_list]
+                clutter_center_xpos = np.mean(clutter_xpos_list, axis=0)
+                self.sim.model.site_pos[clutter_site_id] = clutter_center_xpos - sites_offset[clutter_site_id]
+            else:
+                self.sim.model.site_pos[clutter_site_id] = np.array([32, 32, 0.1])
+            if self.prev_highest_height is not None:
+                height_xpos = np.array([1.3, 0.75, self.prev_highest_height])
+                self.sim.model.site_pos[height_site_id] = height_xpos - sites_offset[height_site_id]
+            else:
+                self.sim.model.site_pos[height_site_id] = np.array([32, 32, 0.2])
 
         self.sim.forward()

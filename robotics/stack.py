@@ -61,7 +61,8 @@ class StackEnv(gym.Env):
         self.fail_reward = -1
         self.step_finish_reward = 0.075
         self.time_reward = -0.05
-        self.hint_reward = 0.05
+        self.achieved_hint_reward = -0.05
+        self.removal_hint_reward_sup = 0.1
 
         self.training_mode = True
         self.demo_mode = False
@@ -160,6 +161,7 @@ class StackEnv(gym.Env):
         lower_obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal)
 
         info['achieved_hint_reward'] = self.compute_achieved_hint_reward(achieved_name=achieved_name)
+        info['removal_hint_reward'] = self.compute_removal_hint_reward(removal_goal=removal_goal)
         lower_obs, reward, done, lower_info = self.model.macro_step(agent=self.agent, obs=lower_obs)
         info.update(lower_info)
         is_fail = info['is_fail']
@@ -174,39 +176,20 @@ class StackEnv(gym.Env):
 
         return obs, reward, done, info
 
-    def find_stack_clutter_given_base(self, base_name: str) -> list:
-        stack_clutter = [base_name]
-        base_xpos = self.model.get_xpos(base_name).copy()
-        # TODO: what if 物品个数发生改变？
-        other_object_name_list = self.model.object_name_list.copy()
-        other_object_name_list.remove(base_name)
-        for object_name in other_object_name_list:
-            object_xpos = self.model.get_xpos(object_name).copy()
-            xy_flag = vector_distance(base_xpos[:2], object_xpos[:2]) < self.model.xy_diff_threshold
-            # 只考虑以base为底的堆叠场景
-            z_flag = object_xpos[2] - base_xpos[2] < self.model.object_size + self.model.distance_threshold
-            if xy_flag and z_flag:
-                stack_clutter.append(object_name)
-        return stack_clutter
-
-    def find_stack_clutter(self) -> list:
-        stack_base_dict = {}
-        for base_name in self.model.object_name_list:
-            stack_clutter = self.find_stack_clutter_given_base(base_name)
-            assert len(stack_clutter) in range(1, len(self.model.object_name_list) + 1)
-            stack_base_dict[base_name] = stack_clutter.copy()
-
-        sorted_stack_clutter_list = list(sorted(stack_base_dict.values(), key=lambda x: len(x), reverse=True))
-        return sorted_stack_clutter_list[0]
-
     def compute_achieved_hint_reward(self, achieved_name: str) -> float:
         hint_reward = 0
-        stack_clutter = self.find_stack_clutter()
+        stack_clutter = self.model.find_stack_clutter()
         if len(stack_clutter) > 1:
             if achieved_name in stack_clutter:
-                hint_reward += -self.hint_reward
-            else:
-                hint_reward += self.hint_reward
+                hint_reward += self.achieved_hint_reward
+        return hint_reward
+    
+    def compute_removal_hint_reward(self, removal_goal: np.ndarray) -> float:
+        hint_xpos = self.model.compute_goal_select_hint().copy()
+        hint_diff = vector_distance(hint_xpos, removal_goal)
+        hint_reward = self.removal_hint_reward_sup - hint_diff
+        hint_reward = np.clip(hint_reward, -self.removal_hint_reward_sup, self.removal_hint_reward_sup).item()
+
         return hint_reward
 
     def compute_reward(self, achieved_goal, desired_goal, info):
@@ -216,7 +199,7 @@ class StackEnv(gym.Env):
             elif info['is_success']:
                 reward = self.success_reward
             else:
-                reward = info['lower_reward'] + info['achieved_hint_reward']
+                reward = info['lower_reward'] + info['achieved_hint_reward'] + info['removal_hint_reward']
                 # if info['is_removal_success']:
                 #     reward += self.step_finish_reward
             return reward
