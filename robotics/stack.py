@@ -58,7 +58,7 @@ class StackEnv(gym.Env):
         self.table_end_xyz = np.r_[table_end_xy, table_end_z]
 
         self.success_reward = 1
-        self.fail_reward = -1
+        self.fail_reward = -0.32
         self.step_finish_reward = 0.075
         self.time_reward = -0.05
         self.achieved_hint_reward = -0.05
@@ -168,7 +168,7 @@ class StackEnv(gym.Env):
         is_success = self.model.is_stack_success()
         info['is_success'] = not is_fail and is_success
 
-        lower_obs = self.model.get_obs(achieved_name=None, goal=None)
+        lower_obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal)
 
         obs = self.obs_lower2upper(lower_obs)
         reward = self.compute_reward(achieved_goal=None, desired_goal=None, info=info)
@@ -183,7 +183,7 @@ class StackEnv(gym.Env):
             if achieved_name in stack_clutter:
                 hint_reward += self.achieved_hint_reward
         return hint_reward
-    
+
     def compute_removal_hint_reward(self, removal_goal: np.ndarray) -> float:
         hint_xpos = self.model.compute_goal_select_hint().copy()
         hint_diff = vector_distance(hint_xpos, removal_goal)
