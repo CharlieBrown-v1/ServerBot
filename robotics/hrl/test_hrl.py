@@ -47,7 +47,7 @@ class TestHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             reward_type=reward_type,
             single_count_sup=18,
             hrl_mode=True,
-            # random_mode=True,  # True for testing, False for fine-tuning
+            random_mode=True,  # True for testing, False for fine-tuning
             test_mode=True,
         )
         utils.EzPickle.__init__(self, reward_type=reward_type)

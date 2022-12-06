@@ -344,21 +344,21 @@ def _merge(a, b):
 register(
         id="Planning-v0",
         entry_point="gym.envs.robotics:PlanningEnv",
-        max_episode_steps=16,
+        max_episode_steps=8,
 )
 
 # DIY
 register(
         id="Stack-v0",
         entry_point="gym.envs.robotics:StackEnv",
-        max_episode_steps=5,
+        max_episode_steps=8,
 )
 
 # DIY
 register(
         id="Collect-v0",
         entry_point="gym.envs.robotics:CollectEnv",
-        max_episode_steps=16,
+        max_episode_steps=8,
 )
 
 # DIY
