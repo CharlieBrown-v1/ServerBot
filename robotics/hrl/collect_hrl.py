@@ -49,7 +49,7 @@ class CollectHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             target_in_air_probability=0.5,
             object_stacked_probability=0.5,
             hrl_mode=True,
-            # random_mode=True,
+            random_mode=True,
             collect_mode=True,
         )
         utils.EzPickle.__init__(self, reward_type=reward_type)
@@ -74,9 +74,11 @@ class CollectHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.upper_bound = np.array([1.30 + 0.16 - 0.025, 0.75 + 0.16 - 0.025])
 
         self.count = 0
-        
+
     def set_mode(self, name: str, mode: bool):
-        if name == 'training':
+        if name == 'test':
+            self.test_mode = mode
+        elif name == 'training':
             self.training_mode = mode
         elif name == 'test':
             self.test_mode = mode
@@ -284,22 +286,19 @@ class CollectHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.sim.model.site_pos[global_target_site_id] = np.array([20, 20, 0.5])
         self.sim.model.site_pos[area_id] = np.array([1.30, 0.75, 0.4 - 0.01 + 1e-5])  - sites_offset[area_id]
 
-        # if self.removal_goal_indicate is not None:
-        #     self.sim.model.site_pos[removal_target_site_id] = self.removal_goal_indicate - sites_offset[
-        #         removal_target_site_id]
-        if self.removal_goal is not None:
-            self.sim.model.site_pos[removal_target_site_id] = self.removal_goal - sites_offset[
-                removal_target_site_id]
+        if not self.test_mode:
+            if self.removal_goal is not None:
+                self.sim.model.site_pos[removal_target_site_id] = self.removal_goal - sites_offset[
+                    removal_target_site_id]
+            else:
+                self.sim.model.site_pos[removal_target_site_id] = np.array([20, 20, 0.5])
+            if self.achieved_name is not None:
+                self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(self.achieved_name).copy() - \
+                                                            sites_offset[achieved_site_id]
+            else:
+                self.sim.model.site_pos[achieved_site_id] = np.array([20, 20, 0.5])
         else:
             self.sim.model.site_pos[removal_target_site_id] = np.array([20, 20, 0.5])
-
-        # if self.achieved_name_indicate is not None:
-        #     self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(
-        #         self.achieved_name_indicate).copy() - sites_offset[achieved_site_id]
-        if self.achieved_name is not None:
-            self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(self.achieved_name).copy() - \
-                                                        sites_offset[achieved_site_id]
-        else:
             self.sim.model.site_pos[achieved_site_id] = np.array([20, 20, 0.5])
 
         self.sim.forward()
