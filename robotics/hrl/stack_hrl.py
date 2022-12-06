@@ -54,7 +54,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.stack_theta = 0.03
         self.xy_diff_threshold = 0.04
         self.deterministic_prob = 0.25
-        # self.deterministic_prob = 1
+        self.deterministic_prob = 1
         self.lower_reward_sup = 0.3
 
         self.deterministic_list = None

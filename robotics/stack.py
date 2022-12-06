@@ -90,9 +90,18 @@ class StackEnv(gym.Env):
         cube_obs = np.where(cube_obs != object_value, cube_obs, obstacle_value)
 
         lower_obs['observation'][:np.prod(cube_shape)] = cube_obs
-        del lower_obs['desired_goal']  # meaningless in stack task
+        # del lower_obs['desired_goal']  # meaningless in stack task
         # sorted ensure order: achieved_goal -> observation
         sub_obs_list = [sub_obs for key, sub_obs in sorted(lower_obs.items())]
+
+        physical_obs = lower_obs['observation'][np.prod(cube_shape):]
+        obstacle_obs = np.zeros(6)
+        for idx in range(len(self.model.obstacle_name_list)):
+            name = self.model.obstacle_name_list[idx]
+            xpos = self.model.get_xpos(name)
+            obstacle_obs[idx * 3: (idx + 1) * 3] = xpos.copy()
+
+        sub_obs_list = [physical_obs, obstacle_obs]
 
         upper_obs = np.concatenate(sub_obs_list)
 
