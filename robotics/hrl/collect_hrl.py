@@ -80,8 +80,6 @@ class CollectHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             self.test_mode = mode
         elif name == 'training':
             self.training_mode = mode
-        elif name == 'test':
-            self.test_mode = mode
         else:
             raise NotImplementedError
 
