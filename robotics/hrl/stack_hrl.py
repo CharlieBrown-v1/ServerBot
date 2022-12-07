@@ -97,17 +97,6 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         else:
             raise NotImplementedError
 
-    def find_highest_object(self, object_name_list: list) -> str:
-        highest_height = -np.inf
-        highest_name = None
-        for name in object_name_list:
-            object_height = self.get_xpos(name).copy()[2]
-            if object_height > highest_height + epsilon:
-                highest_height = object_height
-                highest_name = name
-        assert highest_name is not None
-        return highest_name
-
     def find_lowest_object(self, object_name_list: list):
         highest_height = np.inf
         highest_name = None
@@ -119,50 +108,39 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         assert highest_name is not None
         return highest_name
 
-    def compute_closest_height(self, target_xpos: np.ndarray) -> float:
-        closest_height = 0
-        for object_name in self.object_name_list:
-            if object_name != self.achieved_name_indicate:
-                object_xpos = self.get_xpos(name=object_name).copy()
-                xy_diff = vector_distance(object_xpos[:2], target_xpos[:2])
-                if xy_diff < self.xy_diff_threshold:
-                    closest_height = max(closest_height, object_xpos[2])
+    def compute_highest_height(self) -> float:
+        highest_height = 0.425
+        clutter = self.find_stack_clutter(self.object_name_list)
+        if len(clutter) > 1:
+            clutter_height_list = [self.get_xpos(name)[2] for name in clutter]
+            highest_height = np.max(clutter_height_list)
 
-        return closest_height
-
-    def compute_highest_height(
-            self,
-    ) -> float:
-        highest_name = self.find_highest_object(self.object_name_list.copy())
-        highest_height = self.get_xpos(name=highest_name).copy()[2]
-
-        if highest_name == self.achieved_name_indicate:
-            target_xpos = self.get_xpos(highest_name).copy()
-            closest_height = self.compute_closest_height(target_xpos)
-            if abs(highest_height - closest_height) >= self.object_size + self.stack_theta:
-                obstacle_name_list = self.object_name_list.copy()
-                obstacle_name_list.remove(self.achieved_name_indicate)
-                new_highest_name = self.find_highest_object(obstacle_name_list)
-                new_highest_height = self.get_xpos(new_highest_name).copy()[2]
-                highest_height = new_highest_height
         return highest_height
 
     def compute_goal_select_hint(self) -> np.ndarray:
         obstacle_name_list = self.object_name_list.copy()
         obstacle_name_list.remove(self.achieved_name_indicate)
-        highest_obstacle = self.find_highest_object(obstacle_name_list)
-        highest_xpos = self.get_xpos(highest_obstacle).copy()
+        clutter = self.find_stack_clutter(obstacle_name_list)
+        highest_name = None
+        highest_height = -np.inf
+        for name in clutter:
+            height = self.get_xpos(name)[2]
+            if height > highest_height:
+                highest_name = name
+                highest_height = height
+        assert highest_name is not None
+        highest_xpos = self.get_xpos(highest_name)
         highest_xpos[2] += self.object_size  # this is the inf of good height, o.t. collision
 
         self.hint_xpos = highest_xpos.copy()
 
         return highest_xpos.copy()
 
-    def find_stack_clutter_given_base(self, base_name: str) -> list:
+    def find_stack_clutter_given_base(self, base_name: str, object_name_list: list) -> list:
         stack_clutter = [base_name]
         base_xpos = self.get_xpos(base_name).copy()
         # TODO: what if 物品个数发生改变？
-        other_object_name_list = self.object_name_list.copy()
+        other_object_name_list = object_name_list.copy()
         other_object_name_list.remove(base_name)
         for object_name in other_object_name_list:
             object_xpos = self.get_xpos(object_name).copy()
@@ -173,11 +151,11 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                 stack_clutter.append(object_name)
         return stack_clutter
 
-    def find_stack_clutter(self) -> list:
+    def find_stack_clutter(self, object_name_list: list) -> list:
         stack_base_dict = {}
-        for base_name in self.object_name_list:
-            stack_clutter = self.find_stack_clutter_given_base(base_name)
-            assert len(stack_clutter) in range(1, len(self.object_name_list) + 1)
+        for base_name in object_name_list:
+            stack_clutter = self.find_stack_clutter_given_base(base_name, object_name_list)
+            assert len(stack_clutter) in range(1, len(object_name_list) + 1)
             stack_base_dict[base_name] = stack_clutter.copy()
 
         sorted_stack_clutter_list = list(sorted(stack_base_dict.values(), key=lambda x: len(x), reverse=True))

@@ -64,7 +64,12 @@ class StackEnv(gym.Env):
         self.achieved_hint_reward = -0.05
         self.removal_hint_reward_sup = 0.1
 
-        self.achieved_dist_sup = 0.1
+        self.valid_achieved_dist_sup = 0.1
+        self.achieved_dist_sup = 0.5
+        self.achieved_reward_sup = -0.05
+        self.achieved_reward_inf = -0.10
+        self.achieved_k = -0.25
+        self.achieved_c = -0.025
 
         self.training_mode = True
         self.demo_mode = False
@@ -106,21 +111,6 @@ class StackEnv(gym.Env):
         """
 
     def obs_lower2upper(self, lower_obs: dict) -> np.ndarray:
-        air_value = self.model.item_dict['air']
-        goal_value = self.model.item_dict['goal']
-        object_value = self.model.item_dict['achieved_goal']
-        obstacle_value = self.model.item_dict['obstacle']
-        cube_obs = lower_obs['observation'][:np.prod(cube_shape)]
-        # remove goal info
-        cube_obs = np.where(cube_obs != goal_value, cube_obs, air_value)
-        # set object info = 1
-        cube_obs = np.where(cube_obs != object_value, cube_obs, obstacle_value)
-
-        lower_obs['observation'][:np.prod(cube_shape)] = cube_obs
-        # del lower_obs['desired_goal']  # meaningless in stack task
-        # sorted ensure order: achieved_goal -> observation
-        sub_obs_list = [sub_obs for key, sub_obs in sorted(lower_obs.items())]
-
         physical_obs = lower_obs['observation'][np.prod(cube_shape):]
         obstacle_obs = np.zeros(6)
         for idx in range(len(self.model.obstacle_name_list)):
@@ -194,19 +184,23 @@ class StackEnv(gym.Env):
         else:
             self.model.sim.forward()
 
-        if min_dist >= self.achieved_dist_sup:
-            lower_obs = self.model.get_obs(achieved_name=None, goal=removal_goal)
+        if min_dist >= self.valid_achieved_dist_sup:
+            reward = self.achieved_k * min_dist + self.achieved_c
             is_fail = self.model.is_stack_fail()
             is_success = self.model.is_stack_success()
+            lower_obs = self.model.get_obs(achieved_name=None, goal=removal_goal)
             obs = self.obs_lower2upper(lower_obs)
             done = is_fail or is_success
             info['is_success'] = not is_fail and is_success
-            return obs, self.time_reward, done, info
+            return obs, reward, done, info
 
         lower_obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal)
 
+        # hint reward only accepted when achieved_name is valid!
         info['achieved_hint_reward'] = self.compute_achieved_hint_reward(achieved_name=achieved_name)
-        info['removal_hint_reward'] = self.compute_removal_hint_reward(removal_goal=removal_goal)
+        info['removal_hint_reward'] = 0
+        if not self.is_bad_choice(achieved_name=achieved_name):
+            info['removal_hint_reward'] += self.compute_removal_hint_reward(removal_goal=removal_goal)
         lower_obs, reward, done, lower_info = self.model.macro_step(agent=self.agent, obs=lower_obs)
         info.update(lower_info)
         is_fail = info['is_fail']
@@ -221,12 +215,17 @@ class StackEnv(gym.Env):
 
         return obs, reward, done, info
 
+    def is_bad_choice(self, achieved_name: str) -> bool:
+        stack_clutter = self.model.find_stack_clutter(self.model.object_name_list)
+        is_bad = len(stack_clutter) > 1 and achieved_name in stack_clutter
+
+        return is_bad
+
     def compute_achieved_hint_reward(self, achieved_name: str) -> float:
         hint_reward = 0
-        stack_clutter = self.model.find_stack_clutter()
-        if len(stack_clutter) > 1:
-            if achieved_name in stack_clutter:
-                hint_reward += self.achieved_hint_reward
+        if self.is_bad_choice(achieved_name=achieved_name):
+            hint_reward += self.achieved_hint_reward
+
         return hint_reward
 
     def compute_removal_hint_reward(self, removal_goal: np.ndarray) -> float:
