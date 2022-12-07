@@ -58,11 +58,13 @@ class StackEnv(gym.Env):
         self.table_end_xyz = np.r_[table_end_xy, table_end_z]
 
         self.success_reward = 1
-        self.fail_reward = -0.32
+        self.fail_reward = -1
         self.step_finish_reward = 0.075
         self.time_reward = -0.05
         self.achieved_hint_reward = -0.05
         self.removal_hint_reward_sup = 0.1
+
+        self.achieved_dist_sup = 0.1
 
         self.training_mode = True
         self.demo_mode = False
@@ -77,6 +79,31 @@ class StackEnv(gym.Env):
             self.demo_mode = mode
         else:
             raise NotImplementedError
+
+    """
+        def obs_lower2upper(self, lower_obs: dict) -> np.ndarray:
+            air_value = self.model.item_dict['air']
+            goal_value = self.model.item_dict['goal']
+            object_value = self.model.item_dict['achieved_goal']
+            obstacle_value = self.model.item_dict['obstacle']
+            cube_obs = lower_obs['observation'][:np.prod(cube_shape)]
+
+            # remove goal info
+            cube_obs = np.where(cube_obs != goal_value, cube_obs, air_value)
+            # set object info = 1
+            cube_obs = np.where(cube_obs != object_value, cube_obs, obstacle_value)
+
+            lower_obs['observation'][:np.prod(cube_shape)] = cube_obs
+
+            # remove useless goal info
+            del lower_obs['desired_goal']
+            # sorted ensure order: achieved_goal -> observation
+            sub_obs_list = [sub_obs for key, sub_obs in sorted(lower_obs.items())]
+
+            upper_obs = np.concatenate(sub_obs_list)
+
+            return upper_obs
+        """
 
     def obs_lower2upper(self, lower_obs: dict) -> np.ndarray:
         air_value = self.model.item_dict['air']
@@ -166,6 +193,15 @@ class StackEnv(gym.Env):
             self.render()  # show which point and object agent has just selected
         else:
             self.model.sim.forward()
+
+        if min_dist >= self.achieved_dist_sup:
+            lower_obs = self.model.get_obs(achieved_name=None, goal=removal_goal)
+            is_fail = self.model.is_stack_fail()
+            is_success = self.model.is_stack_success()
+            obs = self.obs_lower2upper(lower_obs)
+            done = is_fail or is_success
+            info['is_success'] = not is_fail and is_success
+            return obs, self.time_reward, done, info
 
         lower_obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal)
 

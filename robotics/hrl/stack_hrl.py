@@ -53,11 +53,12 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         self.stack_theta = 0.03
         self.xy_diff_threshold = 0.04
-        self.deterministic_prob = 0.25
+        # self.deterministic_prob = 0.25
         self.deterministic_prob = 1
         self.lower_reward_sup = 0.3
 
         self.deterministic_list = None
+        self.achieved_indicate = None
 
         fetch_env.FetchEnv.__init__(
             self,
@@ -204,6 +205,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         for _ in range(10):
             self.sim.step()
 
+        self.achieved_indicate = None
         self.reset_indicate()
         self.target_removal_height = 0.425 + self.object_size * (len(self.object_name_list) - 1)
         self.prev_highest_height = self.compute_highest_height()
@@ -236,6 +238,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
     def macro_step_setup(self, macro_action):
         removal_goal = np.array([macro_action[desk_x], macro_action[desk_y], macro_action[desk_z]])
         action_xpos = np.array([macro_action[pos_x], macro_action[pos_y], macro_action[pos_z]])
+        self.achieved_indicate = action_xpos.copy()
 
         achieved_name = None
         min_dist = np.inf
@@ -367,7 +370,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         return min(reward, self.lower_reward_sup)
 
-    def is_stack_success(self):
+    def is_stack_success(self) -> bool:
         highest_height = self.compute_highest_height()
         lower_flag = self.target_removal_height - highest_height < self.distance_threshold
         higher_flag = highest_height >= self.target_removal_height
@@ -376,6 +379,9 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         # print(f'highest_h: {highest_height}')
 
         return is_success
+
+    def is_stack_fail(self) -> bool:
+        return self.judge(self.obstacle_name_list.copy(), self.init_obstacle_xpos_list.copy(), mode='done')
 
     def reset_removal(self, goal: np.ndarray, removal_goal=None, is_removal=True):
         self.is_grasp = False
@@ -400,6 +406,8 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         hint_site_id = self.sim.model.site_name2id("hint")
         clutter_site_id = self.sim.model.site_name2id("clutter")
         height_site_id = self.sim.model.site_name2id("height")
+        achieved_indicate_id = self.sim.model.site_name2id("achieved_indicate")
+        achieved_center_id = self.sim.model.site_name2id("achieved_center")
 
         if self.removal_goal_indicate is not None:
             self.sim.model.site_pos[removal_target_site_id]\
@@ -409,6 +417,17 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                 = self.removal_goal - sites_offset[removal_target_site_id]
         else:
             self.sim.model.site_pos[removal_target_site_id] = np.array([20, 20, 0.5])
+
+        if self.achieved_indicate is not None:
+            self.sim.model.site_pos[achieved_indicate_id] = self.achieved_indicate - sites_offset[achieved_indicate_id]
+        else:
+            self.sim.model.site_pos[achieved_indicate_id] = np.array([36, 36, 0])
+
+        if self.achieved_name_indicate is not None:
+            achieved_center = self.get_xpos(self.achieved_name_indicate).copy()
+            self.sim.model.site_pos[achieved_center_id] = achieved_center - sites_offset[achieved_center_id]
+        else:
+            self.sim.model.site_pos[achieved_center_id] = np.array([36, 36, 0.1])
 
         if self.debug_mode:
             if self.hint_xpos is not None:
