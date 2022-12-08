@@ -25,7 +25,6 @@ def vector_distance(goal_a: np.ndarray, goal_b: np.ndarray):
 class StackEnv(gym.Env):
     def __init__(self, agent_path=None, device=None, reward_type='dense'):
         super(StackEnv, self).__init__()
-
         if agent_path is None:
             self.agent = None
         else:
@@ -59,8 +58,9 @@ class StackEnv(gym.Env):
 
         self.success_reward = 1
         self.fail_reward = -1
-        self.step_finish_reward = 0.075
-        self.time_reward = -0.05
+
+        self.hint_bad = -1
+        self.hint_invalid = 0
         self.achieved_hint_reward = 0.05
         self.removal_hint_reward_sup = 0.1
 
@@ -70,15 +70,14 @@ class StackEnv(gym.Env):
         self.achieved_reward_inf = -0.10
         self.achieved_k = -0.25
         self.achieved_c = -0.025
-        self.achieved_bad     = -1
-        self.achieved_invalid = 0
-        self.achieved_good    = +1
 
         self.training_mode = True
         self.demo_mode = False
 
         self.demo_obstacle_list = None
         self.demo_count = None
+
+        self.episode_step = None
 
     def set_mode(self, name: str, mode: bool):
         if name == 'training':
@@ -116,6 +115,7 @@ class StackEnv(gym.Env):
         self.demo_obstacle_list = list(set(self.model.object_name_list) - set(self.model.deterministic_list))
         assert len(self.demo_obstacle_list) > 0
         self.demo_count = 0
+        self.episode_step = 0
 
         return upper_obs
 
@@ -144,6 +144,7 @@ class StackEnv(gym.Env):
 
     def step(self, action: np.ndarray):
         assert self.agent is not None, "You must load agent before step!"
+        self.episode_step += 1
 
         if action is None:  # used by RL + None
             planning_action = np.r_[np.array([0, 0, 0]),
@@ -170,13 +171,18 @@ class StackEnv(gym.Env):
             self.model.sim.forward()
 
         if min_dist >= self.valid_achieved_dist_sup:
-            reward = self.achieved_k * min_dist + self.achieved_c
-            is_fail = self.model.is_stack_fail()
-            is_success = self.model.is_stack_success()
+            is_fail = self.model.is_stack_fail() or self.timeout()
+            is_success = not is_fail and self.model.is_stack_success()
             lower_obs = self.model.get_obs(achieved_name=None, goal=removal_goal)
+
             obs = self.obs_lower2upper(lower_obs)
+            if is_fail:
+                reward = self.fail_reward
+            else:
+                reward = self.achieved_k * min_dist + self.achieved_c
             done = is_fail or is_success
-            info['is_success'] = not is_fail and is_success
+            info['is_success'] = is_success
+
             return obs, reward, done, info
 
         lower_obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal)
@@ -184,38 +190,42 @@ class StackEnv(gym.Env):
         # hint reward only accepted when achieved_name is valid!
         info['achieved_hint_reward'] = self.compute_achieved_hint_reward(achieved_name=achieved_name)
         info['removal_hint_reward'] = 0
-        if self.choice_indicate(achieved_name=achieved_name) != self.achieved_bad:
+        if self.choice_indicate(achieved_name=achieved_name) != self.hint_bad:
             info['removal_hint_reward'] += self.compute_removal_hint_reward(removal_goal=removal_goal)
         lower_obs, reward, done, lower_info = self.model.macro_step(agent=self.agent, obs=lower_obs)
         info.update(lower_info)
+
+        info['is_fail'] = info['is_fail'] or self.timeout()
         is_fail = info['is_fail']
-        is_success = self.model.is_stack_success()
-        info['is_success'] = not is_fail and is_success
+        is_success = not is_fail and self.model.is_stack_success()
+        info['is_success'] = is_success
 
         lower_obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal)
 
         obs = self.obs_lower2upper(lower_obs)
         reward = self.compute_reward(achieved_goal=None, desired_goal=None, info=info)
-        done = info['is_fail'] or info['is_success']
+        done = is_fail or is_success
 
         return obs, reward, done, info
+
+    def timeout(self):
+        flag = self.episode_step >= self.spec.max_episode_steps
+
+        return flag
 
     # 与 base reward 相乘即得 hint reward
     def choice_indicate(self, achieved_name: str) -> int:
         stack_clutter = self.model.find_stack_clutter(self.model.object_name_list)
-        if len(stack_clutter) > 1:
-            if achieved_name in stack_clutter:
-                indicate = self.achieved_bad
-            else:
-                indicate = self.achieved_good
+        if len(stack_clutter) > 1 and achieved_name in stack_clutter:
+            indicate = self.hint_bad
         else:
-            indicate = self.achieved_invalid
+            indicate = self.hint_invalid
 
         return indicate
 
     def compute_achieved_hint_reward(self, achieved_name: str) -> float:
         indicate = self.choice_indicate(achieved_name=achieved_name)
-        assert indicate in [self.achieved_bad, self.achieved_invalid, self.achieved_good]
+        assert indicate in [self.hint_bad, self.hint_invalid]
 
         hint_reward = indicate * self.achieved_hint_reward
 
@@ -225,7 +235,7 @@ class StackEnv(gym.Env):
         hint_xpos = self.model.compute_goal_select_hint().copy()
         hint_diff = vector_distance(hint_xpos, removal_goal)
         hint_reward = self.removal_hint_reward_sup - hint_diff
-        hint_reward = np.clip(hint_reward, -self.removal_hint_reward_sup, self.removal_hint_reward_sup).item()
+        hint_reward = np.clip(hint_reward, 0, self.removal_hint_reward_sup).item()
 
         return hint_reward
 
@@ -237,23 +247,9 @@ class StackEnv(gym.Env):
                 reward = self.success_reward
             else:
                 reward = info['lower_reward'] + info['achieved_hint_reward'] + info['removal_hint_reward']
-                # if info['is_removal_success']:
-                #     reward += self.step_finish_reward
             return reward
-            # return reward + self.time_reward
         else:
-            assert isinstance(info, np.ndarray)
-            reward_arr = np.zeros_like(info)
-            for idx in np.arange(info.size):
-                reward = 0
-                if info[idx]['is_fail']:
-                    reward += self.fail_reward
-                elif info[idx]['is_success'] and info[idx]['is_removal_success']:
-                    reward += self.success_reward
-                elif info[idx]['is_removal_success']:
-                    reward += info[idx]['lower_reward'] + self.step_finish_reward
-                reward_arr[idx] = reward
-            return reward_arr
+            raise NotImplementedError
 
     def render(self, mode="human", width=500, height=500):
         return self.model.render(mode=mode, width=width, height=height)
