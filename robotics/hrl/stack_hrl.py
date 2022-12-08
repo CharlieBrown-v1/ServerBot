@@ -44,15 +44,14 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.obstacle_goal_1 = np.array([1.30, 0.65, 0.425 + 1 * self.object_size])
         self.target_goal = np.array([1.30, 0.65, 0.425 + 2 * self.object_size])
         self.init_removal_height = 0.425 + 1 * self.object_size
-        self.removal_goal_height = None
 
+        self.removal_goal_height = None
         self.target_removal_height = None
         self.prev_highest_height = None
         self.hint_xpos = None
         self.clutter_list = None
 
-        self.stack_theta = 0.03
-        self.xy_diff_threshold = 0.04
+        self.stack_theta = 0.025
         # self.deterministic_prob = 0.25
         self.deterministic_prob = 1
         self.lower_reward_sup = 0.3
@@ -144,7 +143,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         other_object_name_list.remove(base_name)
         for object_name in other_object_name_list:
             object_xpos = self.get_xpos(object_name).copy()
-            xy_flag = vector_distance(base_xpos[:2], object_xpos[:2]) < self.xy_diff_threshold
+            xy_flag = vector_distance(base_xpos[:2], object_xpos[:2]) < self.stack_theta
             # 只考虑以base为底的堆叠场景
             z_flag = object_xpos[2] - base_xpos[2] < self.object_size + self.distance_threshold
             if xy_flag and z_flag:

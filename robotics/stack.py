@@ -61,7 +61,7 @@ class StackEnv(gym.Env):
         self.fail_reward = -1
         self.step_finish_reward = 0.075
         self.time_reward = -0.05
-        self.achieved_hint_reward = -0.05
+        self.achieved_hint_reward = 0.05
         self.removal_hint_reward_sup = 0.1
 
         self.valid_achieved_dist_sup = 0.1
@@ -70,6 +70,9 @@ class StackEnv(gym.Env):
         self.achieved_reward_inf = -0.10
         self.achieved_k = -0.25
         self.achieved_c = -0.025
+        self.achieved_bad     = -1
+        self.achieved_invalid = 0
+        self.achieved_good    = +1
 
         self.training_mode = True
         self.demo_mode = False
@@ -85,41 +88,23 @@ class StackEnv(gym.Env):
         else:
             raise NotImplementedError
 
-    """
-        def obs_lower2upper(self, lower_obs: dict) -> np.ndarray:
-            air_value = self.model.item_dict['air']
-            goal_value = self.model.item_dict['goal']
-            object_value = self.model.item_dict['achieved_goal']
-            obstacle_value = self.model.item_dict['obstacle']
-            cube_obs = lower_obs['observation'][:np.prod(cube_shape)]
-
-            # remove goal info
-            cube_obs = np.where(cube_obs != goal_value, cube_obs, air_value)
-            # set object info = 1
-            cube_obs = np.where(cube_obs != object_value, cube_obs, obstacle_value)
-
-            lower_obs['observation'][:np.prod(cube_shape)] = cube_obs
-
-            # remove useless goal info
-            del lower_obs['desired_goal']
-            # sorted ensure order: achieved_goal -> observation
-            sub_obs_list = [sub_obs for key, sub_obs in sorted(lower_obs.items())]
-
-            upper_obs = np.concatenate(sub_obs_list)
-
-            return upper_obs
-        """
-
     def obs_lower2upper(self, lower_obs: dict) -> np.ndarray:
-        physical_obs = lower_obs['observation'][np.prod(cube_shape):]
-        obstacle_obs = np.zeros(6)
-        for idx in range(len(self.model.obstacle_name_list)):
-            name = self.model.obstacle_name_list[idx]
-            xpos = self.model.get_xpos(name)
-            obstacle_obs[idx * 3: (idx + 1) * 3] = xpos.copy()
+        air_value = self.model.item_dict['air']
+        goal_value = self.model.item_dict['goal']
+        object_value = self.model.item_dict['achieved_goal']
+        obstacle_value = self.model.item_dict['obstacle']
+        cube_obs = lower_obs['observation'][:np.prod(cube_shape)]
 
-        sub_obs_list = [physical_obs, obstacle_obs]
+        # remove goal info
+        cube_obs = np.where(cube_obs != goal_value, cube_obs, air_value)
+        # set object info = 1
+        cube_obs = np.where(cube_obs != object_value, cube_obs, obstacle_value)
+        lower_obs['observation'][:np.prod(cube_shape)] = cube_obs
+        # remove useless goal info
+        del lower_obs['desired_goal']
 
+        # sorted ensure order: achieved_goal -> observation
+        sub_obs_list = [sub_obs for key, sub_obs in sorted(lower_obs.items())]
         upper_obs = np.concatenate(sub_obs_list)
 
         return upper_obs
@@ -199,7 +184,7 @@ class StackEnv(gym.Env):
         # hint reward only accepted when achieved_name is valid!
         info['achieved_hint_reward'] = self.compute_achieved_hint_reward(achieved_name=achieved_name)
         info['removal_hint_reward'] = 0
-        if not self.is_bad_choice(achieved_name=achieved_name):
+        if self.choice_indicate(achieved_name=achieved_name) != self.achieved_bad:
             info['removal_hint_reward'] += self.compute_removal_hint_reward(removal_goal=removal_goal)
         lower_obs, reward, done, lower_info = self.model.macro_step(agent=self.agent, obs=lower_obs)
         info.update(lower_info)
@@ -215,16 +200,24 @@ class StackEnv(gym.Env):
 
         return obs, reward, done, info
 
-    def is_bad_choice(self, achieved_name: str) -> bool:
+    # 与 base reward 相乘即得 hint reward
+    def choice_indicate(self, achieved_name: str) -> int:
         stack_clutter = self.model.find_stack_clutter(self.model.object_name_list)
-        is_bad = len(stack_clutter) > 1 and achieved_name in stack_clutter
+        if len(stack_clutter) > 1:
+            if achieved_name in stack_clutter:
+                indicate = self.achieved_bad
+            else:
+                indicate = self.achieved_good
+        else:
+            indicate = self.achieved_invalid
 
-        return is_bad
+        return indicate
 
     def compute_achieved_hint_reward(self, achieved_name: str) -> float:
-        hint_reward = 0
-        if self.is_bad_choice(achieved_name=achieved_name):
-            hint_reward += self.achieved_hint_reward
+        indicate = self.choice_indicate(achieved_name=achieved_name)
+        assert indicate in [self.achieved_bad, self.achieved_invalid, self.achieved_good]
+
+        hint_reward = indicate * self.achieved_hint_reward
 
         return hint_reward
 
