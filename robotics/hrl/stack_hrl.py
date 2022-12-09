@@ -34,6 +34,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         }
         self.training_mode = True
         self.test_mode = False
+        self.visual_mode = False
 
         self.achieved_name_indicate = None
         self.removal_goal_indicate = None
@@ -52,8 +53,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         self.clutter_list = None
 
         self.stack_theta = 0.025
-        # self.deterministic_prob = 0.25
-        self.deterministic_prob = 1
+        self.deterministic_prob = 0.5
         self.lower_reward_sup = 0.3
 
         self.deterministic_list = None
@@ -91,8 +91,8 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             self.training_mode = mode
         elif name == 'test':
             self.test_mode = mode
-        elif name == 'debug':
-            self.debug_mode = mode
+        elif name == 'visual':
+            self.visual_mode = mode
         else:
             raise NotImplementedError
 
@@ -353,8 +353,6 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         higher_flag = highest_height >= self.target_removal_height
         is_success = lower_flag or higher_flag
 
-        # print(f'highest_h: {highest_height}')
-
         return is_success
 
     def is_stack_fail(self) -> bool:
@@ -384,7 +382,6 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         clutter_site_id = self.sim.model.site_name2id("clutter")
         height_site_id = self.sim.model.site_name2id("height")
         achieved_indicate_id = self.sim.model.site_name2id("achieved_indicate")
-        achieved_center_id = self.sim.model.site_name2id("achieved_center")
 
         if self.removal_goal_indicate is not None:
             self.sim.model.site_pos[removal_target_site_id]\
@@ -395,18 +392,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         else:
             self.sim.model.site_pos[removal_target_site_id] = np.array([20, 20, 0.5])
 
-        if self.achieved_indicate is not None:
-            self.sim.model.site_pos[achieved_indicate_id] = self.achieved_indicate - sites_offset[achieved_indicate_id]
-        else:
-            self.sim.model.site_pos[achieved_indicate_id] = np.array([36, 36, 0])
-
-        if self.achieved_name_indicate is not None:
-            achieved_center = self.get_xpos(self.achieved_name_indicate).copy()
-            self.sim.model.site_pos[achieved_center_id] = achieved_center - sites_offset[achieved_center_id]
-        else:
-            self.sim.model.site_pos[achieved_center_id] = np.array([36, 36, 0.1])
-
-        if self.debug_mode:
+        if self.visual_mode:
             if self.hint_xpos is not None:
                 self.sim.model.site_pos[hint_site_id] = self.hint_xpos - sites_offset[hint_site_id]
             else:
@@ -422,5 +408,10 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                 self.sim.model.site_pos[height_site_id] = height_xpos - sites_offset[height_site_id]
             else:
                 self.sim.model.site_pos[height_site_id] = np.array([32, 32, 0.2])
+            if self.achieved_indicate is not None:
+                self.sim.model.site_pos[achieved_indicate_id] = self.achieved_indicate - sites_offset[
+                    achieved_indicate_id]
+            else:
+                self.sim.model.site_pos[achieved_indicate_id] = np.array([36, 36, 0])
 
         self.sim.forward()

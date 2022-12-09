@@ -56,7 +56,7 @@ class StackEnv(gym.Env):
         self.table_start_xyz = np.r_[table_start_xy, table_start_z]
         self.table_end_xyz = np.r_[table_end_xy, table_end_z]
 
-        self.success_reward = 1
+        self.success_reward = 10
         self.fail_reward = -1
 
         self.hint_bad = -1
@@ -64,15 +64,8 @@ class StackEnv(gym.Env):
         self.achieved_hint_reward = 0.05
         self.removal_hint_reward_sup = 0.1
 
-        self.valid_achieved_dist_sup = 0.1
-        self.achieved_dist_sup = 0.5
-        self.achieved_reward_sup = -0.05
-        self.achieved_reward_inf = -0.10
-        self.achieved_k = -0.25
-        self.achieved_c = -0.025
-
         self.training_mode = True
-        self.demo_mode = False
+        self.expert_mode = False
 
         self.demo_obstacle_list = None
         self.demo_count = None
@@ -82,8 +75,8 @@ class StackEnv(gym.Env):
     def set_mode(self, name: str, mode: bool):
         if name == 'training':
             self.training_mode = mode
-        elif name == 'demo':
-            self.demo_mode = mode
+        elif name == 'expert':
+            self.expert_mode = mode
         else:
             raise NotImplementedError
 
@@ -153,7 +146,7 @@ class StackEnv(gym.Env):
             planning_action = self.action2xpos(action.copy())
 
         info = {}
-        if self.demo_mode:
+        if self.expert_mode:
             obstacle_name = self.demo_obstacle_list[self.demo_count % len(self.demo_obstacle_list)]
             target_removal_height = self.model.compute_highest_height() + self.model.object_size
             target_removal_name = np.random.choice(self.model.deterministic_list)
@@ -170,26 +163,11 @@ class StackEnv(gym.Env):
         else:
             self.model.sim.forward()
 
-        if min_dist >= self.valid_achieved_dist_sup:
-            is_fail = self.model.is_stack_fail() or self.timeout()
-            is_success = not is_fail and self.model.is_stack_success()
-            lower_obs = self.model.get_obs(achieved_name=None, goal=removal_goal)
-
-            obs = self.obs_lower2upper(lower_obs)
-            if is_fail:
-                reward = self.fail_reward
-            else:
-                reward = self.achieved_k * min_dist + self.achieved_c
-            done = is_fail or is_success
-            info['is_success'] = is_success
-
-            return obs, reward, done, info
-
         lower_obs = self.model.get_obs(achieved_name=achieved_name, goal=removal_goal)
 
-        # hint reward only accepted when achieved_name is valid!
         info['achieved_hint_reward'] = self.compute_achieved_hint_reward(achieved_name=achieved_name)
         info['removal_hint_reward'] = 0
+        # removal_hint reward only accepted when achieved_name is not bad
         if self.choice_indicate(achieved_name=achieved_name) != self.hint_bad:
             info['removal_hint_reward'] += self.compute_removal_hint_reward(removal_goal=removal_goal)
         lower_obs, reward, done, lower_info = self.model.macro_step(agent=self.agent, obs=lower_obs)
