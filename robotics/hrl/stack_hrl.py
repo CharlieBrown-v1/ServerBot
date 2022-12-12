@@ -141,11 +141,16 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         # TODO: what if 物品个数发生改变？
         other_object_name_list = object_name_list.copy()
         other_object_name_list.remove(base_name)
-        for object_name in other_object_name_list:
+        other_object_height_list = [self.get_xpos(name).copy()[2] for name in other_object_name_list]
+        sorted_object_name_list = [name for height, name in sorted(zip(other_object_height_list, other_object_name_list))]
+        for object_name in sorted_object_name_list:
             object_xpos = self.get_xpos(object_name).copy()
             xy_flag = vector_distance(base_xpos[:2], object_xpos[:2]) < self.stack_theta
             # 只考虑以base为底的堆叠场景
-            z_flag = object_xpos[2] - base_xpos[2] < self.object_size + self.distance_threshold
+            lower_flag = object_xpos[2] > base_xpos[2]
+            higher_flag = object_xpos[2] - base_xpos[2] \
+                          < len(stack_clutter) * self.object_size + self.distance_threshold
+            z_flag = lower_flag and higher_flag
             if xy_flag and z_flag:
                 stack_clutter.append(object_name)
         return stack_clutter
