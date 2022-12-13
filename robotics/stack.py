@@ -213,7 +213,8 @@ class StackEnv(gym.Env):
         hint_xpos = self.model.compute_goal_select_hint().copy()
         hint_diff = vector_distance(hint_xpos, removal_goal)
         hint_reward = self.removal_hint_reward_sup - hint_diff
-        hint_reward = np.clip(hint_reward, 0, self.removal_hint_reward_sup).item()
+
+        hint_reward = np.clip(hint_reward, -self.removal_hint_reward_sup, self.removal_hint_reward_sup).item()
 
         return hint_reward
 
