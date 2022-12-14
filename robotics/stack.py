@@ -209,6 +209,26 @@ class StackEnv(gym.Env):
 
         return hint_reward
 
+    """
+    def compute_removal_hint_reward(self, removal_goal: np.ndarray) -> float:
+        hint_xpos = self.model.compute_goal_select_hint().copy()
+        height_diff = removal_goal[2] - hint_xpos[2]
+        
+        # 高度完美: 只考虑 xy
+        if 0 <= height_diff < self.model.distance_threshold:
+            hint_diff = vector_distance(hint_xpos[:2], removal_goal[:2])
+        # 高度高于hint, 正常计算
+        elif height_diff > self.model.distance_threshold:
+            hint_diff = vector_distance(hint_xpos, removal_goal)
+        # 高度低于hint, 只给惩罚
+        else:
+            hint_diff = 2 * self.removal_hint_reward_sup
+            
+        hint_reward = self.removal_hint_reward_sup - hint_diff
+        hint_reward = np.clip(hint_reward, -self.removal_hint_reward_sup, self.removal_hint_reward_sup).item()
+        return hint_reward
+    """
+
     def compute_removal_hint_reward(self, removal_goal: np.ndarray) -> float:
         hint_xpos = self.model.compute_goal_select_hint().copy()
         hint_diff = vector_distance(hint_xpos, removal_goal)
