@@ -61,8 +61,8 @@ class StackEnv(gym.Env):
 
         self.hint_bad = -1
         self.hint_invalid = 0
-        self.achieved_hint_reward = 0.05
-        self.removal_hint_reward_sup = 0.1
+        self.achieved_hint_reward = 0.5
+        self.removal_hint_reward_sup = 1
 
         self.training_mode = True
         self.expert_mode = False

@@ -54,7 +54,8 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
         self.stack_theta = 0.025
         self.deterministic_prob = 0.5
-        self.lower_reward_sup = 0.3
+        self.lower_reward_sup = 4
+        self.height_reward_scale = self.lower_reward_sup / self.object_size
 
         self.deterministic_list = None
         self.achieved_indicate = None
@@ -82,9 +83,6 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             train_upper_mode=True,
         )
         utils.EzPickle.__init__(self, reward_type=reward_type)
-
-        object_count_mean = (1 + self.object_generator.object_count_sup - 1) / 2
-        self.height_reward_scale = self.lower_reward_sup / (object_count_mean * self.object_size)
 
     def set_mode(self, name: str, mode: bool):
         if name == 'training':
@@ -147,9 +145,9 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             object_xpos = self.get_xpos(object_name).copy()
             xy_flag = vector_distance(base_xpos[:2], object_xpos[:2]) < self.stack_theta
             # 只考虑以base为底的堆叠场景
-            lower_flag = object_xpos[2] > base_xpos[2]
-            higher_flag = object_xpos[2] - base_xpos[2] \
-                          < len(stack_clutter) * self.object_size + self.distance_threshold
+            lower_flag = object_xpos[2] - base_xpos[2] \
+                          < len(stack_clutter) * self.object_size + self.stack_theta
+            higher_flag = object_xpos[2] >= base_xpos[2]
             z_flag = lower_flag and higher_flag
             if xy_flag and z_flag:
                 stack_clutter.append(object_name)
@@ -354,7 +352,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
 
     def is_stack_success(self) -> bool:
         highest_height = self.compute_highest_height()
-        lower_flag = self.target_removal_height - highest_height < self.distance_threshold
+        lower_flag = self.target_removal_height - highest_height < self.stack_theta
         higher_flag = highest_height >= self.target_removal_height
         is_success = lower_flag or higher_flag
 
