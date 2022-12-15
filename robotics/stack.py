@@ -69,9 +69,9 @@ class StackEnv(gym.Env):
         self.table_start_xyz = np.r_[table_start_xy, table_start_z]
         self.table_end_xyz = np.r_[table_end_xy, table_end_z]
 
-        self.success_reward = 10
-        self.timeout_reward = -0.5
-        self.fail_reward = -1
+        self.success_reward = 100
+        self.timeout_reward = -10
+        self.fail_reward = -100
 
         self.hint_bad = -1
         self.hint_invalid = 0
@@ -167,7 +167,8 @@ class StackEnv(gym.Env):
         info = {}
         if self.expert_mode:
             obstacle_name = self.demo_obstacle_list[self.demo_count % len(self.demo_obstacle_list)]
-            target_removal_height = self.model.compute_highest_height() + self.model.object_size
+            target_removal_height = 0.425 + self.model.object_size\
+                                    * len(self.model.find_stack_clutter())
             target_removal_name = np.random.choice(self.model.deterministic_list)
             target_removal_xpos = self.model.get_xpos(target_removal_name).copy()
             target_removal_xpos[2] = target_removal_height
@@ -238,7 +239,7 @@ class StackEnv(gym.Env):
 
     # 与 base reward 相乘即得 hint reward
     def choice_indicate(self, achieved_name: str) -> int:
-        stack_clutter = self.model.find_stack_clutter(self.model.object_name_list)
+        stack_clutter = self.model.find_stack_clutter()
         if len(stack_clutter) > 1 and achieved_name in stack_clutter:
             indicate = self.hint_bad
         else:
