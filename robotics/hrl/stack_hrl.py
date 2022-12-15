@@ -272,7 +272,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         removal_goal = self.removal_goal_indicate.copy()
         reward = self.stack_compute_reward(achieved_goal=achieved_goal, goal=removal_goal, info=info)
         done = False
-        info['lower_reward'] = reward
+        info['height_reward'] = reward
 
         return obs, reward, done, info
 

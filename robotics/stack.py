@@ -22,8 +22,21 @@ def vector_distance(goal_a: np.ndarray, goal_b: np.ndarray):
     return np.linalg.norm(goal_a - goal_b, axis=-1)
 
 
+def safe_mean(data: list) -> float:
+    if len(data) == 0:
+        return 0
+    return np.mean(data).item()
+
+
 class StackEnv(gym.Env):
     def __init__(self, agent_path=None, device=None, reward_type='dense'):
+        self.sb3_key_list = [
+            'height_reward',
+            'achieved_hint_reward',
+            'removal_hint_reward',
+        ]
+        self.sb3_info_dict = None
+
         super(StackEnv, self).__init__()
         if agent_path is None:
             self.agent = None
@@ -57,12 +70,15 @@ class StackEnv(gym.Env):
         self.table_end_xyz = np.r_[table_end_xy, table_end_z]
 
         self.success_reward = 10
+        self.timeout_reward = -0.5
         self.fail_reward = -1
 
         self.hint_bad = -1
         self.hint_invalid = 0
         self.achieved_hint_reward = 0.5
+        self.removal_hint_dist_sup = 0.3
         self.removal_hint_reward_sup = 1
+        self.removal_hint_reward_scale = self.removal_hint_reward_sup / self.removal_hint_dist_sup
 
         self.training_mode = True
         self.expert_mode = False
@@ -109,6 +125,9 @@ class StackEnv(gym.Env):
         assert len(self.demo_obstacle_list) > 0
         self.demo_count = 0
         self.episode_step = 0
+
+        sb3_value_list = [[] for _ in self.sb3_key_list]
+        self.sb3_info_dict = dict(zip(self.sb3_key_list, sb3_value_list))
 
         return upper_obs
 
@@ -173,8 +192,8 @@ class StackEnv(gym.Env):
         lower_obs, reward, done, lower_info = self.model.macro_step(agent=self.agent, obs=lower_obs)
         info.update(lower_info)
 
-        info['is_fail'] = info['is_fail'] or self.timeout()
-        is_fail = info['is_fail']
+        info['timeout'] = self.timeout()
+        is_fail = info['is_fail'] or info['timeout']
         is_success = not is_fail and self.model.is_stack_success()
         info['is_success'] = is_success
 
@@ -183,8 +202,34 @@ class StackEnv(gym.Env):
         obs = self.obs_lower2upper(lower_obs)
         reward = self.compute_reward(achieved_goal=None, desired_goal=None, info=info)
         done = is_fail or is_success
+        self.update_sb3_info(info)
+        if done:
+            info = self.export_sb3_info(info=info)
 
         return obs, reward, done, info
+
+    def update_sb3_info(self, info: dict) -> None:
+        for key in self.sb3_key_list:
+            self.sb3_info_dict[key].append(info[key])
+
+    def export_sb3_info(self, info: dict) -> dict:
+        # 可以直接从 info 从读取的 key
+        info_key_list = [
+            'is_fail',
+            'timeout',
+            'is_success',
+        ]
+        info_value_list = [info[key] for key in info_key_list]
+
+        info['sb3_info'] = dict(zip(info_key_list, info_value_list))
+
+        # 需要 env 维护的 key
+        env_key_list = self.sb3_key_list.copy()
+        env_value_list = [safe_mean(self.sb3_info_dict[key]) for key in env_key_list]
+        env_info = dict(zip(env_key_list, env_value_list))
+        info['sb3_info'].update(env_info)
+
+        return info
 
     def timeout(self):
         flag = self.episode_step >= self.spec.max_episode_steps
@@ -222,17 +267,19 @@ class StackEnv(gym.Env):
             hint_diff = vector_distance(hint_xpos, removal_goal)
         # 高度低于hint, 只给惩罚
         else:
-            hint_diff = 2 * self.removal_hint_reward_sup
-            
-        hint_reward = self.removal_hint_reward_sup - hint_diff
+            hint_diff = 2 * self.removal_hint_dist_sup
+
+        hint_reward = (self.removal_hint_dist_sup - hint_diff) * self.removal_hint_reward_scale
+        
         hint_reward = np.clip(hint_reward, -self.removal_hint_reward_sup, self.removal_hint_reward_sup).item()
+        
         return hint_reward
     """
 
     def compute_removal_hint_reward(self, removal_goal: np.ndarray) -> float:
         hint_xpos = self.model.compute_goal_select_hint().copy()
         hint_diff = vector_distance(hint_xpos, removal_goal)
-        hint_reward = self.removal_hint_reward_sup - hint_diff
+        hint_reward = (self.removal_hint_dist_sup - hint_diff) * self.removal_hint_reward_scale
 
         hint_reward = np.clip(hint_reward, -self.removal_hint_reward_sup, self.removal_hint_reward_sup).item()
 
@@ -242,10 +289,15 @@ class StackEnv(gym.Env):
         if isinstance(info, dict):
             if info['is_fail']:
                 reward = self.fail_reward
+            elif info['timeout']:
+                reward = self.timeout_reward
             elif info['is_success']:
                 reward = self.success_reward
             else:
-                reward = info['lower_reward'] + info['achieved_hint_reward'] + info['removal_hint_reward']
+                reward = info['height_reward'] + info['achieved_hint_reward'] + info['removal_hint_reward']
+                # print(f'height_r: {info["height_reward"]}')
+                # print(f'achieved_r: {info["achieved_hint_reward"]}')
+                # print(f'removal_r: {info["removal_hint_reward"]}')
             return reward
         else:
             raise NotImplementedError
