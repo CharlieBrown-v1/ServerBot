@@ -70,8 +70,8 @@ class StackEnv(gym.Env):
         self.table_end_xyz = np.r_[table_end_xy, table_end_z]
 
         self.success_reward = 100
-        self.timeout_reward = -10
-        self.fail_reward = -100
+        self.timeout_reward = 0
+        self.fail_reward = -5
 
         self.hint_bad = -1
         self.hint_invalid = 0
