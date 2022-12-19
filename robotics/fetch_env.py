@@ -217,7 +217,7 @@ class FetchEnv(robot_env.RobotEnv):
             curr_xpos = self.sim.data.get_geom_xpos(name).copy()
             delta_xpos = xpos_distance(init_xpos, curr_xpos)
 
-            if delta_xpos > 2 * self.distance_threshold:
+            if delta_xpos > self.distance_threshold:
                 move_count += 1
 
             if curr_xpos[2] <= 0.4 - 0.01:
@@ -377,7 +377,65 @@ class FetchEnv(robot_env.RobotEnv):
                 _verify_cube(cube_obs, starting_point, starting_point_idx, 'obstacle', obstacle_xpos_start,
                              obstacle_xpos_end)
 
+    def get_mini_obs(self):
+        achieved_goal = self.sim.data.get_geom_xpos(self.achieved_name).copy()
+
+        if self.removal_goal is None or self.is_removal_success:
+            goal = self.global_goal.copy()
+        else:
+            goal = self.removal_goal.copy()
+
+        # positions
+        grip_pos = self.sim.data.get_site_xpos("robot0:grip").copy()
+        dt = self.sim.nsubsteps * self.sim.model.opt.timestep
+        grip_velp = self.sim.data.get_site_xvelp("robot0:grip").copy() * dt
+        robot_qpos, robot_qvel = utils.robot_get_obs(self.sim)
+
+        gripper_state = robot_qpos[-2:]
+        gripper_vel = (
+                robot_qvel[-2:] * dt
+        )  # change to a scalar if the gripper is made symmetric
+
+        physical_obs = np.concatenate([
+            grip_pos, gripper_state, grip_velp, gripper_vel,
+        ])
+
+        description_len = 3
+        max_obj_count = self.object_generator.single_count_sup - 1  # 减去 target_object
+        assert len(self.obstacle_name_list) <= max_obj_count
+        obstacle_obs = np.zeros((max_obj_count, description_len))
+
+        abs_value = 0
+        rel_value = 1
+
+        xpos_value = abs_value
+        for idx in range(len(self.obstacle_name_list)):
+            object_name = self.object_name_list[idx]
+
+            object_pos = self.sim.data.get_site_xpos(object_name).copy()
+            # gripper state
+            object_rel_pos = object_pos - grip_pos
+
+            if xpos_value == abs_value:
+                single_obs = object_pos.copy()
+            elif xpos_value == rel_value:
+                single_obs = object_rel_pos.copy()
+            else:
+                raise NotImplementedError
+
+            obstacle_obs[idx] = single_obs.copy()
+
+        obs = np.r_[physical_obs, obstacle_obs.flatten()]
+
+        return {
+            "achieved_goal": achieved_goal.copy(),
+            "desired_goal": goal.copy(),
+            "observation": obs.copy(),
+        }
+
     def _get_obs(self):
+        return self.get_mini_obs()
+        """
         # positions
         grip_pos = self.sim.data.get_site_xpos("robot0:grip").copy()
         dt = self.sim.nsubsteps * self.sim.model.opt.timestep
@@ -522,6 +580,7 @@ class FetchEnv(robot_env.RobotEnv):
             "achieved_goal": achieved_goal.copy(),
             "desired_goal": goal.copy(),
         }
+        """
 
     def macro_step_setup(self, macro_action):
         removal_goal = np.array([macro_action[desk_x], macro_action[desk_y], self.height_offset])
