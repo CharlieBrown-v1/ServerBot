@@ -298,8 +298,6 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             if curr_xpos[2] <= 0.4 - 0.01:
                 not_in_desk_count += 1
 
-        # 移除物品移动, 只留下掉落
-        move_count = 0
         if mode == 'done':
             return move_count + not_in_desk_count > 0
         elif mode == 'punish':

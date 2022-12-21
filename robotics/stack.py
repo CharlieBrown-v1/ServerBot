@@ -71,13 +71,13 @@ class StackEnv(gym.Env):
 
         self.success_reward = 100
         self.timeout_reward = 0
-        self.fail_reward = -5
+        self.fail_reward = -1
 
         self.hint_bad = -1
         self.hint_invalid = 0
         self.achieved_hint_reward = 0.5
         self.removal_hint_dist_sup = 0.3
-        self.removal_hint_reward_sup = 1
+        self.removal_hint_reward_sup = 0
         self.removal_hint_reward_scale = self.removal_hint_reward_sup / self.removal_hint_dist_sup
 
         self.training_mode = True
