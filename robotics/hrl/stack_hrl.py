@@ -261,7 +261,8 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
                 self.sim.forward()
             else:
                 self.render()
-            if info['train_done']:
+            done = info['train_done'] or self.is_stack_success()
+            if done:
                 break
 
         if self.training_mode:
