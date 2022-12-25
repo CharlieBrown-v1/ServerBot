@@ -70,15 +70,16 @@ class StackEnv(gym.Env):
         self.table_end_xyz = np.r_[table_end_xy, table_end_z]
 
         self.success_reward = 100
-        self.timeout_reward = 0
-        self.fail_reward = -1
+        self.timeout_reward = -10
+        self.fail_reward = -100
 
         self.hint_bad = -1
         self.hint_invalid = 0
-        self.achieved_hint_reward = 0.5
+        self.achieved_hint_reward = 1
         self.removal_hint_dist_sup = 0.3
         self.removal_hint_reward_sup = 1
         self.removal_hint_reward_scale = self.removal_hint_reward_sup / self.removal_hint_dist_sup
+        self.removal_hint_dict = None
 
         self.training_mode = True
         self.expert_mode = False
@@ -129,6 +130,9 @@ class StackEnv(gym.Env):
         sb3_value_list = [[] for _ in self.sb3_key_list]
         self.sb3_info_dict = dict(zip(self.sb3_key_list, sb3_value_list))
 
+        object_name_list = self.model.object_name_list.copy()
+        self.removal_hint_dict = dict(zip(object_name_list, [[] for _ in object_name_list]))
+
         return upper_obs
 
     def action2xpos(self, action: np.ndarray):
@@ -167,7 +171,7 @@ class StackEnv(gym.Env):
         info = {}
         if self.expert_mode:
             obstacle_name = self.demo_obstacle_list[self.demo_count % len(self.demo_obstacle_list)]
-            target_removal_height = 0.425 + self.model.object_size\
+            target_removal_height = 0.425 + self.model.object_size \
                                     * len(self.model.find_stack_clutter())
             target_removal_name = np.random.choice(self.model.deterministic_list)
             target_removal_xpos = self.model.get_xpos(target_removal_name).copy()
@@ -189,7 +193,7 @@ class StackEnv(gym.Env):
         info['removal_hint_reward'] = 0
         # removal_hint reward only accepted when achieved_name is not bad
         if self.choice_indicate(achieved_name=achieved_name) != self.hint_bad:
-            info['removal_hint_reward'] += self.compute_removal_hint_reward(removal_goal=removal_goal)
+            info['removal_hint_reward'] += self.compute_removal_hint_reward(achieved_name=achieved_name, removal_goal=removal_goal)
         lower_obs, reward, done, lower_info = self.model.macro_step(agent=self.agent, obs=lower_obs)
         info.update(lower_info)
 
@@ -255,36 +259,44 @@ class StackEnv(gym.Env):
 
         return hint_reward
 
-    def compute_removal_hint_reward(self, removal_goal: np.ndarray) -> float:
+    def compute_removal_hint_reward(self,
+                                    achieved_name: str,
+                                    removal_goal: np.ndarray,
+                                    ) -> float:
         hint_xpos = self.model.compute_goal_select_hint().copy()
         height_diff = removal_goal[2] - hint_xpos[2]
-        
-        # 高度完美: 只考虑 xy
-        if 0 <= height_diff < self.model.distance_threshold:
-            hint_diff = vector_distance(hint_xpos[:2], removal_goal[:2])
-        # 高度高于hint, 正常计算
-        elif height_diff > self.model.distance_threshold:
-            hint_diff = vector_distance(hint_xpos, removal_goal)
-        # 高度低于hint, 只给惩罚
-        else:
-            hint_diff = 2 * self.removal_hint_dist_sup
+        obstacle_name_list = self.model.object_name_list.copy()
+        obstacle_name_list.remove(self.model.achieved_name)
 
-        hint_reward = (self.removal_hint_dist_sup - hint_diff) * self.removal_hint_reward_scale
-        
+        hint_diff = np.inf
+        for name in obstacle_name_list:
+            xpos = self.model.get_xpos(name).copy()
+            hint_xpos[:2] = xpos[:2].copy()
+
+            # 高度完美: 只考虑 xy
+            if 0 <= height_diff < self.model.distance_threshold:
+                tmp_diff = vector_distance(hint_xpos[:2], removal_goal[:2])
+            # 高度高于hint, 正常计算
+            elif height_diff > self.model.distance_threshold:
+                tmp_diff = vector_distance(hint_xpos, removal_goal)
+            # 高度低于hint, 只给惩罚
+            else:
+                tmp_diff = self.removal_hint_dist_sup
+
+            hint_diff = min(hint_diff, tmp_diff)
+
+        self.removal_hint_dict[achieved_name].append(hint_diff)
+        try:
+            prev_diff = self.removal_hint_dict[achieved_name][-2]
+        except IndexError:
+            prev_diff = self.removal_hint_dist_sup
+        curr_diff = self.removal_hint_dict[achieved_name][-1]
+
+        hint_reward = (prev_diff - curr_diff) * self.removal_hint_reward_scale
+
         hint_reward = np.clip(hint_reward, -self.removal_hint_reward_sup, self.removal_hint_reward_sup).item()
-        
-        return hint_reward
-
-    """
-    def compute_removal_hint_reward(self, removal_goal: np.ndarray) -> float:
-        hint_xpos = self.model.compute_goal_select_hint().copy()
-        hint_diff = vector_distance(hint_xpos, removal_goal)
-        hint_reward = (self.removal_hint_dist_sup - hint_diff) * self.removal_hint_reward_scale
-
-        hint_reward = np.clip(hint_reward, -self.removal_hint_reward_sup, self.removal_hint_reward_sup).item()
 
         return hint_reward
-    """
 
     def compute_reward(self, achieved_goal, desired_goal, info):
         if isinstance(info, dict):
@@ -296,9 +308,6 @@ class StackEnv(gym.Env):
                 reward = self.success_reward
             else:
                 reward = info['height_reward'] + info['achieved_hint_reward'] + info['removal_hint_reward']
-                # print(f'height_r: {info["height_reward"]}')
-                # print(f'achieved_r: {info["achieved_hint_reward"]}')
-                # print(f'removal_r: {info["removal_hint_reward"]}')
             return reward
         else:
             raise NotImplementedError

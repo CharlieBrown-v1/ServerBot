@@ -139,13 +139,14 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         other_object_name_list = object_name_list.copy()
         other_object_name_list.remove(base_name)
         other_object_height_list = [self.get_xpos(name).copy()[2] for name in other_object_name_list]
-        sorted_object_name_list = [name for height, name in sorted(zip(other_object_height_list, other_object_name_list))]
+        sorted_object_name_list = [name for height, name in
+                                   sorted(zip(other_object_height_list, other_object_name_list))]
         for object_name in sorted_object_name_list:
             object_xpos = self.get_xpos(object_name).copy()
             xy_flag = vector_distance(base_xpos[:2], object_xpos[:2]) < self.stack_theta
             # 只考虑以base为底的堆叠场景
             lower_flag = object_xpos[2] - base_xpos[2] \
-                          < len(stack_clutter) * self.object_size + self.stack_theta
+                         < len(stack_clutter) * self.object_size + self.stack_theta
             higher_flag = object_xpos[2] >= base_xpos[2]
             z_flag = lower_flag and higher_flag
             if xy_flag and z_flag:
@@ -383,7 +384,7 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         # Visualize target.
         sites_offset = (self.sim.data.site_xpos - self.sim.model.site_pos).copy()
         removal_target_site_id = self.sim.model.site_name2id("removal_target")
-        
+
         # helping debugging
         hint_site_id = self.sim.model.site_name2id("hint")
         clutter_site_id = self.sim.model.site_name2id("clutter")
@@ -391,10 +392,10 @@ class StackHrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         achieved_indicate_id = self.sim.model.site_name2id("achieved_indicate")
 
         if self.removal_goal_indicate is not None:
-            self.sim.model.site_pos[removal_target_site_id]\
+            self.sim.model.site_pos[removal_target_site_id] \
                 = self.removal_goal_indicate - sites_offset[removal_target_site_id]
         elif self.removal_goal is not None:
-            self.sim.model.site_pos[removal_target_site_id]\
+            self.sim.model.site_pos[removal_target_site_id] \
                 = self.removal_goal - sites_offset[removal_target_site_id]
         else:
             self.sim.model.site_pos[removal_target_site_id] = np.array([20, 20, 0.5])
