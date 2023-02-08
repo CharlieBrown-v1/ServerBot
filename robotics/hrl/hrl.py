@@ -39,7 +39,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             reward_type=reward_type,
             single_count_sup=7,
             target_in_air_probability=0.5,
-            object_stacked_probability=0.5,
+            object_stacked_probability=0,
             hrl_mode=True,
             random_mode=True,
         )
@@ -55,6 +55,99 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         image = self._get_viewer(mode).read_pixels(width, height, depth=depth)
         # original image is upside-down, so flip it
         return image[::-1, :, :]
+
+    def hrl_step(self, obs, action):
+        # DIY
+        info = {
+            "is_grasp": False,
+            "is_removal_success": False,
+            "is_success": False,
+            "is_fail": self._is_fail(),
+        }
+
+        # DIY
+        if not self.is_grasp:
+            self.is_grasp = self._judge_is_grasp(obs['achieved_goal'].copy(), action.copy())
+
+            if self.is_grasp:
+                info['is_grasp'] = True
+
+        achieved_goal = self.sim.data.get_geom_xpos(self.achieved_name).copy()
+
+        # DIY
+        if self.removal_goal is not None and not self.is_removal_success:
+            self.is_removal_success = self._is_success(achieved_goal, self.removal_goal)
+
+            if self.is_removal_success:
+                self.reset_after_removal()
+                info['is_removal_success'] = True
+                self.removal_goal = None
+
+        # DIY
+        removal_done = self.removal_goal is None or self.is_removal_success
+        # done for reset sim
+        if removal_done:
+            info['is_success'] = self._is_success(achieved_goal, self.global_goal)
+        done = info['is_fail'] or info['is_success']
+        # train_* for train a new trial
+        info['train_done'] = info['is_fail'] or info['is_success'] or info['is_removal_success']
+        info['train_is_success'] = info['is_success'] or info['is_removal_success']
+
+        # DIY
+        info['removal_done'] = (not removal_done and info['is_fail']) or info['is_removal_success']
+        info['removal_success'] = info['is_removal_success']
+        info['global_done'] = (removal_done and info['is_fail']) or info['is_success']
+        info['global_success'] = info['is_success']
+
+        # DIY
+        if self.removal_goal is None or self.is_removal_success:
+            goal = self.global_goal.copy()
+        else:
+            goal = self.removal_goal.copy()
+
+        reward = self.compute_reward(achieved_goal, goal, info)
+        return obs, reward, done, info
+
+    def _sample_goal(self):
+        # DIY
+        is_removal = True
+
+        if self.object_generator.test_mode:
+            goal = self.object_generator.test_set_goal()
+            is_removal = False
+
+        elif self.has_object:
+            goal = self.initial_gripper_xpos[:3] + self.np_random.uniform(
+                -self.target_range, self.target_range, size=3
+            )
+            goal += self.target_offset
+            goal[2] = self.height_offset
+            # DIY
+            if self.target_in_the_air:
+                if self.demo_mode:
+                    goal[2] += self.np_random.uniform(0.1, 0.2)
+                elif self.np_random.uniform() < self.target_in_air_probability:
+                    goal[2] += self.np_random.uniform(self.distance_threshold, 0.3)
+                    is_removal = False
+            else:
+                is_removal = False
+
+            if self.hrl_mode and not (self.object_generator.random_mode or self.object_generator.test_mode):
+                goal = np.array([1.30, 0.75, 0.54])
+
+        else:
+            goal = self.initial_gripper_xpos[:3] + self.np_random.uniform(
+                -self.target_range, self.target_range, size=3
+            )
+
+        # DIY
+        if self.hrl_mode:
+            self.reset_removal(goal=goal.copy(), is_removal=is_removal)
+
+        goal = np.array([1.30, 0.75, 0.54])
+        self.achieved_name = np.random.choice(self.object_name_list)
+
+        return goal.copy()
 
     def _render_callback(self):
         # Visualize target.
@@ -103,9 +196,15 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         physical_obs = np.concatenate(physical_obs)
         assert physical_obs.size == self.physical_dim
         achieved_goal = cube_achieved_pos.copy()
-
+        
+        if self.removal_goal is None or self.is_removal_success:
+            goal = self.global_goal.copy()
+        else:
+            goal = self.removal_goal.copy()
+        
         # TODO: update it
         achieved_goal = np.zeros_like(achieved_goal)
+        goal = np.zeros_like(goal)
 
         obs = np.concatenate(
             [
@@ -114,10 +213,24 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             ]
         )
 
-        if self.removal_goal is None or self.is_removal_success:
-            goal = self.global_goal.copy()
-        else:
-            goal = self.removal_goal.copy()
+        # print(f'an: {self.achieved_name}')
+        # print(f'onl: {self.object_name_list}')
+        onehot_obs = np.zeros(len(self.object_name_list))
+        onehot_obs[self.object_name_list.index(self.achieved_name)] = 1
+        obs = np.concatenate(
+            [
+                cube_obs.flatten(),
+                onehot_obs,
+            ]
+        )
+
+        # tmp_dict = {
+        #     "observation": obs.copy(),
+        #     "achieved_goal": achieved_goal.copy(),
+        #     "desired_goal": goal.copy(),
+        # }
+        # for key, value in tmp_dict.items():
+        #     print(f'{key}: {value}')
 
         return {
             "observation": obs.copy(),

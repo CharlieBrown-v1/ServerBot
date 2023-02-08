@@ -376,6 +376,7 @@ class ObjectGenerator:
                                                    )
             else:
                 obstacle_count = np.random.randint(1, self.single_count_sup)
+                obstacle_count = 2
                 achieved_qpos = np.r_[
                     np.random.uniform(self.desktop_lower_boundary, self.desktop_upper_boundary), self.qpos_postfix]
         else:
