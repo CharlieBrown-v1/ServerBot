@@ -108,6 +108,10 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         reward = self.compute_reward(achieved_goal, goal, info)
         return obs, reward, done, info
 
+    # DIY: 不考虑失败
+    def _is_fail(self) -> bool:
+        return False
+
     def _sample_goal(self):
         # DIY
         is_removal = True
@@ -145,6 +149,7 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             self.reset_removal(goal=goal.copy(), is_removal=is_removal)
 
         goal = np.array([1.30, 0.75, 0.54])
+        self.is_removal_success = True
         self.achieved_name = np.random.choice(self.object_name_list)
 
         return goal.copy()
@@ -155,12 +160,12 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         global_target_site_id = self.sim.model.site_name2id("global_target")
         removal_target_site_id = self.sim.model.site_name2id("removal_target")
         achieved_site_id = self.sim.model.site_name2id("achieved_site")
-        if self.removal_goal is not None:
-            self.sim.model.site_pos[removal_target_site_id] = self.removal_goal - sites_offset[removal_target_site_id]
-            self.sim.model.site_pos[global_target_site_id] = np.array([32, 32, 0.5])
-        else:
-            self.sim.model.site_pos[removal_target_site_id] = np.array([20, 20, 0.5])
-            self.sim.model.site_pos[global_target_site_id] = self.global_goal - sites_offset[global_target_site_id]
+        # if self.removal_goal is not None:
+        #     self.sim.model.site_pos[removal_target_site_id] = self.removal_goal - sites_offset[removal_target_site_id]
+        #     self.sim.model.site_pos[global_target_site_id] = np.array([32, 32, 0.5])
+        # else:
+        self.sim.model.site_pos[removal_target_site_id] = np.array([20, 20, 0.5])
+        self.sim.model.site_pos[global_target_site_id] = self.global_goal - sites_offset[global_target_site_id]
         self.sim.model.site_pos[achieved_site_id] = self.sim.data.get_geom_xpos(self.achieved_name).copy() - \
                                                     sites_offset[achieved_site_id]
         self.sim.forward()
