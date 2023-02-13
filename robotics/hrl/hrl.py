@@ -16,8 +16,8 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
             "robot0:slide1": 0.48,
             "robot0:slide2": 0.0,
         }
-        self.image_width = 64
-        self.image_height = 64
+        self.image_width = 400
+        self.image_height = 400
         self.image_shape = [self.image_width, self.image_height]
         self.physical_dim = 10
 
@@ -45,12 +45,12 @@ class HrlEnv(fetch_env.FetchEnv, utils.EzPickle):
         )
         utils.EzPickle.__init__(self, reward_type=reward_type)
 
-    def get_image(self, camera_name='gripper_camera_rgb') -> np.ndarray:
+    def get_image(self) -> np.ndarray:
         mode = 'rgb_array'
         width = self.image_width
         height = self.image_height
         depth = self.depth
-        camera_id = self.sim.model.camera_name2id(camera_name)
+        self._render_callback()
         self._get_viewer(mode).render(width, height)
         image = self._get_viewer(mode).read_pixels(width, height, depth=depth)
         # original image is upside-down, so flip it
